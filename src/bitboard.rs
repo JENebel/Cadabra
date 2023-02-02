@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::definitions::Square;
 
 #[derive(Clone, Copy)]
@@ -17,6 +19,24 @@ impl From<u64> for Bitboard {
     }
 }
 
+impl Display for Bitboard {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut str = "".to_string();
+        for rank in 0..8 {
+            str = format!("{str}{} ", 8 - rank);  
+            //println!("{str}");
+    
+            for file in 0..8 {
+                str = format!("{str} {} ", if self.get_bit(rank*8 + file) { "X" } else { "-" })
+            }
+            str = format!("{str}\n")
+        }
+        str = format!("{str}   a  b  c  d  e  f  g  h\n");
+        str = format!("{str} Bitboard: {}\n", self.bits);
+        write!(f, "{str}")
+    }
+}
+
 impl Bitboard {
     pub fn new_blank() -> Self {
         Self::from(0)
@@ -28,20 +48,6 @@ impl Bitboard {
 
     pub fn bits(&self) -> u64 {
         self.bits
-    }
-
-    pub fn print (&self) {
-        println!();
-        for rank in 0..8 {
-            print!("{}  ", 8 - rank);  
-    
-            for file in 0..8 {
-                print!( " {} ", if self.get_bit(rank*8 + file) { "X" } else { "-" } )
-            }
-            println!()
-        }
-        println!( "    a  b  c  d  e  f  g  h");
-        println!( "    Bitboard: {}", self.bits)
     }
     
     pub fn get_bit(&self, square: u8) -> bool {
@@ -120,5 +126,9 @@ impl Bitboard {
 
     pub fn xor(&self, other: Bitboard) -> Self {
         Self { bits: self.bits ^ other.bits }
+    }
+
+    pub fn nand(&self, other: Bitboard) -> Self {
+        Self { bits: !(self.bits & other.bits) }
     }
 }

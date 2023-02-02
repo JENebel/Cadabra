@@ -3,7 +3,7 @@ mod position;
 mod attack_tables;
 mod uci;
 mod evaluation;
-mod key_constants;
+mod zobrist_constants;
 mod move_generator;
 mod definitions;
 mod constants;

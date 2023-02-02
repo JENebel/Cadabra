@@ -5,21 +5,155 @@ pub const ROOK_ATTACK_MASK: [u64; 64] = generate_rook_attack_masks();
 pub const BISHOP_MASK: [u64; 64] = generate_bishop_masks();
 pub const BISHOP_ATTACK_MASK: [u64; 64] = generate_bishop_attack_masks();
 
+/// From upper left to lower right
+//pub const DIAG1_MASKS: [u64; 64] = generate_d1_masks();
+/// From upper right to lower left
+//pub const DIAG2_MASKS: [u64; 64] = generate_d1_masks();
+
 fn main() {
-    generate_consts()
+    // Find file
+    let out_dir = env::var("OUT_DIR").unwrap();
+    let dest_path = Path::new(&out_dir).join("consts.rs");
+
+    // Clear file
+    File::create(&dest_path).expect("Couldn't clear consts.rs");
+
+    // Open file
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .append(true)
+        .open(&dest_path)
+        .unwrap();
+
+    // Write to file
+
+    // Files/Ranks/Diagonals
+    write!(file, "{}", array_string(generate_file_masks().to_vec(), "u64", "FILE_MASKS")).expect("Couldnt write file_masks!");
+    write!(file, "{}", array_string(generate_rank_masks().to_vec(), "u64", "RANK_MASKS")).expect("Couldnt write rank_masks!");
+    write!(file, "{}", array_string(generate_d1_masks().to_vec(), "u64", "DIAG1_MASKS")).expect("Couldnt write d1_masks!");
+    write!(file, "{}", array_string(generate_d2_masks().to_vec(), "u64", "DIAG2_MASKS")).expect("Couldnt write d2_masks!");
+
+    // Pawns
+    write!(file, "{}", array_string(generate_pawn_attacks(true).to_vec(), "u64", "WHITE_PAWN_ATTACKS")).expect("Couldnt write white_pawn_attacks!");
+    write!(file, "{}", array_string(generate_pawn_attacks(false).to_vec(), "u64", "BLACK_PAWN_ATTACKS")).expect("Couldnt write black_pawn_attacks!");
+
+    // Leapers
+    write!(file, "{}", array_string(generate_knight_attacks().to_vec(), "u64", "KNIGHT_ATTACKS")).expect("Couldnt write knight_attacks!");
+    write!(file, "{}", array_string(generate_king_attacks().to_vec(), "u64", "KING_ATTACKS")).expect("Couldnt write king_attacks!");
+
+    // Sliding pieces
+    write!(file, "{}", array_string(ROOK_MASK.to_vec(), "u64", "ROOK_MASK")).expect("Couldnt write rook_masks!");
+    write!(file, "{}", array_string(BISHOP_MASK.to_vec(), "u64", "BISHOP_MASK")).expect("Couldnt write bishop_masks!");
+
+    let (rook_offsets, bishop_offsets, attacks) = generate_sliding_attacks();
+    write!(file, "{}", array_string(rook_offsets.to_vec(), "usize", "ROOK_OFFSETS")).expect("Couldnt write rook_offsets!");
+    write!(file, "{}", array_string(bishop_offsets.to_vec(), "usize", "BISHOP_OFFSETS")).expect("Couldnt write bishop_offsets!");
+    write!(file, "{}", array_string(attacks.to_vec(), "u64", "SLIDING_ATTACKS")).expect("Couldnt write sliding_attacks!");
 }
 
-fn generate_consts() {
+fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
+    let len = data.len();
+    let mut result = (if len < 10000 { "pub const "} else { "pub static " } ).to_string();
+    result += cons_name;
+    result += &format!(": [{}; {}] = [", type_string, len).to_string();
+
+    let line_width = (len as f64).sqrt() as usize;
+    for i in 0..len {
+        if i % line_width == 0 { result += "\n" }
+        result += &format!("{}{}", data[i], if i == len-1 {""} else {", "}).to_string();
+    }
+    result += "\n];\n\n";
+
+    result
+}
+
+fn generate_file_masks() -> [u64; 64] {
+    let mut masks = [0; 64];
+    for rank in 0..8 {
+        for file in 0..8 {
+            for i in 0..8 {
+                masks[rank * 8 + file] |= (1 << file) << i*8;
+            }
+        }
+    }
+    masks
+}
+
+fn generate_rank_masks() -> [u64; 64] {
+    let mut masks = [0; 64];
+    for rank in 0..8 {
+        for file in 0..8 {
+            for i in 0..8 {
+                masks[rank * 8 + file] |= (1 << i) << 8*rank;
+            }
+        }
+    }
+    masks
+}
+
+fn generate_d1_masks() -> [u64; 64] {
+    let mut masks = [0; 64];
+    
+    for rank in 0..8 {
+        for file in 0..8 {
+            let mut r = rank;
+            let mut f = file;
+            while f < 7 && r < 7 {
+                f += 1;
+                r += 1;
+                masks[rank * 8 + file] |= (1 << f) << 8*r;
+            }
+            r = rank;
+            f = file;
+            while f > 0 && r > 0 {
+                f -= 1;
+                r -= 1;
+                masks[rank * 8 + file] |= (1 << f) << 8*r;
+            }
+        }
+    }
+
+    masks
+}
+
+fn generate_d2_masks() -> [u64; 64] {
+    let mut masks = [0; 64];
+    
+    for rank in 0..8 {
+        for file in 0..8 {
+            masks[rank * 8 + file] |= (1 << file) << 8*rank;
+            let mut r = rank;
+            let mut f = file;
+            while f < 7 && r > 0 {
+                f += 1;
+                r -= 1;
+                masks[rank * 8 + file] |= (1 << f) << 8*r;
+                
+            }
+            r = rank;
+            f = file;
+            while f > 0 && r < 7 {
+                f -= 1;
+                r += 1;
+                masks[rank * 8 + file] |= (1 << f) << 8*r;
+            }
+        }
+    }
+
+    masks
+}
+
+fn generate_sliding_attacks() -> ([u64; 64], [u64; 64], Box<[u64; 107648]>) {
     //Sliding pieces
-    let mut attacks: [u64; 107648] = [0; 107648];
     let mut rook_offsets: [u64; 64] = [0; 64];
     let mut bishop_offsets: [u64; 64] = [0; 64];
+    let mut attacks: Box<[u64; 107648]> = Box::new([0; 107648]);
     {
         let mut current_offset: u32 = 0;
 
         //ROOKS
-        let mut rank: u8 = 0;
-        while rank < 8 {
+        for rank in 0..8 {
             let mut file: u8 = 0;
             while file < 8 {
                 let square = rank * 8 + file;
@@ -37,7 +171,6 @@ fn generate_consts() {
                 
                 file += 1;
             }
-        rank += 1;
         }
         //OFFSET HER: 104600 i believe
         //Bishops
@@ -64,57 +197,8 @@ fn generate_consts() {
         }
     }
 
-    //Find file
-    let out_dir = env::var("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("consts.rs");
-
-    //Clear file
-    File::create(&dest_path).expect("Couldn't clear consts.rs");
-
-    //Open file
-    let mut file = fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .append(true)
-        .open(&dest_path)
-        .unwrap();
-
-    //Write to file
-    //Pawns
-    write!(file, "{}", array_string(generate_pawn_attacks(true).to_vec(), "u64", "WHITE_PAWN_ATTACKS")).expect("Couldnt write white_pawn_attacks!");
-    write!(file, "{}", array_string(generate_pawn_attacks(false).to_vec(), "u64", "BLACK_PAWN_ATTACKS")).expect("Couldnt write black_pawn_attacks!");
-
-    //Leapers
-    write!(file, "{}", array_string(generate_knight_attacks().to_vec(), "u64", "KNIGHT_ATTACKS")).expect("Couldnt write knight_attacks!");
-    write!(file, "{}", array_string(generate_king_attacks().to_vec(), "u64", "KING_ATTACKS")).expect("Couldnt write king_attacks!");
-
-    //Sliding pieces
-    write!(file, "{}", array_string(ROOK_MASK.to_vec(), "u64", "ROOK_MASK")).expect("Couldnt write rook_masks!");
-    write!(file, "{}", array_string(BISHOP_MASK.to_vec(), "u64", "BISHOP_MASK")).expect("Couldnt write bishop_masks!");
-
-    write!(file, "{}", array_string(rook_offsets.to_vec(), "usize", "ROOK_OFFSETS")).expect("Couldnt write rook_offsets!");
-    write!(file, "{}", array_string(bishop_offsets.to_vec(), "usize", "BISHOP_OFFSETS")).expect("Couldnt write bishop_offsets!");
-    write!(file, "{}", array_string(attacks.to_vec(), "u64", "SLIDING_ATTACKS")).expect("Couldnt write sliding_attacks!");
+    (rook_offsets, bishop_offsets, attacks)
 }
-
-
-
-fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
-    let len = data.len();
-    let mut result = (if len < 10000 { "const "} else { "static " } ).to_string();
-    result += cons_name;
-    result += &format!(": [{}; {}] = [", type_string, len).to_string();
-
-    let line_width = (len as f64).sqrt() as usize;
-    for i in 0..len {
-        if i % line_width == 0 { result += "\n" }
-        result += &format!("{}{}", data[i], if i == len-1 {""} else {", "}).to_string();
-    }
-    result += "\n];\n\n";
-
-    result
-}
-
 
 fn generate_pawn_attacks(color: bool) -> [u64; 64] {
     let mut attacks = [0; 64];

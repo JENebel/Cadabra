@@ -1,4 +1,4 @@
-use crate::{key_constants::*, bitboard::*, attack_tables::*, definitions::*};
+use crate::{zobrist_constants::*, bitboard::*, attack_tables::*, definitions::*};
 
 use Color::*;
 use Piece::*;

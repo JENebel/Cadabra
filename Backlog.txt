@@ -1,0 +1,1 @@
+Clean up build.rs generators to use file masks and diagonal masks for sliding generation

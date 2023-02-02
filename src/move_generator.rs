@@ -1,4 +1,4 @@
-use crate::{position::Position, definitions::*, bitboard::Bitboard, attack_tables::{get_pawn_attack_table, get_knight_attack_table, get_rook_attack_table}};
+use crate::{position::Position, definitions::*, bitboard::Bitboard, attack_tables::*};
 use PieceType::*;
 
 // Macros to expand const generics for move generation
@@ -145,20 +145,7 @@ impl MoveGenerator {
         let is_sorting = IS_SORTING;
         let has_enpassant = HAS_ENPASSANT;
 
-        let king_pos = pos.king_position(active_color);
-
-        let king_file = Bitboard::from(FILE_MASKS[king_pos as usize]);
-        let king_rank = Bitboard::from(RANK_MASKS[king_pos as usize]);
-
-        let opp_hv_sliders = pos.get_piece_color_bitboard(Rook, active_color).and(
-            pos.get_piece_color_bitboard(Queen, active_color)
-        );
-
-        let opp_diag_sliders = pos.get_piece_color_bitboard(Bishop, active_color).and(
-            pos.get_piece_color_bitboard(Queen, active_color)
-        );
-
-        let check_mask = Self::get_check_mask(pos, active_color, king_pos, king_file, king_rank, opp_hv_sliders, opp_diag_sliders);
+        let check_mask = Self::get_check_mask(pos, active_color);
 
         //while let Some()
 
@@ -183,35 +170,78 @@ impl MoveGenerator {
     }
 
     #[inline(always)]
-    fn get_check_mask(pos: &Position, color: Color, king_pos: u8, king_file: Bitboard, king_rank: Bitboard, opp_hv_sliders: Bitboard, opp_diag_sliders: Bitboard) -> Bitboard {
-        let mut mask = Bitboard::new_full();
+    pub fn get_check_mask(pos: &Position, active_color: Color) -> Bitboard {
+        let mut mask = Bitboard::new_blank();
+
+        let opp_color = opposite_color(active_color);
+
+        let king_pos = pos.king_position(active_color);
 
         // Leapers
-        mask = mask.xor(
-            (get_pawn_attack_table(king_pos, opposite_color(color)).and(pos.get_piece_color_bitboard(Pawn, color))).or(
-            get_knight_attack_table(king_pos).and(pos.get_piece_color_bitboard(Knight, color)))
+        mask = mask.or(
+            (get_pawn_attack_table(king_pos, opp_color).and(pos.get_piece_color_bitboard(Pawn, opp_color))).or(
+            get_knight_attack_table(king_pos).and(pos.get_piece_color_bitboard(Knight, opp_color)))
         );
 
-        let king_hv_rays = get_rook_attack_table(king_pos, pos.all_occupancies);
+        let opp_hv_sliders = pos.get_piece_color_bitboard(Rook, opp_color).or(
+            pos.get_piece_color_bitboard(Queen, opp_color)
+        );
+
+        let opp_diag_sliders = pos.get_piece_color_bitboard(Bishop, opp_color).or(
+            pos.get_piece_color_bitboard(Queen, opp_color)
+        );
 
         // Hv Sliders
         {
+            let king_file = Bitboard::from(FILE_MASKS[king_pos as usize]);
+            let king_rank = Bitboard::from(RANK_MASKS[king_pos as usize]);
+
+            let king_hv_rays =   get_rook_attack_table(king_pos, pos.all_occupancies);
+
             let mut sliders = opp_hv_sliders;
             while let Some(slider) = sliders.extract_bit() {
-                let slider_hv_rays = get_rook_attack_table(slider, pos.all_occupancies);
+                let mut slider_board = Bitboard::new_blank();
+                slider_board.set_bit(slider);
+                let slider_rays = (get_rook_attack_table(slider, pos.all_occupancies).and(pos.all_occupancies.not())).or(slider_board);
 
-                mask = mask.or(slider_hv_rays.and(king_hv_rays).and(king_file));
-                mask = mask.or(slider_hv_rays.and(king_hv_rays).and(king_rank));
+                let slider_hori = slider_rays.and(Bitboard::from(RANK_MASKS[slider as usize]));
+                let king_hori = king_hv_rays.and(king_rank);
+                mask = mask.or(king_hori.and(slider_hori));
+
+                let slider_vert = slider_rays.and(Bitboard::from(FILE_MASKS[slider as usize]));
+                let king_vert = king_hv_rays.and(king_file);
+                mask = mask.or(king_vert.and(slider_vert));
             }
         }
         
+        // Diagonal Sliders
+        {
+            let king_diag1 = Bitboard::from(DIAG1_MASKS[king_pos as usize]);
+            let king_diag2 = Bitboard::from(DIAG2_MASKS[king_pos as usize]);
 
-        mask.not()
-    }
+            let king_diag_rays = get_bishop_attack_table(king_pos, pos.all_occupancies);
 
-    #[inline(always)]
-    fn get_hv_slider_mask(file_rank_mask: Bitboard, opp_hv_sliders: Bitboard, king_pos: u8) {
+            let mut sliders = opp_diag_sliders;
+            while let Some(slider) = sliders.extract_bit() {
+                let mut slider_board = Bitboard::new_blank();
+                slider_board.set_bit(slider);
+                let slider_rays = (get_bishop_attack_table(slider, pos.all_occupancies)).and(pos.all_occupancies.not()).or(slider_board);
 
+                let slider_hori = slider_rays.and(Bitboard::from(DIAG1_MASKS[slider as usize]));
+                let king_hori = king_diag_rays.and(king_diag1);
+                mask = mask.or(king_hori.and(slider_hori));
+
+                let slider_vert = slider_rays.and(Bitboard::from(DIAG2_MASKS[slider as usize]));
+                let king_vert = king_diag_rays.and(king_diag2);
+                mask = mask.or(king_vert.and(slider_vert));
+            }
+        }
+        
+        if mask.is_empty() {
+            Bitboard::new_full()
+        } else {
+            mask
+        }
     }
 
     /// Generate check evasions
@@ -231,11 +261,10 @@ impl MoveGenerator {
         
     }
 }
-
 #[test]
 pub fn test() {
-    let pos = Position::new_from_start_pos();
-    let mut gene = MoveGenerator::new(&pos, MoveTypes::All, false);
+    let pos = Position::new_from_fen("7Q/1K6/8/4k3/8/8/8/4Q3 b - - 0 1").unwrap();
+//    let gen = MoveGenerator::new(&pos, MoveTypes::All, false);
 
-    println!("{:?}", gene.next_move(&pos));
+    println!("{}", MoveGenerator::get_check_mask(&pos, pos.active_color));
 }

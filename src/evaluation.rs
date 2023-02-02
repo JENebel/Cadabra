@@ -1,6 +1,8 @@
 use crate::{position::*, bitboard::*, attack_tables::*, constants::*, definitions::*};
 
-
+////////////////////////////////////////
+/// General                          ///
+////////////////////////////////////////
 
 const STACKED_PAWN_PENALTY: i32 = -10;
 const ISOLATED_PAWN_PENALTY: i32 = -10;

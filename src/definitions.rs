@@ -1,14 +1,14 @@
-
-
-////////////////////////////////////////
-/// General                          ///
-////////////////////////////////////////
+include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
 use std::{fmt::Display};
 
 use crate::{move_generator::MoveGenerator, position::Position};
 
 use Piece::*;
+
+////////////////////////////////////////
+/// General                          ///
+////////////////////////////////////////
 
 #[derive(Copy, Clone)]
 #[derive(PartialEq)]
@@ -312,63 +312,10 @@ pub const LOOKUP_RANK: [usize; 64] =
 	0, 0, 0, 0, 0, 0, 0, 0
 ];
 
-pub const FILE_MASKS: [u64; 64] = generate_file_masks();
-pub const RANK_MASKS: [u64; 64] = generate_rank_masks();
 pub const ISOLATED_MASKS: [u64; 64] = generate_isolated_pawn_masks();
 
 pub const WHITE_PASSED_PAWN_MASKS: [u64; 64] = generate_white_passed_pawn_masks();
 pub const BLACK_PASSED_PAWN_MASKS: [u64; 64] = generate_black_passed_pawn_masks();
-
-const fn generate_file_masks() -> [u64; 64] {
-    let mut masks = [0; 64];
-    
-    let mut r = 0;
-    while r < 8 {
-        let mut f = 0;
-        while f < 8 {
-            let mut mask = 0;
-            
-
-            let mut i = 0;
-            while i < 8 {
-                mask |= (1 << f) << i*8;
-                i += 1;
-            }
-
-            masks[r * 8 + f] = mask;
-
-            f += 1;
-        }
-        r += 1;
-    }
-
-    masks
-}
-
-const fn generate_rank_masks() -> [u64; 64] {
-    let mut masks = [0; 64];
-    
-    let mut r = 0;
-    while r < 8 {
-        let mut f = 0;
-        while f < 8 {
-            let mut mask = 0;
-            
-            let mut i = 0;
-            while i < 8 {
-                mask |= (1 << i) << 8*f;
-                i += 1;
-            }
-
-            masks[r * 8 + f] = mask;
-
-            f += 1;
-        }
-        r += 1;
-    }
-
-    masks
-}
 
 const fn generate_isolated_pawn_masks() -> [u64; 64] {
     let mut masks = [0; 64];
