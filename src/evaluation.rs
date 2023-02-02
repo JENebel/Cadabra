@@ -29,7 +29,7 @@ impl Position {
 
                         //Stacked pawn penalty
                         stacked_pawns = self.get_piece_bitboard(WhitePawn)
-                                            .and(Bitboard::from_u64(FILE_MASKS[square as usize]))
+                                            .and(Bitboard::from(FILE_MASKS[square as usize]))
                                             .count();
                         if stacked_pawns > 1 {
                             score += stacked_pawns as i32 * STACKED_PAWN_PENALTY;
@@ -37,14 +37,14 @@ impl Position {
 
                         //Isolated pawn penalty
                         if self.get_piece_bitboard(WhitePawn)
-                                .and(Bitboard::from_u64(ISOLATED_MASKS[square as usize]))
+                                .and(Bitboard::from(ISOLATED_MASKS[square as usize]))
                                 .is_empty() {
                             score += ISOLATED_PAWN_PENALTY;
                         }
 
                         //Passed pawn penalty
                         if self.get_piece_bitboard(BlackPawn)
-                            .and(Bitboard::from_u64(WHITE_PASSED_PAWN_MASKS[square as usize]))
+                            .and(Bitboard::from(WHITE_PASSED_PAWN_MASKS[square as usize]))
                             .is_empty() {
                             score += PASSED_WHITE_PAWN_BONUS[LOOKUP_RANK[square as usize]];
                         }
@@ -72,7 +72,7 @@ impl Position {
 
                         //Semi open file bonus
                         if self.get_piece_bitboard(WhitePawn)
-                            .and(Bitboard::from_u64(FILE_MASKS[square as usize]))
+                            .and(Bitboard::from(FILE_MASKS[square as usize]))
                             .is_empty() {
                             score += SEMI_OPEN_FILE_SCORE;
                         }
@@ -80,7 +80,7 @@ impl Position {
                         //Open file bonus
                         if (self.get_piece_bitboard(WhitePawn)
                                 .or(self.get_piece_bitboard(BlackPawn)))
-                                    .and(Bitboard::from_u64(FILE_MASKS[square as usize])).is_empty() {
+                                    .and(Bitboard::from(FILE_MASKS[square as usize])).is_empty() {
                             score += OPEN_FILE_SCORE;
                         }
 
@@ -100,7 +100,7 @@ impl Position {
 
                         //Semi open file penalty
                         if self.get_piece_bitboard(WhitePawn)
-                            .and(Bitboard::from_u64(FILE_MASKS[square as usize]))
+                            .and(Bitboard::from(FILE_MASKS[square as usize]))
                             .is_empty() {
                             score -= SEMI_OPEN_FILE_SCORE;
                         }
@@ -108,7 +108,7 @@ impl Position {
                         //Open file penalty
                         if (self.get_piece_bitboard(WhitePawn)
                                 .or(self.get_piece_bitboard(BlackPawn)))
-                                    .and(Bitboard::from_u64(FILE_MASKS[square as usize])).is_empty() {
+                                    .and(Bitboard::from(FILE_MASKS[square as usize])).is_empty() {
                             score -= OPEN_FILE_SCORE;
                         }
 
@@ -121,7 +121,7 @@ impl Position {
                         
                         //Stacked pawn penalty
                         stacked_pawns = self.get_piece_bitboard(BlackPawn)
-                                            .and(Bitboard::from_u64(FILE_MASKS[square as usize]))
+                                            .and(Bitboard::from(FILE_MASKS[square as usize]))
                                             .count();
                         if stacked_pawns > 1 {
                             score -= stacked_pawns as i32 * STACKED_PAWN_PENALTY;
@@ -129,14 +129,14 @@ impl Position {
 
                         //Isolated pawn penalty
                         if self.get_piece_bitboard(BlackPawn)
-                            .and(Bitboard::from_u64(ISOLATED_MASKS[square as usize]))
+                            .and(Bitboard::from(ISOLATED_MASKS[square as usize]))
                             .is_empty() {
                             score -= ISOLATED_PAWN_PENALTY;
                         }
 
                         //Passed pawn penalty
                         if self.get_piece_bitboard(WhitePawn)
-                            .and(Bitboard::from_u64(BLACK_PASSED_PAWN_MASKS[square as usize]))
+                            .and(Bitboard::from(BLACK_PASSED_PAWN_MASKS[square as usize]))
                             .is_empty() {
                             score -= PASSED_BLACK_PAWN_BONUS[LOOKUP_RANK[square as usize]];
                         }
@@ -163,7 +163,7 @@ impl Position {
 
                         //Semi open file bonus
                         if self.get_piece_bitboard(BlackPawn)
-                            .and(Bitboard::from_u64(FILE_MASKS[square as usize]))
+                            .and(Bitboard::from(FILE_MASKS[square as usize]))
                             .is_empty() {
                             score -= SEMI_OPEN_FILE_SCORE;
                         }
@@ -171,7 +171,7 @@ impl Position {
                         //Open file bonus
                         if (self.get_piece_bitboard(BlackPawn)
                                 .or(self.get_piece_bitboard(WhitePawn)))
-                                    .and(Bitboard::from_u64(FILE_MASKS[square as usize])).is_empty() {
+                                    .and(Bitboard::from(FILE_MASKS[square as usize])).is_empty() {
                             score -= OPEN_FILE_SCORE;
                         }
 
@@ -191,7 +191,7 @@ impl Position {
 
                         //Semi open file penalty
                         if self.get_piece_bitboard(BlackPawn)
-                            .and(Bitboard::from_u64(FILE_MASKS[square as usize]))
+                            .and(Bitboard::from(FILE_MASKS[square as usize]))
                             .is_empty() {
                             score += SEMI_OPEN_FILE_SCORE;
                         }
@@ -199,7 +199,7 @@ impl Position {
                         //Open file penalty
                         if (self.get_piece_bitboard(BlackPawn)
                                 .or(self.get_piece_bitboard(WhitePawn)))
-                                    .and(Bitboard::from_u64(FILE_MASKS[square as usize])).is_empty() {
+                                    .and(Bitboard::from(FILE_MASKS[square as usize])).is_empty() {
                             score += OPEN_FILE_SCORE;
                         }
 

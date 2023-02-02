@@ -11,12 +11,22 @@ impl Default for Bitboard {
     }
 }
 
-impl Bitboard {
-    pub fn from_u64(source: u64) -> Self {
+impl From<u64> for Bitboard {
+    fn from(source: u64) -> Self {
         Self { bits: source }
     }
+}
 
-    pub fn to_u64(&self) -> u64 {
+impl Bitboard {
+    pub fn new_blank() -> Self {
+        Self::from(0)
+    }
+
+    pub fn new_full() -> Self {
+        Self::from(u64::MAX)
+    }
+
+    pub fn bits(&self) -> u64 {
         self.bits
     }
 

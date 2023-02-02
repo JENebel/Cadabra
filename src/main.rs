@@ -1,6 +1,6 @@
 use std::thread;
 
-use nebel_chess_engine::*;
+use cadabra::*;
 
 fn main() {
     let t1 = thread::spawn(|| {

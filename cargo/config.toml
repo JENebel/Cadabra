@@ -1,2 +1,2 @@
 [build]
-RUSTFLAGS = "-C target-cpu=native"
+RUSTFLAGS = "-C target-cpu=native codegen-units=1"

@@ -1,4 +1,4 @@
-use crate::{position::Position, definitions::*, bitboard::Bitboard};
+use crate::{position::Position, definitions::*, bitboard::Bitboard, attack_tables::{get_pawn_attack_table, get_knight_attack_table, get_rook_attack_table}};
 use PieceType::*;
 
 // Macros to expand const generics for move generation
@@ -109,8 +109,8 @@ impl MoveGenerator {
     }
 
     #[inline(always)]
-    fn insert_and_score<const ConstSort: bool>(&mut self, new_move: &mut Move) {
-        if ConstSort {
+    fn insert_and_score(&mut self, new_move: &mut Move, is_sorting: bool) {
+        if is_sorting {
             Self::score_move(new_move) // Maybe handle scoring different
         }
         self.insert(*new_move)
@@ -134,20 +134,31 @@ impl MoveGenerator {
         
         // Go straight to check evasions if in check
         if pos.is_in_check(active_color) {
-            self.generate_check_evasions::<IS_WHITE>(pos);
+            self.generate_check_evasions(pos);
             return
         }
         
-        let gen_phase: GenPhase = unsafe { std::mem::transmute(PHASE) }; // Always a legal phase!
+        let gen_phase: GenPhase = unsafe {
+            std::mem::transmute(PHASE) // Always a legal phase!
+        };
+
         let is_sorting = IS_SORTING;
         let has_enpassant = HAS_ENPASSANT;
 
         let king_pos = pos.king_position(active_color);
 
-        let king_file = FILE_MASKS[king_pos as usize];
-        let king_rank = RANK_MASKS[king_pos as usize];
+        let king_file = Bitboard::from(FILE_MASKS[king_pos as usize]);
+        let king_rank = Bitboard::from(RANK_MASKS[king_pos as usize]);
 
-        let opp_hv_sliders = pos.get_piece_color_bitboard(Rook, active_color);
+        let opp_hv_sliders = pos.get_piece_color_bitboard(Rook, active_color).and(
+            pos.get_piece_color_bitboard(Queen, active_color)
+        );
+
+        let opp_diag_sliders = pos.get_piece_color_bitboard(Bishop, active_color).and(
+            pos.get_piece_color_bitboard(Queen, active_color)
+        );
+
+        let check_mask = Self::get_check_mask(pos, active_color, king_pos, king_file, king_rank, opp_hv_sliders, opp_diag_sliders);
 
         //while let Some()
 
@@ -164,24 +175,58 @@ impl MoveGenerator {
                     self.phase = GenPhase::Done
                 }
             },
-            GenPhase::Quiet => { self.phase = GenPhase::Done },
+            GenPhase::Quiet => {
+                self.phase = GenPhase::Done
+            },
             _ => { }
         }
     }
 
-    fn get_hv_slider_mask() {
+    #[inline(always)]
+    fn get_check_mask(pos: &Position, color: Color, king_pos: u8, king_file: Bitboard, king_rank: Bitboard, opp_hv_sliders: Bitboard, opp_diag_sliders: Bitboard) -> Bitboard {
+        let mut mask = Bitboard::new_full();
+
+        // Leapers
+        mask = mask.xor(
+            (get_pawn_attack_table(king_pos, opposite_color(color)).and(pos.get_piece_color_bitboard(Pawn, color))).or(
+            get_knight_attack_table(king_pos).and(pos.get_piece_color_bitboard(Knight, color)))
+        );
+
+        let king_hv_rays = get_rook_attack_table(king_pos, pos.all_occupancies);
+
+        // Hv Sliders
+        {
+            let mut sliders = opp_hv_sliders;
+            while let Some(slider) = sliders.extract_bit() {
+                let slider_hv_rays = get_rook_attack_table(slider, pos.all_occupancies);
+
+                mask = mask.or(slider_hv_rays.and(king_hv_rays).and(king_file));
+                mask = mask.or(slider_hv_rays.and(king_hv_rays).and(king_rank));
+            }
+        }
+        
+
+        mask.not()
+    }
+
+    #[inline(always)]
+    fn get_hv_slider_mask(file_rank_mask: Bitboard, opp_hv_sliders: Bitboard, king_pos: u8) {
 
     }
 
     /// Generate check evasions
-    fn generate_check_evasions<const ConstColor: bool>(&mut self, pos: &Position) {
+    #[inline(always)]
+    fn generate_check_evasions(&mut self, pos: &Position) {
         ///////
+        
+        todo!();
 
         // Should not generate more moves as this generates all possible
         self.phase = GenPhase::Done
     }
 
     /// Generates all legal king moves
+    #[inline(always)]
     fn generate_king_moves() {
         
     }

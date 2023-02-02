@@ -4,7 +4,7 @@ include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
 //Getters
 pub fn get_pawn_attack_table(square: u8, color: Color) -> Bitboard {
-    Bitboard::from_u64(
+    Bitboard::from(
         if color == Color::White {
             WHITE_PAWN_ATTACKS[square as usize]
         }
@@ -15,36 +15,36 @@ pub fn get_pawn_attack_table(square: u8, color: Color) -> Bitboard {
 }
 
 pub fn get_knight_attack_table(square: u8) -> Bitboard {
-    Bitboard::from_u64(
+    Bitboard::from(
         KNIGHT_ATTACKS[square as usize]
     )
 }
 
 pub fn get_king_attack_table(square: u8) -> Bitboard {
-    Bitboard::from_u64(
+    Bitboard::from(
         KING_ATTACKS[square as usize]
     )
 }
 
 pub fn get_rook_attack_table(square: u8, occ: Bitboard) -> Bitboard {
-    let attacks = SLIDING_ATTACKS[(ROOK_OFFSETS[square as usize] as u64 + pext(occ.to_u64(), ROOK_MASK[square as usize])) as usize];
-    Bitboard::from_u64(
+    let attacks = SLIDING_ATTACKS[(ROOK_OFFSETS[square as usize] as u64 + pext(occ.bits(), ROOK_MASK[square as usize])) as usize];
+    Bitboard::from(
         attacks
     )
 }
 
 pub fn get_bishop_attack_table(square: u8, occ: Bitboard) -> Bitboard {
-    let attacks = SLIDING_ATTACKS[(BISHOP_OFFSETS[square as usize] as u64 + pext(occ.to_u64(), BISHOP_MASK[square as usize])) as usize];
-    Bitboard::from_u64(
+    let attacks = SLIDING_ATTACKS[(BISHOP_OFFSETS[square as usize] as u64 + pext(occ.bits(), BISHOP_MASK[square as usize])) as usize];
+    Bitboard::from(
         attacks
     )
 }
 
 pub fn get_queen_attack_table(square: u8, occ: Bitboard) -> Bitboard {
-    let bishop = SLIDING_ATTACKS[(BISHOP_OFFSETS[square as usize] as u64 + pext(occ.to_u64(), BISHOP_MASK[square as usize])) as usize];
-    let rook = SLIDING_ATTACKS[(ROOK_OFFSETS[square as usize] as u64 + pext(occ.to_u64(), ROOK_MASK[square as usize])) as usize];
+    let bishop = SLIDING_ATTACKS[(BISHOP_OFFSETS[square as usize] as u64 + pext(occ.bits(), BISHOP_MASK[square as usize])) as usize];
+    let rook = SLIDING_ATTACKS[(ROOK_OFFSETS[square as usize] as u64 + pext(occ.bits(), ROOK_MASK[square as usize])) as usize];
 
-    Bitboard::from_u64 (
+    Bitboard::from (
         rook | bishop
     )
 }
