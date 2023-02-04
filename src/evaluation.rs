@@ -12,11 +12,9 @@ const SEMI_OPEN_FILE_SCORE: i32 = 10;
 const OPEN_FILE_SCORE: i32 = 15;
 const PROTECTED_KING_BONUS: i32 = 5;
 
-use Piece::*;
-
 impl Position {
     pub fn evaluate(&self) -> i32 {
-        let mut score: i32 = 0;
+        /*let mut score: i32 = 0;
 
         let mut stacked_pawns;
 
@@ -213,6 +211,8 @@ impl Position {
             }
         }
 
-        if self.active_color == Color::White { score } else { -score } // Colud avoid branching here
+        if self.active_color == Color::White { score } else { -score } // Colud avoid branching here*/
+
+        10
     }
 }

@@ -126,18 +126,11 @@ impl MoveGenerator {
         m.score = 10; // Fake it. Should probably be moved to seperate place
     }
 
-    /// Generate interesting moves
-    /// 
-    /// Check evasions, captures, promotions
+    /// Generate more legal moves for the position
+    #[inline(always)]
     fn generate_moves<const IS_WHITE: bool, const PHASE: u8, const IS_SORTING: bool, const HAS_ENPASSANT: bool>(&mut self, pos: &Position) {
-        let active_color = if IS_WHITE { Color::White } else {Color::Black };
-        
-        // Go straight to check evasions if in check
-        if pos.is_in_check(active_color) {
-            self.generate_check_evasions(pos);
-            return
-        }
-        
+        let active_color = if IS_WHITE { Color::White } else { Color::Black };
+
         let gen_phase: GenPhase = unsafe {
             std::mem::transmute(PHASE) // Always a legal phase!
         };
@@ -145,9 +138,22 @@ impl MoveGenerator {
         let is_sorting = IS_SORTING;
         let has_enpassant = HAS_ENPASSANT;
 
+
         let check_mask = Self::get_check_mask(pos, active_color);
 
-        //while let Some()
+        // Go straight to check evasions if in check
+        {
+            let checkers = check_mask.and(pos.get_color_bitboard(opposite_color(active_color))).count();
+            if !check_mask.not().is_empty() && checkers > 0 {
+                if checkers > 1 {
+                    // Double check, only king can move
+                    self.generate_king_moves(pos, check_mask)
+                } else {
+                    self.generate_check_evasions(pos, check_mask);
+                }
+                return
+            }
+        }
 
         match active_color {
             Color::White => { },
@@ -170,7 +176,19 @@ impl MoveGenerator {
     }
 
     #[inline(always)]
-    pub fn get_check_mask(pos: &Position, active_color: Color) -> Bitboard {
+    pub fn get_pin_mask(pos: &mut Position, color: Color, square: u8, piece_type: PieceType) -> Bitboard {
+        pos.remove_piece(color, piece_type, square);
+
+        let mask = MoveGenerator::get_check_mask(pos, color);
+
+        pos.place_piece(color, piece_type, square);
+
+        mask
+    }
+
+    /// Should be delegated to pregenerated Constants for sliders
+    #[inline(always)]
+    fn get_check_mask(pos: &Position, active_color: Color) -> Bitboard {
         let mut mask = Bitboard::new_blank();
 
         let opp_color = opposite_color(active_color);
@@ -179,24 +197,20 @@ impl MoveGenerator {
 
         // Leapers
         mask = mask.or(
-            (get_pawn_attack_table(king_pos, opp_color).and(pos.get_piece_color_bitboard(Pawn, opp_color))).or(
-            get_knight_attack_table(king_pos).and(pos.get_piece_color_bitboard(Knight, opp_color)))
-        );
-
-        let opp_hv_sliders = pos.get_piece_color_bitboard(Rook, opp_color).or(
-            pos.get_piece_color_bitboard(Queen, opp_color)
-        );
-
-        let opp_diag_sliders = pos.get_piece_color_bitboard(Bishop, opp_color).or(
-            pos.get_piece_color_bitboard(Queen, opp_color)
+            (get_pawn_attack_table(king_pos, opp_color).and(pos.get_bitboard(opp_color, Pawn))).or(
+            get_knight_attack_table(king_pos).and(pos.get_bitboard(opp_color, Knight)))
         );
 
         // Hv Sliders
         {
+            let opp_hv_sliders = pos.get_bitboard(opp_color, Rook).or(
+                pos.get_bitboard(opp_color, Queen)
+            );
+
             let king_file = Bitboard::from(FILE_MASKS[king_pos as usize]);
             let king_rank = Bitboard::from(RANK_MASKS[king_pos as usize]);
 
-            let king_hv_rays =   get_rook_attack_table(king_pos, pos.all_occupancies);
+            let king_hv_rays = get_rook_attack_table(king_pos, pos.all_occupancies);
 
             let mut sliders = opp_hv_sliders;
             while let Some(slider) = sliders.extract_bit() {
@@ -216,6 +230,10 @@ impl MoveGenerator {
         
         // Diagonal Sliders
         {
+            let opp_diag_sliders = pos.get_bitboard(opp_color, Bishop).or(
+                pos.get_bitboard(opp_color, Queen)
+            );
+
             let king_diag1 = Bitboard::from(DIAG1_MASKS[king_pos as usize]);
             let king_diag2 = Bitboard::from(DIAG2_MASKS[king_pos as usize]);
 
@@ -236,7 +254,7 @@ impl MoveGenerator {
                 mask = mask.or(king_vert.and(slider_vert));
             }
         }
-        
+
         if mask.is_empty() {
             Bitboard::new_full()
         } else {
@@ -246,7 +264,7 @@ impl MoveGenerator {
 
     /// Generate check evasions
     #[inline(always)]
-    fn generate_check_evasions(&mut self, pos: &Position) {
+    fn generate_check_evasions(&mut self, pos: &Position, check_mask: Bitboard) {
         ///////
         
         todo!();
@@ -257,14 +275,18 @@ impl MoveGenerator {
 
     /// Generates all legal king moves
     #[inline(always)]
-    fn generate_king_moves() {
+    fn generate_king_moves(&mut self, pos: &Position, check_mask: Bitboard) {
         
     }
 }
+
 #[test]
 pub fn test() {
-    let pos = Position::new_from_fen("7Q/1K6/8/4k3/8/8/8/4Q3 b - - 0 1").unwrap();
-//    let gen = MoveGenerator::new(&pos, MoveTypes::All, false);
+    let mut pos = Position::new_from_fen("8/8/8/4K2B/8/8/4p1R1/3k4 b - - 0 1").unwrap();
 
-    println!("{}", MoveGenerator::get_check_mask(&pos, pos.active_color));
+    println!("{}", MoveGenerator::get_pin_mask(&mut pos, Color::Black, square_from_string("e2") as u8, PieceType::Pawn));
+
+    /*pos = Position::new_from_fen("8/8/8/4K3/8/8/2k3R1/8 b - - 0 1").unwrap();
+
+    println!("{}", MoveGenerator::get_check_mask(&pos, Color::Black));*/
 }

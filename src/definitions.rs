@@ -4,7 +4,8 @@ use std::{fmt::Display};
 
 use crate::{move_generator::MoveGenerator, position::Position};
 
-use Piece::*;
+use PieceType::*;
+use Color::*;
 
 ////////////////////////////////////////
 /// General                          ///
@@ -67,7 +68,7 @@ pub enum CastlingAbility {
 #[derive(PartialEq)]
 pub enum Color {
     White = 0,
-    Black = 6,
+    Black = 1,
 }
 
 impl Display for Color {
@@ -76,6 +77,23 @@ impl Display for Color {
             Color::White => "White",
             Color::Black => "Black",
         })
+    }
+}
+
+impl Color {
+    pub fn is_white(&self) -> bool {
+        *self == White
+    }
+
+    pub fn is_black(&self) -> bool {
+        *self == Black
+    }
+
+    pub fn piece_offset(&self) -> usize {
+        match self {
+            White => 0,
+            Black => 6,
+        }
     }
 }
 
@@ -95,80 +113,39 @@ impl Default for PieceType {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum Piece {
-    WhitePawn,
-    WhiteKnight,
-    WhiteBishop,
-    WhiteRook,
-    WhiteQueen,
-    WhiteKing,
-    BlackPawn,
-    BlackKnight,
-    BlackBishop,
-    BlackRook,
-    BlackQueen,
-    BlackKing,
+pub fn char_to_piece(char: char) -> Result<(Color, PieceType), ()> {
+    let color = if char.is_uppercase() { White } else { Black };
+    let piece = match char.to_ascii_uppercase() {
+        'P' => Pawn,
+        'R' => Rook,
+        'N' => Knight,
+        'B' => Bishop,
+        'Q' => Queen,
+        'K' => King,
+        _ => return Err(())
+    };
+
+    Ok((color, piece))
 }
 
-impl Piece {
-    pub fn is_slider(&self) -> bool {
-        match self {
-            Piece::WhiteBishop | Piece::WhiteRook | Piece::WhiteQueen |
-            Piece::BlackBishop | Piece::BlackRook | Piece::BlackQueen  => true,
-            _ => false
-        }
+pub fn piece_to_char(color: Color, piece_type: PieceType) -> char {
+    let mut c = match piece_type {
+        Pawn =>   'P',
+        Knight => 'N',
+        Bishop => 'B',
+        Rook =>   'R',
+        Queen =>  'Q',
+        King =>   'K',
+    };
+
+    if color.is_black() {
+        c = c.to_ascii_lowercase()
     }
 
-    pub fn piece_type(&self) -> PieceType {
-        match self {
-            WhitePawn =>   PieceType::Pawn,
-            WhiteKnight => PieceType::Knight,
-            WhiteBishop => PieceType::Bishop,
-            WhiteRook =>   PieceType::Rook,
-            WhiteQueen =>  PieceType::Queen,
-            WhiteKing =>   PieceType::King,
-            BlackPawn =>   PieceType::Pawn,
-            BlackKnight => PieceType::Knight,
-            BlackBishop => PieceType::Bishop,
-            BlackRook =>   PieceType::Rook,
-            BlackQueen =>  PieceType::Queen,
-            BlackKing =>   PieceType::King,
-        }
-    }
-}
-
-impl Display for Piece {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", PIECE_STRINGS[*self as usize])
-    }
-}
-
-impl Default for Piece {
-    fn default() -> Self {
-        Self::WhitePawn
-    }
+    c
 }
 
 pub const PIECE_STRINGS: [&str; 13] = ["P", "N", "B", "R", "Q", "K", "p", "n", "b", "r", "q", "k", "None"];
-
-pub fn char_to_piece(char: char) -> Option<Piece> {
-    match char {
-        'P' => Some(Piece::WhitePawn),
-        'R' => Some(Piece::WhiteRook),
-        'N' => Some(Piece::WhiteKnight),
-        'B' => Some(Piece::WhiteBishop),
-        'Q' => Some(Piece::WhiteQueen),
-        'K' => Some(Piece::WhiteKing),
-        'p' => Some(Piece::BlackPawn),
-        'r' => Some(Piece::BlackRook),
-        'n' => Some(Piece::BlackKnight),
-        'b' => Some(Piece::BlackBishop),
-        'q' => Some(Piece::BlackQueen),
-        'k' => Some(Piece::BlackKing),
-        _ => None
-    }
-}
 
 pub fn opposite_color(color: Color) -> Color {
     if color == Color::White { Color::Black } else { Color::White }
@@ -215,7 +192,7 @@ pub struct Move {
     pub from_sq: u8,
     pub to_sq: u8,
     pub piece_type: PieceType,
-    pub promotion: Piece,
+    pub promotion: PieceType,
     pub is_capture: bool,
     pub is_double_push: bool,
     pub is_enpassant: bool,
@@ -229,7 +206,7 @@ impl Move {
         from_sq: u8,
         to_sq: u8,
         piece_type: PieceType,
-        promotion: Piece,
+        promotion: PieceType,
         is_capture: bool,
         is_double_push: bool,
         is_enpassant: bool,
