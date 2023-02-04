@@ -5,6 +5,18 @@ fn pext(bits: u64, mask: u64) -> u64 {
     unsafe { core::arch::x86_64::_pext_u64(bits, mask) }
 }
 
+#[inline(always)]
+pub fn get_attack_table(square: u8, color: Color, piece_type: PieceType, occupancies: Bitboard) -> Bitboard {
+    match piece_type {
+        PieceType::Pawn => get_pawn_attack_table(square, color),
+        PieceType::Knight => get_knight_attack_table(square),
+        PieceType::Bishop => get_bishop_attack_table(square, occupancies),
+        PieceType::Rook => get_rook_attack_table(square, occupancies),
+        PieceType::Queen => get_queen_attack_table(square, occupancies),
+        PieceType::King => get_king_attack_table(square),
+    }
+}
+
 /// Gets the possible pawn attacks from the current position
 #[inline(always)]
 pub fn get_pawn_attack_table(square: u8, color: Color) -> Bitboard {

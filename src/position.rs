@@ -43,13 +43,13 @@ impl Position {
         println!("  └────┴────┴────┴────┴────┴────┴────┴────┘");
         println!("    a    b    c    d    e    f    g    h\n");
 
-        print!("   Active:     {}",     self.active_color);
-        println!("\tFull moves: {}",      self.full_moves);
+        print!("   Active:     {}", self.active_color);
+        println!("\tFull moves: {}", self.full_moves);
         if let Some(enpassant) = self.enpassant_square {
-            print!("   Enpassant:  {}",     SQUARE_STRINGS[enpassant as usize]);
+            print!("   Enpassant:  {}", enpassant);
         }
-        println!("\tHalf moves: {}",      self.half_moves);
-        print!("   Castling:   {}  ",   self.castling_ability_string());
+        println!("\tHalf moves: {}", self.half_moves);
+        print!("   Castling:   {}  ", self.castling_ability_string());
         println!("\tZobrist:   {:#0x}\n", self.zobrist_hash);
     }
 
@@ -111,7 +111,7 @@ impl Position {
         if castling_str.contains('q') {castling_ability = castling_ability | CastlingAbility::BlackQueenSide as u8}
 
         let enpassant_str = if split.peek().is_some() { split.next().unwrap() } else { "-" };
-        let enpassant_square: Option<Square> = if enpassant_str != "-" { Some(square_from_string(enpassant_str)) } else { None };
+        let enpassant_square: Option<Square> = if enpassant_str != "-" { Some(Square::from(enpassant_str)) } else { None };
 
         let half_moves: u8 =  if split.peek().is_some() { split.next().unwrap().parse::<u8>().unwrap()  } else { 0 };
         let full_moves: u16 = if split.peek().is_some() { split.next().unwrap().parse::<u16>().unwrap() } else { 0 };
@@ -208,5 +208,15 @@ impl Position {
     #[inline(always)]
     pub fn is_in_check(&self, color: Color) -> bool {
         self.is_square_attacked(self.king_position(color), opposite_color(color))
+    }
+
+    /// Get all squares attacked by pieces of this type and color
+    pub fn get_attacked(&self, color: Color, piece_type: PieceType) -> Bitboard {
+        let mut bb = self.get_bitboard(color, piece_type);
+        let mut mask = Bitboard::new_blank();
+        while let Some(square) = bb.extract_bit() {
+            mask = mask.or(get_attack_table(square, color, piece_type, self.all_occupancies))
+        };
+        mask
     }
 }

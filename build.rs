@@ -30,9 +30,17 @@ fn main() {
 
     // Files/Ranks/Diagonals
     write!(file, "{}", array_string(generate_file_masks().to_vec(), "u64", "FILE_MASKS")).expect("Couldnt write file_masks!");
-    write!(file, "{}", array_string(generate_rank_masks().to_vec(), "u64", "RANK_MASKS")).expect("Couldnt write rank_masks!");
+    let rank_masks = generate_rank_masks();
+    write!(file, "{}", array_string(rank_masks.to_vec(), "u64", "RANK_MASKS")).expect("Couldnt write rank_masks!");
     write!(file, "{}", array_string(generate_d1_masks().to_vec(), "u64", "DIAG1_MASKS")).expect("Couldnt write d1_masks!");
     write!(file, "{}", array_string(generate_d2_masks().to_vec(), "u64", "DIAG2_MASKS")).expect("Couldnt write d2_masks!");
+
+    // Castling masks
+    write!(file, "{}", array_string(generate_castling_masks().to_vec(), "u64", "CASTLING_MASKS")).expect("Couldnt write castling_masks!");
+
+    // End ranks
+    write!(file, "{}", format!("pub const END_RANKS_MASK: u64 = {};", rank_masks[0] | rank_masks[63])).expect("Couldnt write end_rank_mask!");
+    write!(file, "{}", format!("pub const PAWN_INIT_RANKS_MASK: u64 = {};", rank_masks[8] | rank_masks[55])).expect("Couldnt write pawn_init_rank_mask!");
 
     // Pawns
     write!(file, "{}", array_string(generate_pawn_attacks(true).to_vec(), "u64", "WHITE_PAWN_ATTACKS")).expect("Couldnt write white_pawn_attacks!");
@@ -54,7 +62,7 @@ fn main() {
 
 fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
     let len = data.len();
-    let mut result = (if len < 10000 { "pub const "} else { "pub static " } ).to_string();
+    let mut result = (if len < 1000 { "pub const "} else { "pub static " } ).to_string();
     result += cons_name;
     result += &format!(": [{}; {}] = [", type_string, len).to_string();
 
@@ -66,6 +74,19 @@ fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
     result += "\n];\n\n";
 
     result
+}
+
+fn generate_castling_masks() -> [u64; 4] {
+    let mut masks = [0; 4];
+
+    // White
+    masks[0] |= 1 << 63 | 1 << 62 | 1 << 61 | 1 << 60;
+    masks[1] |= 1 << 60 | 1 << 59 | 1 << 58 | 1 << 57 | 1 << 56;
+
+    // Black
+    masks[2] |= 1 << 4 | 1 << 5 | 1 << 6 | 1 << 7;
+    masks[3] |= 1 | 1 << 1 | 1 << 2 | 1 << 3 | 1 << 4;
+    masks
 }
 
 fn generate_file_masks() -> [u64; 64] {
