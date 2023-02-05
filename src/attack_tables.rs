@@ -1,4 +1,4 @@
-use crate::{bitboard::*, definitions::*};
+use super::*;
 
 /// Performs the PEXT CPU instruction
 fn pext(bits: u64, mask: u64) -> u64 {

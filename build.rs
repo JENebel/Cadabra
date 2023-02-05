@@ -36,7 +36,8 @@ fn main() {
     write!(file, "{}", array_string(generate_d2_masks().to_vec(), "u64", "DIAG2_MASKS")).expect("Couldnt write d2_masks!");
 
     // Castling masks
-    write!(file, "{}", array_string(generate_castling_masks().to_vec(), "u64", "CASTLING_MASKS")).expect("Couldnt write castling_masks!");
+    write!(file, "{}", array_string(generate_attacked_castling_masks().to_vec(), "u64", "ATTACKED_CASTLING_MASKS")).expect("Couldnt write attacked_castling_masks!");
+    write!(file, "{}", array_string(generate_open_castling_masks().to_vec(), "u64", "OPEN_CASTLING_MASKS")).expect("Couldnt write open_castling_masks!");
 
     // End ranks
     write!(file, "{}", format!("pub const END_RANKS_MASK: u64 = {};", rank_masks[0] | rank_masks[63])).expect("Couldnt write end_rank_mask!");
@@ -76,16 +77,29 @@ fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
     result
 }
 
-fn generate_castling_masks() -> [u64; 4] {
+fn generate_open_castling_masks() -> [u64; 4] {
     let mut masks = [0; 4];
 
     // White
-    masks[0] |= 1 << 63 | 1 << 62 | 1 << 61 | 1 << 60;
-    masks[1] |= 1 << 60 | 1 << 59 | 1 << 58 | 1 << 57 | 1 << 56;
+    masks[0] |= 1 << 62 | 1 << 61;
+    masks[1] |= 1 << 59 | 1 << 58 | 1 << 57;
 
     // Black
-    masks[2] |= 1 << 4 | 1 << 5 | 1 << 6 | 1 << 7;
-    masks[3] |= 1 | 1 << 1 | 1 << 2 | 1 << 3 | 1 << 4;
+    masks[2] |= 1 << 5 | 1 << 6;
+    masks[3] |= 1 << 1 | 1 << 2 | 1 << 3;
+    masks
+}
+
+fn generate_attacked_castling_masks() -> [u64; 4] {
+    let mut masks = [0; 4];
+
+    // White
+    masks[0] |= 1 << 62 | 1 << 61;
+    masks[1] |= 1 << 59 | 1 << 58;
+
+    // Black
+    masks[2] |= 1 << 5 | 1 << 6;
+    masks[3] |= 1 << 2 | 1 << 3;
     masks
 }
 

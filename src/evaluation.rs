@@ -1,16 +1,8 @@
-use crate::{position::*, bitboard::*, attack_tables::*, constants::*, definitions::*};
+use super::*;
 
 ////////////////////////////////////////
 /// General                          ///
 ////////////////////////////////////////
-
-const STACKED_PAWN_PENALTY: i32 = -10;
-const ISOLATED_PAWN_PENALTY: i32 = -10;
-const PASSED_WHITE_PAWN_BONUS: [i32; 8] = [ 0, 10, 30, 50, 75, 100, 150, 200 ];
-const PASSED_BLACK_PAWN_BONUS: [i32; 8] = [ 200, 150, 100, 75, 50, 30, 10, 0 ]; 
-const SEMI_OPEN_FILE_SCORE: i32 = 10;
-const OPEN_FILE_SCORE: i32 = 15;
-const PROTECTED_KING_BONUS: i32 = 5;
 
 impl Position {
     pub fn evaluate(&self) -> i32 {

@@ -160,12 +160,12 @@ impl MoveList {
 
         // Go straight to check evasions if in check
         {
-            let check_mask = Self::get_check_mask(pos, active_color);
-            let valid_square_and_checkmask = (pos.get_color_bitboard(active_color).not()).and(check_mask);
-
+            let check_mask = Self::get_check_mask(pos, active_color, true);
+            
             let checkers = check_mask.and(pos.get_color_bitboard(opposite_color(active_color))).count();
             if !check_mask.not().is_empty() && checkers > 0 {
                 if checkers == 1 {
+                    let valid_square_and_checkmask = (pos.get_color_bitboard(active_color).not()).and(check_mask);
                     // Single check, generate evasions
                     self.generate_pawn_moves(pos, active_color, is_sorting, false, has_enpassant, valid_square_and_checkmask);
                     self.generate_normal_moves(pos, active_color, is_sorting, Knight, valid_square_and_checkmask, false);
@@ -185,29 +185,33 @@ impl MoveList {
         match active_color {
             Color::White => {
                 if pos.castling_ability & (CastlingAbility::WhiteKingSide as u8) != 0 {
-                    let mask = CastlingAbility::WhiteKingSide.mask().and(attacked_squares);
-                    if mask.is_empty() {
-                        self.insert_and_score(&mut Move::new_custom(60, 63, King, MoveType::CastleKingSide), is_sorting, is_quiescence)
+                    let none_attacked = CastlingAbility::WhiteKingSide.attacked_mask().and(attacked_squares).is_empty();
+                    let between_open =  CastlingAbility::WhiteKingSide.open_mask().and(pos.all_occupancies).is_empty();
+                    if none_attacked && between_open {
+                        self.insert_and_score(&mut Move::new_custom(Square::e1 as u8, Square::g1 as u8, King, MoveType::CastleKingSide), is_sorting, is_quiescence)
                     }
                 }
                 if pos.castling_ability & (CastlingAbility::WhiteQueenSide as u8) != 0 {
-                    let mask = CastlingAbility::WhiteQueenSide.mask().and(attacked_squares);
-                    if mask.is_empty() {
-                        self.insert_and_score(&mut Move::new_custom(60, 56, King, MoveType::CastleQueenSide), is_sorting, is_quiescence)
+                    let none_attacked = CastlingAbility::WhiteQueenSide.attacked_mask().and(attacked_squares).is_empty();
+                    let between_open =  CastlingAbility::WhiteQueenSide.open_mask().and(pos.all_occupancies).is_empty();
+                    if none_attacked && between_open {
+                        self.insert_and_score(&mut Move::new_custom(Square::e1 as u8, Square::c1 as u8, King, MoveType::CastleQueenSide), is_sorting, is_quiescence)
                     }
                 }
             },
             Color::Black => {
                 if pos.castling_ability & (CastlingAbility::BlackKingSide as u8) != 0 {
-                    let mask = CastlingAbility::BlackKingSide.mask().and(attacked_squares);
-                    if mask.is_empty() {
-                        self.insert_and_score(&mut Move::new_custom(4, 7, King, MoveType::CastleKingSide), is_sorting, is_quiescence)
+                    let none_attacked = CastlingAbility::BlackKingSide.attacked_mask().and(attacked_squares).is_empty();
+                    let between_open =  CastlingAbility::BlackKingSide.open_mask().and(pos.all_occupancies).is_empty();
+                    if none_attacked && between_open {
+                        self.insert_and_score(&mut Move::new_custom(Square::e8 as u8, Square::g8 as u8, King, MoveType::CastleKingSide), is_sorting, is_quiescence)
                     }
                 }
-                if pos.castling_ability & (CastlingAbility::WhiteQueenSide as u8) != 0 {
-                    let mask = CastlingAbility::BlackQueenSide.mask().and(attacked_squares);
-                    if mask.is_empty() {
-                        self.insert_and_score(&mut Move::new_custom(4, 0, King, MoveType::CastleQueenSide), is_sorting, is_quiescence)
+                if pos.castling_ability & (CastlingAbility::BlackQueenSide as u8) != 0 {
+                    let none_attacked = CastlingAbility::BlackQueenSide.attacked_mask().and(attacked_squares).is_empty();
+                    let between_open =  CastlingAbility::BlackQueenSide.open_mask().and(pos.all_occupancies).is_empty();
+                    if none_attacked && between_open {
+                        self.insert_and_score(&mut Move::new_custom(Square::e8 as u8, Square::c8 as u8, King, MoveType::CastleQueenSide), is_sorting, is_quiescence)
                     }
                 }
             }
@@ -236,21 +240,25 @@ impl MoveList {
             // Enpassant
             if has_enpassant {
                 let enp_square = unsafe { pos.enpassant_square.unwrap_unchecked() };
-                if raw_captures.get_bit(enp_square as u8) {
+                if raw_captures.and(valid_mask).get_bit(enp_square as u8) {
                     let captured_square = match color {
-                        Color::White => to_square + 8,
-                        Color::Black => to_square - 8,
+                        Color::White => enp_square as u8 + 8,
+                        Color::Black => enp_square as u8 - 8,
                     };
-                    self.insert_and_score(&mut Move::new_custom(from_square, enp_square as u8, Pawn, DoublePush(Square::from(captured_square))), is_sorting, false)
+                    if Self::enpassant_pin_mask(pos, color, captured_square, from_square as u8).get_bit(enp_square as u8) {
+                        self.insert_and_score(&mut Move::new_custom(from_square, enp_square as u8, Pawn, EnpassantCapture), is_sorting, false)
+                    }
                 }
             }
 
-            let mut captures = raw_captures.and(pos.get_color_bitboard(opposite_color(color))).and(Self::get_pin_mask(pos, color, from_square, Pawn)).and(valid_mask);
+            let valid_mask = valid_mask.and(Self::get_pin_mask(pos, color, from_square, Pawn));
+
+            let mut captures = raw_captures.and(pos.get_color_bitboard(opposite_color(color))).and(valid_mask);
 
             // Promotions
             if Bitboard::from(END_RANKS_MASK).get_bit(to_square) {
                 // Regular promotion
-                if !pos.all_occupancies.get_bit(to_square) {
+                if !pos.all_occupancies.get_bit(to_square) && valid_mask.get_bit(to_square){
                     self.insert_and_score(&mut Move::new_promotion(from_square, to_square, Queen,  false), is_sorting, false);
                     self.insert_and_score(&mut Move::new_promotion(from_square, to_square, Rook,   false), is_sorting, false);
                     self.insert_and_score(&mut Move::new_promotion(from_square, to_square, Bishop, false), is_sorting, false);
@@ -274,9 +282,11 @@ impl MoveList {
             }
 
             // Quiet & double push
-            if !is_quiescence && !pos.all_occupancies.get_bit(to_square) && valid_mask.get_bit(to_square) {
+            if !is_quiescence && !pos.all_occupancies.get_bit(to_square) {
                 // Normal move
-                self.insert_and_score(&mut Move::new_normal(from_square, to_square, Pawn, false), is_sorting, false);
+                if valid_mask.get_bit(to_square) {
+                    self.insert_and_score(&mut Move::new_normal(from_square, to_square, Pawn, false), is_sorting, false);
+                }
 
                 // Double push
                 // Only possible if pawn hasn't moved. Needs to come after promotions to not override them
@@ -287,7 +297,7 @@ impl MoveList {
                     };
 
                     if !pos.all_occupancies.get_bit(double_push_square) && valid_mask.get_bit(double_push_square) {
-                        self.insert_and_score(&mut Move::new_custom(from_square, double_push_square, Pawn, DoublePush(Square::from(to_square))), is_sorting, false);
+                        self.insert_and_score(&mut Move::new_custom(from_square, double_push_square, Pawn, DoublePush), is_sorting, false);
                     }
                 }
             }
@@ -312,9 +322,17 @@ impl MoveList {
     fn generate_king_moves(&mut self, pos: &Position, color: Color, attacked_squares: Bitboard, is_sorting: bool, is_quiescence: bool) {
         let king_pos = pos.king_position(color);
 
+        let opp_color = opposite_color(color);
+
         let mut pos = *pos;
         pos.remove_piece(color, King, king_pos);
-        let opp_color = opposite_color(color);
+
+        let attacked_squares = attacked_squares.or(
+            pos.get_attacked(opp_color, Bishop).or(
+            pos.get_attacked(opp_color, Queen)).or(
+            pos.get_attacked(opp_color, King))
+        );
+
 
         let mut legal_moves = get_king_attack_table(king_pos).and(attacked_squares.not()).and(pos.get_color_bitboard(color).not());
         
@@ -331,26 +349,22 @@ impl MoveList {
 
         pos.remove_piece(color, piece_type, square);
 
-        let mask = MoveList::get_check_mask(&pos, color);
-
-        mask
+        MoveList::get_check_mask(&pos, color, false)
     }
 
     #[inline(always)]
     /// Call with the color of the active player
-    pub fn get_enpassant_pin_mask(pos: &Position, color: Color, square: u8) -> Bitboard {
+    pub fn enpassant_pin_mask(pos: &Position, color: Color, captured: u8, square: u8) -> Bitboard {
         let mut pos = *pos;
 
-        pos.remove_piece(opposite_color(color), Pawn, square);
+        pos.remove_piece(opposite_color(color), Pawn, captured);
 
-        let mask = MoveList::get_check_mask(&pos, color);
-
-        mask
+        Self::get_pin_mask(&pos, color, square, Pawn)
     }
 
     /// Should be delegated to pregenerated Constants for sliders
     #[inline(always)]
-    fn get_check_mask(pos: &Position, color: Color) -> Bitboard {
+    fn get_check_mask(pos: &Position, color: Color, include_leapers: bool) -> Bitboard {
         let mut mask = Bitboard::new_blank();
 
         let opp_color = opposite_color(color);
@@ -358,10 +372,12 @@ impl MoveList {
         let king_pos = pos.king_position(color);
 
         // Leapers
-        mask = mask.or(
-            (get_pawn_attack_table(king_pos, opp_color).and(pos.get_bitboard(opp_color, Pawn))).or(
-            get_knight_attack_table(king_pos).and(pos.get_bitboard(opp_color, Knight)))
-        );
+        if include_leapers {
+            mask = mask.or(
+                (get_pawn_attack_table(king_pos, color).and(pos.get_bitboard(opp_color, Pawn))).or(
+                get_knight_attack_table(king_pos).and(pos.get_bitboard(opp_color, Knight)))
+            );
+        }
 
         // Hv Sliders
         {
@@ -378,13 +394,13 @@ impl MoveList {
             while let Some(slider) = sliders.extract_bit() {
                 let mut slider_board = Bitboard::new_blank();
                 slider_board.set_bit(slider);
-                let slider_rays = (get_rook_attack_table(slider, pos.all_occupancies).and(pos.all_occupancies.not())).or(slider_board);
+                let slider_rays = get_rook_attack_table(slider, pos.all_occupancies).and(pos.all_occupancies.not());
 
-                let slider_hori = slider_rays.and(Bitboard::from(RANK_MASKS[slider as usize]));
+                let slider_hori = slider_rays.and(Bitboard::from(RANK_MASKS[slider as usize])).or(slider_board);
                 let king_hori = king_hv_rays.and(king_rank);
                 mask = mask.or(king_hori.and(slider_hori));
 
-                let slider_vert = slider_rays.and(Bitboard::from(FILE_MASKS[slider as usize]));
+                let slider_vert = slider_rays.and(Bitboard::from(FILE_MASKS[slider as usize])).or(slider_board);
                 let king_vert = king_hv_rays.and(king_file);
                 mask = mask.or(king_vert.and(slider_vert));
             }
@@ -405,15 +421,15 @@ impl MoveList {
             while let Some(slider) = sliders.extract_bit() {
                 let mut slider_board = Bitboard::new_blank();
                 slider_board.set_bit(slider);
-                let slider_rays = (get_bishop_attack_table(slider, pos.all_occupancies)).and(pos.all_occupancies.not()).or(slider_board);
+                let slider_rays = get_bishop_attack_table(slider, pos.all_occupancies).and(pos.all_occupancies.not());
 
-                let slider_hori = slider_rays.and(Bitboard::from(DIAG1_MASKS[slider as usize]));
-                let king_hori = king_diag_rays.and(king_diag1);
-                mask = mask.or(king_hori.and(slider_hori));
+                let slider_diag1 = slider_rays.and(Bitboard::from(DIAG1_MASKS[slider as usize])).or(slider_board);
+                let king_diag1_ray = king_diag_rays.and(king_diag1);
+                mask = mask.or(king_diag1_ray.and(slider_diag1));
 
-                let slider_vert = slider_rays.and(Bitboard::from(DIAG2_MASKS[slider as usize]));
-                let king_vert = king_diag_rays.and(king_diag2);
-                mask = mask.or(king_vert.and(slider_vert));
+                let slider_diag2 = slider_rays.and(Bitboard::from(DIAG2_MASKS[slider as usize])).or(slider_board);
+                let king_diag2_ray = king_diag_rays.and(king_diag2);
+                mask = mask.or(king_diag2_ray.and(slider_diag2));
             }
         }
 
@@ -427,15 +443,24 @@ impl MoveList {
 
 #[test]
 pub fn test() {
-    // let mut pos = Position::new_from_start_pos();
-    // let mut pos = Position::new_from_fen("k7/8/4r3/3R4/3K1N2/8/4b3/8 w - - 0 1").unwrap();
-    let mut pos = Position::new_from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ").unwrap();
+    let mut pos = Position::new_from_start_pos();
+
+    // Double pawn push block
+    // let mut pos = Position::new_from_fen("rnb1kb1r/pp1p2pp/2p5/q7/8/3P4/PPP1PPPP/RN2KBNR w KQkq - 0 1").unwrap();
+
+    // Illegal enpassant pin
+    // let mut pos = Position::new_from_fen("1k6/8/8/1q1pP1K1/8/8/8/8 w - d6 0 1").unwrap();
+
+    // Legal enpassant pin
+    // let mut pos = Position::new_from_fen("1q6/8/8/3pP3/8/8/7K/8 w - d5 0 1").unwrap();
+
+    pos.pretty_print();
 
     let moves = MoveList::new(&mut pos, false, false, None).collect::<Vec<Move>>();
 
     println!("Moves: {}", moves.len());
     println!("Captures: {}", moves.iter().filter(|m| m.is_capture()).count());
-    println!("E.p.: {}", moves.iter().filter(|m| if let EnpassantCapture(_) = m.move_type { true } else { false }).count());
+    println!("E.p.: {}", moves.iter().filter(|m| if let EnpassantCapture = m.move_type { true } else { false }).count());
     println!("Castles: {}", moves.iter().filter(|m| m.move_type == CastleKingSide || m.move_type == CastleQueenSide).count());
     println!("Promotions: {}", moves.iter().filter(|m| if let Promotion(_) = m.move_type { true } else { false } || if let CapturePromotion(_) = m.move_type { true } else { false }).count());
 

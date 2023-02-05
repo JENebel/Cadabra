@@ -1,4 +1,11 @@
 pub const MATERIAL_WEIGHTS: [i32; 12] = [100, 300, 350, 500, 1000, 10000, -100, -300, -350, -500, -1000, -10000];
+pub const STACKED_PAWN_PENALTY: i32 = -10;
+pub const ISOLATED_PAWN_PENALTY: i32 = -10;
+pub const PASSED_WHITE_PAWN_BONUS: [i32; 8] = [ 0, 10, 30, 50, 75, 100, 150, 200 ];
+pub const PASSED_BLACK_PAWN_BONUS: [i32; 8] = [ 200, 150, 100, 75, 50, 30, 10, 0 ]; 
+pub const SEMI_OPEN_FILE_SCORE: i32 = 10;
+pub const OPEN_FILE_SCORE: i32 = 15;
+pub const PROTECTED_KING_BONUS: i32 = 5;
 
 /// Pawn positional score
 pub const PAWN_SCORES: [i32; 64] = 

@@ -1,8 +1,7 @@
 include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
 use std::{fmt::Display, mem};
-
-use crate::{move_generator::MoveList, position::Position, bitboard::Bitboard};
+use super::*;
 
 use PieceType::*;
 use Color::*;
@@ -70,12 +69,22 @@ pub enum CastlingAbility {
 
 impl CastlingAbility {
     /// Gets the castling mask. This consists of the squares between the king and the rook, including both
-    pub fn mask(&self) -> Bitboard {
+    pub fn attacked_mask(&self) -> Bitboard {
         Bitboard::from(match self {
-            CastlingAbility::WhiteKingSide =>  CASTLING_MASKS[0],
-            CastlingAbility::WhiteQueenSide => CASTLING_MASKS[1],
-            CastlingAbility::BlackKingSide =>  CASTLING_MASKS[2],
-            CastlingAbility::BlackQueenSide => CASTLING_MASKS[3],
+            CastlingAbility::WhiteKingSide =>  ATTACKED_CASTLING_MASKS[0],
+            CastlingAbility::WhiteQueenSide => ATTACKED_CASTLING_MASKS[1],
+            CastlingAbility::BlackKingSide =>  ATTACKED_CASTLING_MASKS[2],
+            CastlingAbility::BlackQueenSide => ATTACKED_CASTLING_MASKS[3],
+        })
+    }
+
+    /// Gets the castling mask. This consists of the squares between the king and the rook, including both
+    pub fn open_mask(&self) -> Bitboard {
+        Bitboard::from(match self {
+            CastlingAbility::WhiteKingSide =>  OPEN_CASTLING_MASKS[0],
+            CastlingAbility::WhiteQueenSide => OPEN_CASTLING_MASKS[1],
+            CastlingAbility::BlackKingSide =>  OPEN_CASTLING_MASKS[2],
+            CastlingAbility::BlackQueenSide => OPEN_CASTLING_MASKS[3],
         })
     }
 }
@@ -321,21 +330,4 @@ const fn generate_black_passed_pawn_masks() -> [u64; 64] {
     }
 
     masks
-}
-
-#[test]
-pub fn test() {
-    let a = Bitboard::from(CASTLING_MASKS[0]);
-    let b = Bitboard::from(CASTLING_MASKS[1]);
-    let c = Bitboard::from(CASTLING_MASKS[2]);
-    let d = Bitboard::from(CASTLING_MASKS[3]);
-
-    let pos = Position::new_from_start_pos();
-
-    //println!("{}", pos.get_color_bitboard(White));
-
-    println!("{a}");
-    println!("{b}");
-    println!("{c}");
-    println!("{d}");
 }

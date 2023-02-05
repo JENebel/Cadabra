@@ -2,11 +2,10 @@ use crate::{zobrist_constants::*, bitboard::*, attack_tables::*, definitions::*}
 
 use Color::*;
 use PieceType::*;
-use PieceType::*;
 
 #[derive(Clone, Copy)]
 pub struct Position {
-    bitboards: [Bitboard; 12],
+    pub bitboards: [Bitboard; 12],
 
     //3 occupancy bitboards
     pub color_occupancies: [Bitboard; 2],
@@ -153,7 +152,7 @@ impl Position {
     #[inline(always)]
     pub fn place_piece(&mut self, color: Color, piece_type: PieceType, square: u8) {
         self.bitboards[Self::get_bitboard_index(color, piece_type)].set_bit(square);
-        self.color_occupancies[color as usize];
+        self.color_occupancies[color as usize].set_bit(square);
         self.all_occupancies.set_bit(square);
     }
 

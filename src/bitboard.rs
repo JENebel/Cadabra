@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::definitions::Square;
+use super::*;
 
 #[derive(Clone, Copy)]
 pub struct Bitboard {

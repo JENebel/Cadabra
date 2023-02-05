@@ -1,20 +1,67 @@
 use std::{fmt::Display};
 
-use crate::definitions::*;
+use super::*;
+use MoveType::*;
 
+// Do not change this ddefinition. Constants depend on it!
 #[derive(Copy, Clone, PartialEq)]
 pub enum MoveType {
     Quiet,
     Capture,
     Promotion(PieceType),
     CapturePromotion(PieceType),
-    CastleQueenSide,
     CastleKingSide,
-    /// The square skipped
-    DoublePush(Square),
+    CastleQueenSide,
+    DoublePush,
     
-    /// The square of the captured piece
-    EnpassantCapture(Square),
+    EnpassantCapture,
+}
+
+impl From<u16> for MoveType {
+    #[inline(always)]
+    fn from(move_type_const: u16) -> Self {
+        match move_type_const {
+            0 =>  Quiet,
+            1 =>  Capture,
+            2 =>  Promotion(PieceType::Queen),
+            3 =>  Promotion(PieceType::Rook),
+            4 =>  Promotion(PieceType::Bishop),
+            5 =>  Promotion(PieceType::Knight),
+            6 =>  CapturePromotion(PieceType::Queen),
+            7 =>  CapturePromotion(PieceType::Rook),
+            8 =>  CapturePromotion(PieceType::Bishop),
+            9 =>  CapturePromotion(PieceType::Knight),
+            10 => CastleKingSide,
+            11 => CastleQueenSide,
+            12 => DoublePush,
+            13 => EnpassantCapture,
+            _ => panic!("Illegal move_type!")
+        }
+    }
+}
+
+impl MoveType {
+    /// Note that EnpassantCapture(sq) is handled seperately, and is not considered a 'capture' here.
+    pub fn is_capture(&self) -> bool {
+        match self {
+            MoveType::Capture | MoveType::CapturePromotion(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_promotion(&self) -> bool {
+        match self {
+            MoveType::Promotion(_) | MoveType::CapturePromotion(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_castling(&self) -> bool {
+        match self {
+            MoveType::CastleKingSide | MoveType::CastleQueenSide => true,
+            _ => false
+        }
+    }
 }
 
 impl Default for MoveType {
@@ -32,8 +79,8 @@ impl Display for MoveType {
             MoveType::CapturePromotion(promotion) => format!("Capture and promote to {promotion}"),
             MoveType::CastleQueenSide => format!("Castle QS"),
             MoveType::CastleKingSide => format!("Castle KS"),
-            MoveType::DoublePush(_) => format!("Double pawn push"),
-            MoveType::EnpassantCapture(_) => format!("Enpassant capture"),
+            MoveType::DoublePush => format!("Double pawn push"),
+            MoveType::EnpassantCapture => format!("Enpassant capture"),
         })
     }
 }
@@ -79,10 +126,15 @@ impl Move {
 
     /// Note that EnpassantCapture(sq) is handled seperately, and is not considered a 'capture' here.
     pub fn is_capture(&self) -> bool {
-        match self.move_type {
-            MoveType::Capture | MoveType::CapturePromotion(_) => true,
-            _ => false
-        }
+        self.move_type.is_capture()
+    }
+
+    pub fn is_promotion(&self) -> bool {
+        self.move_type.is_promotion()
+    }
+
+    pub fn is_castling(&self) -> bool {
+        self.move_type.is_castling()
     }
 }
 
