@@ -7,23 +7,21 @@ pub trait BitUtils {
 }
 
 #[derive(Clone, Copy)]
-pub struct Bitboard {
-    pub bits: u64,
-}
+pub struct Bitboard(pub u64);
 
 macro_rules! implement_bitboard_operation {
     ($trait_name: ident, $fn_name: ident, $operator: tt) => {
         impl $trait_name<Bitboard> for Bitboard {
             type Output = Bitboard;
             fn $fn_name(self, rhs: Bitboard) -> Self::Output {
-                Bitboard { bits: self.bits $operator rhs.bits }
+                Bitboard(self.0 $operator rhs.0 )
             }
         }
         
         impl $trait_name<u64> for Bitboard {
             type Output = Bitboard;
             fn $fn_name(self, rhs: u64) -> Self::Output {
-                Bitboard { bits: self.bits $operator rhs}
+                Bitboard(self.0 $operator rhs)
             }
         }
 
@@ -31,7 +29,7 @@ macro_rules! implement_bitboard_operation {
             type Output = Bitboard;
         
             fn $fn_name(self, rhs: Bitboard) -> Self::Output {
-                Bitboard { bits: self $operator rhs.bits }
+                Bitboard(self $operator rhs.0)
             }
         }
     };
@@ -40,19 +38,19 @@ macro_rules! implement_bitboard_assign_operation {
     ($trait_name: ident, $fn_name: ident, $operator: tt) => {
         impl $trait_name<Bitboard> for Bitboard {
             fn $fn_name(&mut self, rhs: Bitboard) {
-                self.bits $operator rhs.bits
+                self.0 $operator rhs.0
             }
         }
         
         impl $trait_name<u64> for Bitboard {
             fn $fn_name(&mut self, rhs: u64) {
-                self.bits &= rhs
+                self.0 &= rhs
             }
         }
 
         impl $trait_name<Bitboard> for u64 {
             fn $fn_name(&mut self, rhs: Bitboard) {
-                *self $operator rhs.bits
+                *self $operator rhs.0
             }
         }
     };
@@ -82,15 +80,15 @@ impl BitUtils for u64 {
 
 impl BitUtils for Bitboard {
     fn get_bit(&self, square: u8) -> bool {
-        self.bits & (1 << square) != 0
+        self.0 & (1 << square) != 0
     }
 
     fn set_bit(&mut self, square: u8) {
-        self.bits |= 1 << square
+        self.0 |= 1 << square
     }
 
     fn unset_bit(&mut self, square: u8) {
-        self.bits &= !(1 << square)
+        self.0 &= !(1 << square)
     }
 }
 
@@ -98,13 +96,13 @@ impl Not for Bitboard {
     type Output = Bitboard;
 
     fn not(self) -> Self::Output {
-        Bitboard { bits: !self.bits }
+        Bitboard(!self.0)
     }
 }
 
 impl Default for Bitboard {
     fn default() -> Self {
-        Self { bits: Default::default() }
+        Bitboard::EMPTY
     }
 }
 
@@ -122,28 +120,33 @@ impl Display for Bitboard {
             str = format!("{str}\n")
         }
         str = format!("{str}   a  b  c  d  e  f  g  h\n");
-        str = format!("{str} Bitboard: {}\n", self.bits);
+        str = format!("{str} Bitboard: {}\n", self.0);
         write!(f, "{str}")
     }
 }
 
 impl Bitboard {
-    pub const EMPTY: Bitboard = Bitboard { bits: u64::MAX };
-    pub const FULL: Bitboard = Bitboard { bits: u64::MAX };
+    pub const EMPTY: Bitboard = Bitboard(0);
+    pub const FULL: Bitboard = Bitboard(u64::MAX);
+
+    #[inline(always)]
+    pub fn as_u64(&self) -> u64 {
+        self.0
+    }
 
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
-        self.bits == 0
+        self.0 == 0
     }
 
     #[inline(always)]
     pub fn is_not_empty(&self) -> bool {
-        self.bits != 0
+        self.0 != 0
     }
 
     #[inline(always)]
     pub fn least_significant(&self) -> u8 {
-        unsafe { core::arch::x86_64::_tzcnt_u64(self.bits) as u8 }
+        unsafe { core::arch::x86_64::_tzcnt_u64(self.0) as u8 }
     }
 
     /// Extract the least significant set bit. Modifies the bitboard and returns the position of the extracted bit
@@ -152,12 +155,12 @@ impl Bitboard {
 
         let bit = self.least_significant();
 
-        self.bits = unsafe { core::arch::x86_64::_blsr_u64(self.bits) };
+        self.0 = unsafe { core::arch::x86_64::_blsr_u64(self.0) };
 
         Some(bit as u8)
     }
 
     pub fn count(&self) -> u32 {
-        self.bits.count_ones()
+        self.0.count_ones()
     }
 }

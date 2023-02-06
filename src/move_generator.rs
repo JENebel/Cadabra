@@ -125,6 +125,8 @@ impl MoveList {
             Self::score_move(new_move) // Maybe handle scoring different
         }
 
+        println!("{new_move}");
+
         self.insert(*new_move)
     }
 

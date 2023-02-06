@@ -40,18 +40,23 @@ pub fn king_attacks(square: u8) -> u64 {
 
 #[inline(always)]
 pub fn rook_attacks(square: u8, occ: Bitboard) -> u64 {
-    SLIDING_ATTACKS[(ROOK_OFFSETS[square as usize] as u64 + pext(occ.bits, ROOK_MASK[square as usize])) as usize]
+    let offset = ROOK_OFFSETS[square as usize] as u64;
+    let mask = ROOK_MASK[square as usize];
+    let index = pext(occ.as_u64(), mask);
+
+    SLIDING_ATTACKS[(offset + index) as usize]
 }
 
 #[inline(always)]
 pub fn bishop_attacks(square: u8, occ: Bitboard) -> u64 {
-    SLIDING_ATTACKS[(BISHOP_OFFSETS[square as usize] as u64 + pext(occ.bits, BISHOP_MASK[square as usize])) as usize]
+    let offset = BISHOP_OFFSETS[square as usize] as u64;
+    let mask = BISHOP_MASK[square as usize];
+    let index = pext(occ.as_u64(), mask);
+
+    SLIDING_ATTACKS[(offset + index) as usize]
 }
 
 #[inline(always)]
 pub fn queen_attacks(square: u8, occ: Bitboard) -> u64 {
-    let bishop = SLIDING_ATTACKS[(BISHOP_OFFSETS[square as usize] as u64 + pext(occ.bits, BISHOP_MASK[square as usize])) as usize];
-    let rook = SLIDING_ATTACKS[(ROOK_OFFSETS[square as usize] as u64 + pext(occ.bits, ROOK_MASK[square as usize])) as usize];
-
-    rook | bishop
+    rook_attacks(square, occ) | bishop_attacks(square, occ)
 }

@@ -42,19 +42,20 @@ fn main() {
     write!(file, "{}", array_string(generate_knight_attacks().to_vec(), "u64", "KNIGHT_ATTACKS")).expect("Couldnt write knight_attacks!");
     write!(file, "{}", array_string(generate_king_attacks().to_vec(), "u64", "KING_ATTACKS")).expect("Couldnt write king_attacks!");
 
-    // Sliding pieces
-    write!(file, "{}", array_string(generate_rook_masks().to_vec(), "u64", "ROOK_MASK")).expect("Couldnt write rook_masks!");
-    write!(file, "{}", array_string(generate_rook_masks().to_vec(), "u64", "BISHOP_MASK")).expect("Couldnt write bishop_masks!");
-
-    let (rook_offsets, bishop_offsets, attacks) = generate_sliding_attacks();
-    write!(file, "{}", array_string(rook_offsets.to_vec(), "usize", "ROOK_OFFSETS")).expect("Couldnt write rook_offsets!");
-    write!(file, "{}", array_string(bishop_offsets.to_vec(), "usize", "BISHOP_OFFSETS")).expect("Couldnt write bishop_offsets!");
-    write!(file, "{}", array_string(attacks.to_vec(), "u64", "SLIDING_ATTACKS")).expect("Couldnt write sliding_attacks!");
-
     // Eval tables
     write!(file, "{}", array_string(generate_isolated_pawn_masks().to_vec(), "u64", "ISOLATED_MASKS")).expect("Couldnt write isolated_pawn_mask!");
     write!(file, "{}", array_string(generate_white_passed_pawn_masks().to_vec(), "u64", "WHITE_PASSED_PAWN_MASKS")).expect("Couldnt write white_passed_pawns_mask!");
     write!(file, "{}", array_string(generate_black_passed_pawn_masks().to_vec(), "u64", "BLACK_PASSED_PAWN_MASKS")).expect("Couldnt write black_passed_pawns_mask!");
+
+    // Sliding pieces mask
+    write!(file, "{}", array_string(generate_rook_masks().to_vec(), "u64", "ROOK_MASK")).expect("Couldnt write rook_masks!");
+    write!(file, "{}", array_string(generate_bishop_masks().to_vec(), "u64", "BISHOP_MASK")).expect("Couldnt write bishop_masks!");
+
+    // Sliding piece attack table
+    let (rook_offsets, bishop_offsets, attacks) = generate_sliding_attacks();
+    write!(file, "{}", array_string(rook_offsets.to_vec(), "usize", "ROOK_OFFSETS")).expect("Couldnt write rook_offsets!");
+    write!(file, "{}", array_string(bishop_offsets.to_vec(), "usize", "BISHOP_OFFSETS")).expect("Couldnt write bishop_offsets!");
+    write!(file, "{}", array_string(attacks.to_vec(), "u64", "SLIDING_ATTACKS")).expect("Couldnt write sliding_attacks!");
 }
 
 fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
@@ -66,7 +67,7 @@ fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
     let line_width = (len as f64).sqrt() as usize;
     for i in 0..len {
         if i % line_width == 0 { result += "\n" }
-        result += &format!("{}{}", data[i], if i == len-1 {""} else {", "}).to_string();
+        result += &format!("{}, ", data[i]).to_string();
     }
     result += "\n];\n\n";
 
@@ -428,7 +429,7 @@ fn generate_king_attacks() -> [u64; 64] {
     attacks
 }
 
-const fn generate_rook_masks() -> [u64; 64] {
+fn generate_rook_masks() -> [u64; 64] {
     let mut mask = [0; 64];
 
     let mut index = 0;
@@ -446,7 +447,8 @@ const fn generate_rook_masks() -> [u64; 64] {
     mask
 }
 
-/*const fn generate_rook_attack_masks() -> [u64; 64] {
+/// HV rays
+/*fn generate_rook_attack_masks() -> [u64; 64] {
     let mut mask = [0; 64];
 
     let mut index = 0;
@@ -483,6 +485,7 @@ fn generate_bishop_masks() -> [u64; 64] {
     mask
 }
 
+/// Diagonal rays
 /*fn generate_bishop_attack_masks() -> [u64; 64] {
     let mut mask = [0; 64];
 
@@ -501,7 +504,7 @@ fn generate_bishop_masks() -> [u64; 64] {
     mask
 }*/
 
-const fn rook_mask(square: u8) -> u64 {
+fn rook_mask(square: u8) -> u64 {
     let base: u64 = 1 << (square);
     let mut result: u64 = 0;
 
@@ -540,7 +543,7 @@ const fn rook_mask(square: u8) -> u64 {
     result
 }
 
-const fn bishop_mask(square: u8) -> u64 {
+fn bishop_mask(square: u8) -> u64 {
     let base: u64 = 1 << (square);
     let mut result: u64 = 0;
     let rank = square / 8;
@@ -601,7 +604,7 @@ const fn bishop_mask(square: u8) -> u64 {
     result
 }
 
-const fn rook_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
+fn rook_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     let base: u64 = 1 << (square);
     let mut result: u64 = 0;
 
@@ -660,7 +663,7 @@ const fn rook_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     result
 }
 
-const fn bishop_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
+fn bishop_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     let base: u64 = 1 << (square);
     let mut result: u64 = 0;
     let rank = square / 8;
@@ -729,7 +732,7 @@ const fn bishop_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     result
 }
 
-const fn set_occupancy(index: u32, attack_mask: u64) -> u64 {
+fn set_occupancy(index: u32, attack_mask: u64) -> u64 {
     let mut occ = 0;
 
     let mut mask = attack_mask;

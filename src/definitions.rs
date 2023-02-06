@@ -1,14 +1,8 @@
-include!(concat!(env!("OUT_DIR"), "/consts.rs"));
-
 use std::{fmt::Display, mem};
 use super::*;
 
 use PieceType::*;
 use Color::*;
-
-////////////////////////////////////////
-/// General                          ///
-////////////////////////////////////////
 
 #[derive(Copy, Clone, PartialEq)]
 #[allow(non_camel_case_types)]
