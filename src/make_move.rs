@@ -64,23 +64,23 @@ impl Position {
 
         if move_type.is_capture() {
             // Find the taken piece and remove it
-            if self.get_bitboard(opp_color, Pawn).get_bit(cmove.to_sq) {
+            if self.bb(opp_color, Pawn).get_bit(cmove.to_sq) {
                 self.remove_piece(opp_color, Pawn, cmove.to_sq);
                 self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Pawn)][cmove.to_sq as usize];
             }
-            else if self.get_bitboard(opp_color, Knight).get_bit(cmove.to_sq) {
+            else if self.bb(opp_color, Knight).get_bit(cmove.to_sq) {
                 self.remove_piece(opp_color, Knight, cmove.to_sq);
                 self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Knight)][cmove.to_sq as usize];
             }
-            else if self.get_bitboard(opp_color, Bishop).get_bit(cmove.to_sq) {
+            else if self.bb(opp_color, Bishop).get_bit(cmove.to_sq) {
                 self.remove_piece(opp_color, Bishop, cmove.to_sq);
                 self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Bishop)][cmove.to_sq as usize];
             }
-            else if self.get_bitboard(opp_color, Rook).get_bit(cmove.to_sq) {
+            else if self.bb(opp_color, Rook).get_bit(cmove.to_sq) {
                 self.remove_piece(opp_color, Rook, cmove.to_sq);
                 self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Rook)][cmove.to_sq as usize];
             }
-            else if self.get_bitboard(opp_color, Queen).get_bit(cmove.to_sq) {
+            else if self.bb(opp_color, Queen).get_bit(cmove.to_sq) {
                 self.remove_piece(opp_color, Queen, cmove.to_sq);
                 self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Queen)][cmove.to_sq as usize];
             }

@@ -6,66 +6,52 @@ fn pext(bits: u64, mask: u64) -> u64 {
 }
 
 #[inline(always)]
-pub fn get_attack_table(square: u8, color: Color, piece_type: PieceType, occupancies: Bitboard) -> Bitboard {
+pub fn get_attacks(square: u8, color: Color, piece_type: PieceType, occupancies: Bitboard) -> u64 {
     match piece_type {
-        PieceType::Pawn => get_pawn_attack_table(square, color),
-        PieceType::Knight => get_knight_attack_table(square),
-        PieceType::Bishop => get_bishop_attack_table(square, occupancies),
-        PieceType::Rook => get_rook_attack_table(square, occupancies),
-        PieceType::Queen => get_queen_attack_table(square, occupancies),
-        PieceType::King => get_king_attack_table(square),
+        PieceType::Pawn =>   pawn_attacks(square, color),
+        PieceType::Knight => knight_attacks(square),
+        PieceType::Bishop => bishop_attacks(square, occupancies),
+        PieceType::Rook =>   rook_attacks(square, occupancies),
+        PieceType::Queen =>  queen_attacks(square, occupancies),
+        PieceType::King =>   king_attacks(square),
     }
 }
 
 /// Gets the possible pawn attacks from the current position
 #[inline(always)]
-pub fn get_pawn_attack_table(square: u8, color: Color) -> Bitboard {
-    Bitboard::from(
-        if color == Color::White {
-            WHITE_PAWN_ATTACKS[square as usize]
-        }
-        else {
-            BLACK_PAWN_ATTACKS[square as usize]
-        }
-    )
+pub fn pawn_attacks(square: u8, color: Color) -> u64 {
+    if color == Color::White {
+        WHITE_PAWN_ATTACKS[square as usize]
+    }
+    else {
+        BLACK_PAWN_ATTACKS[square as usize]
+    }
 }
 
 #[inline(always)]
-pub fn get_knight_attack_table(square: u8) -> Bitboard {
-    Bitboard::from(
-        KNIGHT_ATTACKS[square as usize]
-    )
+pub fn knight_attacks(square: u8) -> u64 {
+    KNIGHT_ATTACKS[square as usize]
 }
 
 #[inline(always)]
-pub fn get_king_attack_table(square: u8) -> Bitboard {
-    Bitboard::from(
-        KING_ATTACKS[square as usize]
-    )
+pub fn king_attacks(square: u8) -> u64 {
+    KING_ATTACKS[square as usize]
 }
 
 #[inline(always)]
-pub fn get_rook_attack_table(square: u8, occ: Bitboard) -> Bitboard {
-    let attacks = SLIDING_ATTACKS[(ROOK_OFFSETS[square as usize] as u64 + pext(occ.bits(), ROOK_MASK[square as usize])) as usize];
-    Bitboard::from(
-        attacks
-    )
+pub fn rook_attacks(square: u8, occ: Bitboard) -> u64 {
+    SLIDING_ATTACKS[(ROOK_OFFSETS[square as usize] as u64 + pext(occ.bits, ROOK_MASK[square as usize])) as usize]
 }
 
 #[inline(always)]
-pub fn get_bishop_attack_table(square: u8, occ: Bitboard) -> Bitboard {
-    let attacks = SLIDING_ATTACKS[(BISHOP_OFFSETS[square as usize] as u64 + pext(occ.bits(), BISHOP_MASK[square as usize])) as usize];
-    Bitboard::from(
-        attacks
-    )
+pub fn bishop_attacks(square: u8, occ: Bitboard) -> u64 {
+    SLIDING_ATTACKS[(BISHOP_OFFSETS[square as usize] as u64 + pext(occ.bits, BISHOP_MASK[square as usize])) as usize]
 }
 
 #[inline(always)]
-pub fn get_queen_attack_table(square: u8, occ: Bitboard) -> Bitboard {
-    let bishop = SLIDING_ATTACKS[(BISHOP_OFFSETS[square as usize] as u64 + pext(occ.bits(), BISHOP_MASK[square as usize])) as usize];
-    let rook = SLIDING_ATTACKS[(ROOK_OFFSETS[square as usize] as u64 + pext(occ.bits(), ROOK_MASK[square as usize])) as usize];
+pub fn queen_attacks(square: u8, occ: Bitboard) -> u64 {
+    let bishop = SLIDING_ATTACKS[(BISHOP_OFFSETS[square as usize] as u64 + pext(occ.bits, BISHOP_MASK[square as usize])) as usize];
+    let rook = SLIDING_ATTACKS[(ROOK_OFFSETS[square as usize] as u64 + pext(occ.bits, ROOK_MASK[square as usize])) as usize];
 
-    Bitboard::from (
-        rook | bishop
-    )
+    rook | bishop
 }

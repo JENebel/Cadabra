@@ -140,12 +140,12 @@ impl Position {
     }
 
     #[inline(always)]
-    pub fn get_bitboard(&self, color: Color, piece_type: PieceType) -> Bitboard {
+    pub fn bb(&self, color: Color, piece_type: PieceType) -> Bitboard {
         self.bitboards[Self::get_bitboard_index(color, piece_type)]
     }
 
     #[inline(always)]
-    pub fn get_color_bitboard(&self, color: Color) -> Bitboard {
+    pub fn color_bb(&self, color: Color) -> Bitboard {
         self.color_occupancies[color as usize]
     }
 
@@ -190,18 +190,18 @@ impl Position {
     #[inline(always)]
     /// Indicates whether a square is attacked
     pub fn is_square_attacked(&self, square: u8, by_color: Color) -> bool {
-        get_pawn_attack_table   (square, opposite_color(by_color)) .and(self.get_bitboard(by_color, Pawn  )).is_not_empty() ||
-        get_knight_attack_table (square)                           .and(self.get_bitboard(by_color, Knight)).is_not_empty() ||
-        get_king_attack_table   (square)                           .and(self.get_bitboard(by_color, King  )).is_not_empty() ||
-        get_rook_attack_table   (square, self.all_occupancies)     .and(self.get_bitboard(by_color, Rook  )).is_not_empty() ||
-        get_bishop_attack_table (square, self.all_occupancies)     .and(self.get_bitboard(by_color, Bishop)).is_not_empty() ||
-        get_queen_attack_table  (square, self.all_occupancies)     .and(self.get_bitboard(by_color, Queen )).is_not_empty()
+        (pawn_attacks   (square, opposite_color(by_color)) & self.bb(by_color, Pawn  )).is_not_empty() ||
+        (knight_attacks (square)                           & self.bb(by_color, Knight)).is_not_empty() ||
+        (king_attacks   (square)                           & self.bb(by_color, King  )).is_not_empty() ||
+        (rook_attacks   (square, self.all_occupancies)     & self.bb(by_color, Rook  )).is_not_empty() ||
+        (bishop_attacks (square, self.all_occupancies)     & self.bb(by_color, Bishop)).is_not_empty() ||
+        (queen_attacks  (square, self.all_occupancies)     & self.bb(by_color, Queen )).is_not_empty()
     }
 
     /// Gets the position of the king of the given color
     #[inline(always)]
     pub fn king_position(&self, color: Color) -> u8 {
-        self.get_bitboard(color, King).least_significant()
+        self.bb(color, King).least_significant()
     }
 
     #[inline(always)]
@@ -211,10 +211,10 @@ impl Position {
 
     /// Get all squares attacked by pieces of this type and color
     pub fn get_attacked(&self, color: Color, piece_type: PieceType) -> Bitboard {
-        let mut bb = self.get_bitboard(color, piece_type);
-        let mut mask = Bitboard::new_blank();
+        let mut bb = self.bb(color, piece_type);
+        let mut mask = Bitboard::EMPTY;
         while let Some(square) = bb.extract_bit() {
-            mask = mask.or(get_attack_table(square, color, piece_type, self.all_occupancies))
+            mask |= get_attacks(square, color, piece_type, self.all_occupancies)
         };
         mask
     }

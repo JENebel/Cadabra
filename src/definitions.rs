@@ -69,23 +69,23 @@ pub enum CastlingAbility {
 
 impl CastlingAbility {
     /// Gets the castling mask. This consists of the squares between the king and the rook, including both
-    pub fn attacked_mask(&self) -> Bitboard {
-        Bitboard::from(match self {
+    pub fn attacked_mask(&self) -> u64 {
+        match self {
             CastlingAbility::WhiteKingSide =>  ATTACKED_CASTLING_MASKS[0],
             CastlingAbility::WhiteQueenSide => ATTACKED_CASTLING_MASKS[1],
             CastlingAbility::BlackKingSide =>  ATTACKED_CASTLING_MASKS[2],
             CastlingAbility::BlackQueenSide => ATTACKED_CASTLING_MASKS[3],
-        })
+        }
     }
 
     /// Gets the castling mask. This consists of the squares between the king and the rook, including both
-    pub fn open_mask(&self) -> Bitboard {
-        Bitboard::from(match self {
+    pub fn open_mask(&self) -> u64 {
+        match self {
             CastlingAbility::WhiteKingSide =>  OPEN_CASTLING_MASKS[0],
             CastlingAbility::WhiteQueenSide => OPEN_CASTLING_MASKS[1],
             CastlingAbility::BlackKingSide =>  OPEN_CASTLING_MASKS[2],
             CastlingAbility::BlackQueenSide => OPEN_CASTLING_MASKS[3],
-        })
+        }
     }
 }
 
