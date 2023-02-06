@@ -1,11 +1,35 @@
 use super::*;
 
-////////////////////////////////////////
-/// General                          ///
-////////////////////////////////////////
+/// Mirror positional score tables for opposite side
+pub const MIRRORED: [usize; 64] = 
+[
+	56, 57, 58, 59, 60, 61, 62, 63,
+	48, 49, 50, 51, 52, 53, 54, 55,
+	40, 41, 42, 43, 44, 45, 46, 47,
+	32, 33, 34, 35, 36, 37, 38, 39,
+	24, 25, 26, 27, 28, 29, 30, 31,
+	16, 17, 18, 19, 20, 21, 22, 23,
+	8,  9,  10, 11, 12, 13, 14, 15,
+	0,  1,  2,  3,  4,  5,  6,  7
+];
+
+pub const LOOKUP_RANK: [usize; 64] =
+[
+    7, 7, 7, 7, 7, 7, 7, 7,
+    6, 6, 6, 6, 6, 6, 6, 6,
+    5, 5, 5, 5, 5, 5, 5, 5,
+    4, 4, 4, 4, 4, 4, 4, 4,
+    3, 3, 3, 3, 3, 3, 3, 3,
+    2, 2, 2, 2, 2, 2, 2, 2,
+    1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0
+];
 
 impl Position {
     pub fn evaluate(&self) -> i32 {
+
+        10
+
         /*let mut score: i32 = 0;
 
         let mut stacked_pawns;
@@ -204,7 +228,5 @@ impl Position {
         }
 
         if self.active_color == Color::White { score } else { -score } // Colud avoid branching here*/
-
-        10
     }
 }
