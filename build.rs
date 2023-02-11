@@ -1,5 +1,15 @@
 use std::{env, path::Path, fs::{self, File}, io::Write};
 
+pub const ROOK_MASK: [u64; 64] = generate_rook_masks();
+pub const ROOK_ATTACK_MASK: [u64; 64] = generate_rook_attack_masks();
+pub const BISHOP_MASK: [u64; 64] = generate_bishop_masks();
+pub const BISHOP_ATTACK_MASK: [u64; 64] = generate_bishop_attack_masks();
+
+/// From upper left to lower right
+//pub const DIAG1_MASKS: [u64; 64] = generate_d1_masks();
+/// From upper right to lower left
+//pub const DIAG2_MASKS: [u64; 64] = generate_d1_masks();
+
 fn main() {
     // Find file
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -19,20 +29,23 @@ fn main() {
     // Write to file
 
     // Files/Ranks/Diagonals
-    let ranks = generate_rank_masks();
-
     write!(file, "{}", array_string(generate_file_masks().to_vec(), "u64", "FILE_MASKS")).expect("Couldnt write file_masks!");
-    write!(file, "{}", array_string(ranks.to_vec(), "u64", "RANK_MASKS")).expect("Couldnt write rank_masks!");
+    let rank_masks = generate_rank_masks();
+    write!(file, "{}", array_string(rank_masks.to_vec(), "u64", "RANK_MASKS")).expect("Couldnt write rank_masks!");
     write!(file, "{}", array_string(generate_d1_masks().to_vec(), "u64", "DIAG1_MASKS")).expect("Couldnt write d1_masks!");
     write!(file, "{}", array_string(generate_d2_masks().to_vec(), "u64", "DIAG2_MASKS")).expect("Couldnt write d2_masks!");
+
+    // Special ranks
+    write!(file, "{}", format!("pub const END_RANKS_MASK: u64 = {};\n", rank_masks[0] | rank_masks[63])).expect("Couldnt write end_rank_mask!");
+    write!(file, "{}", format!("pub const PAWN_INIT_RANKS_MASK: u64 = {};\n\n", rank_masks[8] | rank_masks[55])).expect("Couldnt write pawn_init_rank_mask!");
+
+    // Check and pin masks
+    write!(file, "{}", array_string(generate_check_path().to_vec(), "u64", "CHECK_PATH")).expect("Couldnt write check_path!");
+    write!(file, "{}", array_string(generate_pin_between().to_vec(), "u64", "PIN_BETWEEN")).expect("Couldnt write pin_between!");
 
     // Castling masks
     write!(file, "{}", array_string(generate_attacked_castling_masks().to_vec(), "u64", "ATTACKED_CASTLING_MASKS")).expect("Couldnt write attacked_castling_masks!");
     write!(file, "{}", array_string(generate_open_castling_masks().to_vec(), "u64", "OPEN_CASTLING_MASKS")).expect("Couldnt write open_castling_masks!");
-
-    // End ranks
-    write!(file, "{}", format!("pub const END_RANKS_MASK: u64 = {};", ranks[0] | ranks[63])).expect("Couldnt write end_rank_mask!");
-    write!(file, "{}", format!("pub const PAWN_INIT_RANKS_MASK: u64 = {};", ranks[8] | ranks[55])).expect("Couldnt write pawn_init_rank_mask!");
 
     // Pawns
     write!(file, "{}", array_string(generate_pawn_attacks(true).to_vec(), "u64", "WHITE_PAWN_ATTACKS")).expect("Couldnt write white_pawn_attacks!");
@@ -42,16 +55,10 @@ fn main() {
     write!(file, "{}", array_string(generate_knight_attacks().to_vec(), "u64", "KNIGHT_ATTACKS")).expect("Couldnt write knight_attacks!");
     write!(file, "{}", array_string(generate_king_attacks().to_vec(), "u64", "KING_ATTACKS")).expect("Couldnt write king_attacks!");
 
-    // Eval tables
-    write!(file, "{}", array_string(generate_isolated_pawn_masks().to_vec(), "u64", "ISOLATED_MASKS")).expect("Couldnt write isolated_pawn_mask!");
-    write!(file, "{}", array_string(generate_white_passed_pawn_masks().to_vec(), "u64", "WHITE_PASSED_PAWN_MASKS")).expect("Couldnt write white_passed_pawns_mask!");
-    write!(file, "{}", array_string(generate_black_passed_pawn_masks().to_vec(), "u64", "BLACK_PASSED_PAWN_MASKS")).expect("Couldnt write black_passed_pawns_mask!");
+    // Sliding pieces
+    write!(file, "{}", array_string(ROOK_MASK.to_vec(), "u64", "ROOK_MASK")).expect("Couldnt write rook_masks!");
+    write!(file, "{}", array_string(BISHOP_MASK.to_vec(), "u64", "BISHOP_MASK")).expect("Couldnt write bishop_masks!");
 
-    // Sliding pieces mask
-    write!(file, "{}", array_string(generate_rook_masks().to_vec(), "u64", "ROOK_MASK")).expect("Couldnt write rook_masks!");
-    write!(file, "{}", array_string(generate_bishop_masks().to_vec(), "u64", "BISHOP_MASK")).expect("Couldnt write bishop_masks!");
-
-    // Sliding piece attack table
     let (rook_offsets, bishop_offsets, attacks) = generate_sliding_attacks();
     write!(file, "{}", array_string(rook_offsets.to_vec(), "usize", "ROOK_OFFSETS")).expect("Couldnt write rook_offsets!");
     write!(file, "{}", array_string(bishop_offsets.to_vec(), "usize", "BISHOP_OFFSETS")).expect("Couldnt write bishop_offsets!");
@@ -67,108 +74,11 @@ fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
     let line_width = (len as f64).sqrt() as usize;
     for i in 0..len {
         if i % line_width == 0 { result += "\n" }
-        result += &format!("{}, ", data[i]).to_string();
+        result += &format!("{}{}", data[i], if i == len-1 {""} else {", "}).to_string();
     }
     result += "\n];\n\n";
 
     result
-}
-
-fn generate_isolated_pawn_masks() -> [u64; 64] {
-    let mut masks = [0; 64];
-    let files = generate_file_masks();
-    
-    let mut r = 0;
-    while r < 8 {
-        let mut f = 0;
-        while f < 8 {
-            let mut mask = 0;
-
-            if f > 0 {
-                mask |= files[r*8+f - 1]
-            }
-            if f < 7 {
-                mask |= files[r*8+f + 1]
-            }
-
-            masks[r*8+f] = mask;
-            
-            f += 1;
-        }
-        r += 1;
-    }
-
-    masks
-}
-
-fn generate_white_passed_pawn_masks() -> [u64; 64] {
-    let mut masks = [0; 64];
-    let files = generate_file_masks();
-    let ranks = generate_rank_masks();
-    
-    let mut r = 0;
-    while r < 8 {
-        let mut f = 0;
-        while f < 8 {
-            let mut mask = 0;
-
-            mask |= files[r*8+f];
-
-            if f > 0 {
-                mask |= files[r*8+f - 1]
-            }
-            if f < 7 {
-                mask |= files[r*8+f + 1]
-            }
-            //For all ranks lower
-            let mut rr = 7;
-            while rr > r {
-                mask ^= ranks[rr*8] & mask;
-                rr -= 1;
-            }
-            masks[r*8+f] = mask;
-            
-            f += 1;
-        }
-        r += 1;
-    }
-
-    masks
-}
-
-fn generate_black_passed_pawn_masks() -> [u64; 64] {
-    let mut masks = [0; 64];
-    let files = generate_file_masks();
-    let ranks = generate_rank_masks();
-    
-    let mut r = 0;
-    while r < 8 {
-        let mut f = 0;
-        while f < 8 {
-            let mut mask = 0;
-
-            mask |= files[r*8+f];
-
-            if f > 0 {
-                mask |= files[r*8+f - 1]
-            }
-            if f < 7 {
-                mask |= files[r*8+f + 1]
-            }
-            //For all ranks lower
-            let mut rr = 0;
-            while rr < r {
-                mask ^= ranks[rr*8] & mask;
-                rr += 1;
-            }
-            masks[r*8+f] = mask;
-            
-            f += 1;
-        }
-        r += 1;
-    }
-
-    masks
 }
 
 fn generate_open_castling_masks() -> [u64; 4] {
@@ -240,6 +150,7 @@ fn generate_d1_masks() -> [u64; 64] {
                 r -= 1;
                 masks[rank * 8 + file] |= (1 << f) << 8*r;
             }
+            masks[rank * 8 + file] |= 1 << 8 * rank + file
         }
     }
 
@@ -267,6 +178,7 @@ fn generate_d2_masks() -> [u64; 64] {
                 r += 1;
                 masks[rank * 8 + file] |= (1 << f) << 8*r;
             }
+            masks[rank * 8 + file] |= 1 << 8 * rank + file
         }
     }
 
@@ -274,9 +186,6 @@ fn generate_d2_masks() -> [u64; 64] {
 }
 
 fn generate_sliding_attacks() -> ([u64; 64], [u64; 64], Box<[u64; 107648]>) {
-    let rook_mask = generate_rook_masks();
-    let bishop_mask = generate_bishop_masks();
-
     //Sliding pieces
     let mut rook_offsets: [u64; 64] = [0; 64];
     let mut bishop_offsets: [u64; 64] = [0; 64];
@@ -290,11 +199,11 @@ fn generate_sliding_attacks() -> ([u64; 64], [u64; 64], Box<[u64; 107648]>) {
             while file < 8 {
                 let square = rank * 8 + file;
                 rook_offsets[square as usize] = current_offset as u64;
-                let number_of_occupancies = (2 as u16).pow(rook_mask[square as usize].count_ones()) as u32;
+                let number_of_occupancies = (2 as u16).pow(ROOK_MASK[square as usize].count_ones()) as u32;
 
                 let mut occ_index: u32 = 0;
                 while occ_index < number_of_occupancies {
-                    let occ = set_occupancy(occ_index, rook_mask[square as usize]);
+                    let occ = set_occupancy(occ_index, ROOK_MASK[square as usize]);
                     attacks[(current_offset + occ_index as u32) as usize] = rook_attacks_on_the_fly(square, occ);
                     occ_index += 1;
                 }
@@ -312,11 +221,11 @@ fn generate_sliding_attacks() -> ([u64; 64], [u64; 64], Box<[u64; 107648]>) {
             while file < 8 {
                 let square = rank * 8 + file;
                 bishop_offsets[square as usize] = current_offset as u64;
-                let number_of_occupancies = (2 as u16).pow(bishop_mask[square as usize].count_ones()) as u32;
+                let number_of_occupancies = (2 as u16).pow(BISHOP_MASK[square as usize].count_ones()) as u32;
 
                 let mut occ_index: u32 = 0;
                 while occ_index < number_of_occupancies {
-                    let occ = set_occupancy(occ_index, bishop_mask[square as usize]);
+                    let occ = set_occupancy(occ_index, BISHOP_MASK[square as usize]);
                     attacks[(current_offset + occ_index as u32) as usize] = bishop_attacks_on_the_fly(square, occ);
                     occ_index += 1;
                 }
@@ -429,7 +338,50 @@ fn generate_king_attacks() -> [u64; 64] {
     attacks
 }
 
-fn generate_rook_masks() -> [u64; 64] {
+fn generate_check_path() -> [u64; 4096] {
+    let mut masks: [u64; 4096] = [0; 4096];
+    let ranks = generate_rank_masks();
+    let files = generate_file_masks();
+    let d1s = generate_d1_masks();
+    let d2s = generate_d2_masks();
+
+    for square in 0..64 {
+        for king_pos in 0..64 {
+            let sq_hv_rays = rook_attacks_on_the_fly(square as u8, 1 << king_pos);
+            let sq_diag_rays = bishop_attacks_on_the_fly(square as u8, 1 << king_pos);
+
+            masks[king_pos * 64 + square] = {
+               if ranks[king_pos] == ranks[square] || files[king_pos] == files[square] {
+                    // HV
+                    let king_hv_rays = rook_attacks_on_the_fly(king_pos as u8, 1 << square);
+                    king_hv_rays & sq_hv_rays | 1 << square
+                } else if d1s[king_pos] == d1s[square] || d2s[king_pos] == d2s[square] {
+                    // Diagonals
+                    let king_diag_rays = bishop_attacks_on_the_fly(king_pos as u8, 1 << square);
+                    king_diag_rays & sq_diag_rays | 1 << square
+                } else {
+                    u64::MAX
+                }
+            }
+        }
+    }
+    
+    masks
+}
+
+fn generate_pin_between() -> [u64; 4096] {
+    let mut masks: [u64; 4096] = [0; 4096];
+    
+    for king_pos in 0..64 {
+        for square in 0..64 {
+            
+        }
+    }
+    
+    masks
+}
+
+const fn generate_rook_masks() -> [u64; 64] {
     let mut mask = [0; 64];
 
     let mut index = 0;
@@ -447,8 +399,7 @@ fn generate_rook_masks() -> [u64; 64] {
     mask
 }
 
-/// HV rays
-/*fn generate_rook_attack_masks() -> [u64; 64] {
+const fn generate_rook_attack_masks() -> [u64; 64] {
     let mut mask = [0; 64];
 
     let mut index = 0;
@@ -464,9 +415,9 @@ fn generate_rook_masks() -> [u64; 64] {
         rank += 1;
     }
     mask
-}*/
+}
 
-fn generate_bishop_masks() -> [u64; 64] {
+const fn generate_bishop_masks() -> [u64; 64] {
     let mut mask = [0; 64];
 
     let mut index = 0;
@@ -485,8 +436,7 @@ fn generate_bishop_masks() -> [u64; 64] {
     mask
 }
 
-/// Diagonal rays
-/*fn generate_bishop_attack_masks() -> [u64; 64] {
+const fn generate_bishop_attack_masks() -> [u64; 64] {
     let mut mask = [0; 64];
 
     let mut index = 0;
@@ -502,9 +452,9 @@ fn generate_bishop_masks() -> [u64; 64] {
         rank += 1;
     }
     mask
-}*/
+}
 
-fn rook_mask(square: u8) -> u64 {
+const fn rook_mask(square: u8) -> u64 {
     let base: u64 = 1 << (square);
     let mut result: u64 = 0;
 
@@ -543,7 +493,7 @@ fn rook_mask(square: u8) -> u64 {
     result
 }
 
-fn bishop_mask(square: u8) -> u64 {
+const fn bishop_mask(square: u8) -> u64 {
     let base: u64 = 1 << (square);
     let mut result: u64 = 0;
     let rank = square / 8;
@@ -604,7 +554,7 @@ fn bishop_mask(square: u8) -> u64 {
     result
 }
 
-fn rook_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
+const fn rook_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     let base: u64 = 1 << (square);
     let mut result: u64 = 0;
 
@@ -663,7 +613,7 @@ fn rook_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     result
 }
 
-fn bishop_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
+const fn bishop_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     let base: u64 = 1 << (square);
     let mut result: u64 = 0;
     let rank = square / 8;
@@ -732,7 +682,7 @@ fn bishop_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     result
 }
 
-fn set_occupancy(index: u32, attack_mask: u64) -> u64 {
+const fn set_occupancy(index: u32, attack_mask: u64) -> u64 {
     let mut occ = 0;
 
     let mut mask = attack_mask;
