@@ -74,6 +74,7 @@ fn pin_mask_h(occ: Bitboard, king_pos: u8, slider_pos: u8) -> u64 {
 
     let kp = LOOKUP_FILE[king_pos as usize];
     let sq = LOOKUP_FILE[slider_pos as usize];
+
     let index = 2048*kp + 256*sq + pexed as usize;
     let mask = PIN_MASKS[index];
 
@@ -86,9 +87,10 @@ fn pin_mask_v(occ: Bitboard, king_pos: u8, slider_pos: u8) -> u64 {
 
     let pexed = pext(occ.as_u64(), file);
 
-    let kp = LOOKUP_RANK[king_pos as usize];
-    let sq = LOOKUP_RANK[slider_pos as usize];
+    let kp = 7 - LOOKUP_RANK[king_pos as usize];    // Can maybe reverse bits somehow instead of 7 -   TODO
+    let sq = 7 - LOOKUP_RANK[slider_pos as usize];
     let index = 2048*kp + 256*sq + pexed as usize;
+
     let mask = PIN_MASKS[index];
 
     pdep(mask, file)
@@ -106,6 +108,7 @@ fn pin_mask_d1(occ: Bitboard, king_pos: u8, slider_pos: u8) -> u64 {
 
     let kp = LOOKUP_FILE[king_pos as usize];
     let sq = LOOKUP_FILE[slider_pos as usize];
+
     let index = 2048*kp + 256*sq + pexed as usize;
     let mask = PIN_MASKS[index];
 
@@ -118,55 +121,11 @@ fn pin_mask_d2(occ: Bitboard, king_pos: u8, slider_pos: u8) -> u64 {
 
     let pexed = pext(occ.as_u64(), diagonal);
 
-    let kp = LOOKUP_FILE[king_pos as usize];
-    let sq = LOOKUP_FILE[slider_pos as usize];
+    let kp = 7 - LOOKUP_FILE[king_pos as usize];
+    let sq = 7 - LOOKUP_FILE[slider_pos as usize];
+
     let index = 2048*kp + 256*sq + pexed as usize;
     let mask = PIN_MASKS[index];
 
     pdep(mask, diagonal)
-}
-
-
-
-
-fn generate_pin_mask(kp: usize, sq: usize, occ: u64) -> u64 {
-    const most_sig_set: u64 = 9223372036854775808;
-
-    let mut mask = 0; 
-
-    let mut found_either: bool = false;
-    let mut between = 0;
-
-    for i in 0..8 {
-        if i == kp {
-            println!("ki: {i}");
-            // Found king
-            if found_either {
-                break;
-            }
-
-            found_either = true;
-        } else if i == sq{
-            println!("sl: {i}");
-            // Found slider
-            mask |= 1 << i;
-            
-            if found_either {
-                break;
-            }
-            
-            found_either = true;
-        } else if occ & 1 << i != 0 && found_either {
-            // Found piece between
-            mask |= 1 << i;
-            between += 1;
-        } else if found_either {
-            // Found empty between
-            mask |= 1 << i;
-        }
-    }
-
-    if between == 1 {
-        mask
-    } else { 0 }
 }

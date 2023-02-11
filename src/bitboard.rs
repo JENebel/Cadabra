@@ -44,7 +44,7 @@ macro_rules! implement_bitboard_assign_operation {
         
         impl $trait_name<u64> for Bitboard {
             fn $fn_name(&mut self, rhs: u64) {
-                self.0 &= rhs
+                self.0 $operator rhs
             }
         }
 

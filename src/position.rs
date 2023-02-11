@@ -210,13 +210,13 @@ impl Position {
         self.is_square_attacked(self.king_position(color), opposite_color(color))
     }
 
-    /// Get all squares attacked by pieces of this type and color
-    pub fn get_attacked(&self, color: Color, piece_type: PieceType) -> Bitboard {
+    // Get all squares attacked by pieces of this type and color
+    /*pub fn get_attacked(&self, color: Color, piece_type: PieceType) -> Bitboard {
         let mut bb = self.bb(color, piece_type);
         let mut mask = Bitboard::EMPTY;
         while let Some(square) = bb.extract_bit() {
             mask |= get_attacks(square, color, piece_type, self.all_occupancies)
         };
         mask
-    }
+    }*/
 }

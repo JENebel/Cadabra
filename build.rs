@@ -35,12 +35,21 @@ fn main() {
     write!(file, "{}", array_string(generate_d1_masks().to_vec(), "u64", "D1_MASKS")).expect("Couldnt write D1_MASKS!");
     write!(file, "{}", array_string(generate_d2_masks().to_vec(), "u64", "D2_MASKS")).expect("Couldnt write D2_MASKS!");
 
+    write!(file, "{}", array_string(generate_hv_rays().to_vec(), "u64", "HV_RAYS")).expect("Couldnt write HV_RAYS!");
+    write!(file, "{}", array_string(generate_d12_rays().to_vec(), "u64", "D12_RAYS")).expect("Couldnt write D12_RAYS!");
+
     // Special ranks
     write!(file, "{}", format!("pub const END_RANKS_MASK: u64 = {};\n", rank_masks[0] | rank_masks[63])).expect("Couldnt write END_RANKS_MASK!");
     write!(file, "{}", format!("pub const PAWN_INIT_RANKS_MASK: u64 = {};\n\n", rank_masks[8] | rank_masks[55])).expect("Couldnt write PAWN_INIT_RANKS_MASK!");
 
     // Check and pin masks
-    write!(file, "{}", array_string(generate_check_path().to_vec(), "u64", "SLIDER_CHECK_MASK")).expect("Couldnt write SLIDER_CHECK_MASK!");
+    write!(file, "/// Use king_sq * 64 + slider_sq\n").unwrap();
+    write!(file, "{}", array_string(generate_hv_slider_check_mask().to_vec(), "u64", "SLIDER_HV_CHECK_MASK")).expect("Couldnt write SLIDER_HV_CHECK_MASK!");
+    write!(file, "/// Use king_sq * 64 + slider_sq\n").unwrap();
+    write!(file, "{}", array_string(generate_d12_slider_check_mask().to_vec(), "u64", "SLIDER_D12_CHECK_MASK")).expect("Couldnt write SLIDER_D12_CHECK_MASK!");
+
+    write!(file, "/// This gets a pin mask between the king and the sliding piece if relevant\n").unwrap();
+    write!(file, "/// Use (king_sq * 2048) + (slider_sq * 256) + (pexed occupancies along the axis wanted)\n").unwrap();
     write!(file, "{}", array_string(generate_pin_masks().to_vec(), "u64", "PIN_MASKS")).expect("Couldnt write PIN_MASKS!");
 
     // Castling masks
@@ -104,6 +113,32 @@ fn generate_attacked_castling_masks() -> [u64; 4] {
     // Black
     masks[2] |= 1 << 5 | 1 << 6;
     masks[3] |= 1 << 2 | 1 << 3;
+    masks
+}
+
+fn generate_hv_rays() -> [u64; 64] {
+    let mut masks = [0; 64];
+    let ranks = generate_rank_masks();
+    let files = generate_file_masks();
+    for rank in 0..8 {
+        for file in 0..8 {
+            masks[rank * 8 + file] |= ranks[rank * 8 + file];
+            masks[rank * 8 + file] |= files[rank * 8 + file];
+        }
+    }
+    masks
+}
+
+fn generate_d12_rays() -> [u64; 64] {
+    let mut masks = [0; 64];
+    let d1 = generate_d1_masks();
+    let d2 = generate_d2_masks();
+    for rank in 0..8 {
+        for file in 0..8 {
+            masks[rank * 8 + file] |= d1[rank * 8 + file];
+            masks[rank * 8 + file] |= d2[rank * 8 + file];
+        }
+    }
     masks
 }
 
@@ -338,24 +373,41 @@ fn generate_king_attacks() -> [u64; 64] {
     attacks
 }
 
-fn generate_check_path() -> [u64; 4096] {
+fn generate_hv_slider_check_mask() -> [u64; 4096] {
     let mut masks: [u64; 4096] = [0; 4096];
     let ranks = generate_rank_masks();
     let files = generate_file_masks();
-    let d1s = generate_d1_masks();
-    let d2s = generate_d2_masks();
 
     for square in 0..64 {
         for king_pos in 0..64 {
             let sq_hv_rays = rook_attacks_on_the_fly(square as u8, 1 << king_pos);
-            let sq_diag_rays = bishop_attacks_on_the_fly(square as u8, 1 << king_pos);
 
             masks[king_pos * 64 + square] = {
                if ranks[king_pos] == ranks[square] || files[king_pos] == files[square] {
                     // HV
                     let king_hv_rays = rook_attacks_on_the_fly(king_pos as u8, 1 << square);
                     king_hv_rays & sq_hv_rays | 1 << square
-                } else if d1s[king_pos] == d1s[square] || d2s[king_pos] == d2s[square] {
+                } else {
+                    u64::MAX
+                }
+            }
+        }
+    }
+    
+    masks
+}
+
+fn generate_d12_slider_check_mask() -> [u64; 4096] {
+    let mut masks: [u64; 4096] = [0; 4096];
+    let d1s = generate_d1_masks();
+    let d2s = generate_d2_masks();
+
+    for square in 0..64 {
+        for king_pos in 0..64 {
+            let sq_diag_rays = bishop_attacks_on_the_fly(square as u8, 1 << king_pos);
+
+            masks[king_pos * 64 + square] = {
+                if d1s[king_pos] == d1s[square] || d2s[king_pos] == d2s[square] {
                     // Diagonals
                     let king_diag_rays = bishop_attacks_on_the_fly(king_pos as u8, 1 << square);
                     king_diag_rays & sq_diag_rays | 1 << square
@@ -380,9 +432,18 @@ fn generate_pin_masks() -> Box<[u64; 16384]> {
                 let mut found_either: bool = false;
                 let mut between = 0;
 
-                for i in 0..8 {
+                if occ & 1 << square == 0 {
+                    continue
+                }
+
+                let start = if king_pos < square {
+                    king_pos
+                } else {
+                    0
+                };
+
+                for i in start..8 {
                     if i == king_pos {
-                        println!("ki: {i}");
                         // Found king
                         if found_either {
                             break;
@@ -390,7 +451,6 @@ fn generate_pin_masks() -> Box<[u64; 16384]> {
             
                         found_either = true;
                     } else if i == square {
-                        println!("sl: {i}");
                         // Found slider
                         mask |= 1 << i;
                         

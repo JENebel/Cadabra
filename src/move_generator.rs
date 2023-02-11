@@ -2,6 +2,7 @@ use super::*;
 
 use PieceType::*;
 use MoveType::*;
+use Color::*;
 
 // Macros to expand const generics for move generation
 /*macro_rules! generate_moves_match_has_enpassant {
@@ -51,50 +52,28 @@ pub struct MoveList {
 }
 
 impl MoveList {
-    
-}
-
-impl Iterator for MoveList {
-    type Item = Move;
-
-    #[inline(always)]
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.extract_index == self.insert_index {
-            return None
-        };
-
-        let extracted = self.move_list[self.extract_index];
-        self.extract_index += 1;
-        Some(extracted)
-    }
-}
-
-impl Position {
-    /// Creates a new move list and populates it with all legal moves in the position
-    pub fn generate_from(position: &Position, is_quiescence: bool, sort: bool, pv_move: Option<Move>) -> Self {
-        let mut list = Self {
+    pub fn new() -> Self {
+        Self {
             insert_index: 0,
             extract_index: 0,
-
-            move_list: [Default::default(); 100], // Check if this is necessary
-        };
-
-        if let Some(pv) = pv_move {
-            list.insert(pv);
+            move_list: [Default::default(); 128],
         }
-
-        //generate_moves!(list, position, is_quiescence, sort);
-
-        list
     }
 
-    pub fn length(&self) -> usize {
+    /// Gets the amount of moves stored in the list
+    pub fn len(&self) -> usize {
         self.insert_index
+    }
+
+    /// Extracts a new move into the list
+    pub fn insert(&mut self, new_move: Move) {
+        self.move_list[self.insert_index] = new_move;
+        self.insert_index += 1;
     }
 
     /// Extracts the best move in the list
     #[inline(always)]
-    pub fn extract_best(&mut self) -> Option<Move> {
+    pub fn next_best(&mut self) -> Option<Move> {
         if self.extract_index == self.insert_index {
             return None
         };
@@ -117,94 +96,194 @@ impl Position {
 
         Some(extracted)
     }
+}
 
-    /// Inserts the move into the list, and scores it if 
-    #[inline(always)]
-    fn insert_and_score(&mut self, new_move: &mut Move, is_sorting: bool, is_quiescence: bool) {
-        if is_quiescence && !new_move.is_capture() {
-            return
-        }
-
-        if is_sorting {
-            Self::score_move(new_move) // Maybe handle scoring different
-        }
-
-        println!("{new_move}");
-
-        self.insert(*new_move)
-    }
+impl Iterator for MoveList {
+    type Item = Move;
 
     #[inline(always)]
-    fn insert(&mut self, new_move: Move) {
-        self.move_list[self.insert_index] = new_move;
-        self.insert_index += 1;
-    }
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.extract_index == self.insert_index {
+            return None
+        };
 
-    fn score_move(m: &mut Move) {
-        m.score = 10; // Fake it. Should probably be moved to seperate place
+        let extracted = self.move_list[self.extract_index];
+        self.extract_index += 1;
+        Some(extracted)
     }
+}
 
+impl Position {
     /// Generate more legal moves for the position
+    pub fn generate_moves_internal(&self) -> MoveList {
+        let mut move_list = MoveList::new();
+
+        let color = self.active_color;
+        let opp_color = opposite_color(self.active_color);
+
+        let check_mask = self.generate_check_mask(color);
+
+        // If in double check, only king can move
+        let checkers = (check_mask & self.color_bb(opposite_color(color))).count();
+        if !(!check_mask.is_empty()) && checkers > 0 {
+            self.generate_king_moves(&mut move_list);
+            return move_list
+        }
+
+        // Generate the pin masks
+        let hv_pin = self.generate_hv_pin_mask(color);
+        let d12_pin = self.generate_d12_pin_mask(color);
+        let opp_or_empty = !self.color_bb(color);
+        
+        // Pawn moves
+        self.generate_pawn_moves(&mut move_list);
+
+        // Rook moves
+        let rooks = self.bb(color, Rook);
+        let mut pinned_rooks = rooks & hv_pin;
+        while let Some(sq) = pinned_rooks.extract_bit() {
+            let seen = hv_attacks(sq, self.all_occupancies);
+
+            let legal = seen & opp_or_empty & check_mask & hv_pin;
+
+            self.add_normal_moves(&mut move_list, sq, legal, Rook)
+        }
+
+        let mut unpinned_rooks = rooks & !hv_pin;
+        while let Some(sq) = unpinned_rooks.extract_bit() {
+            let seen = hv_attacks(sq, self.all_occupancies);
+
+            let legal = seen & opp_or_empty & check_mask;
+
+            self.add_normal_moves(&mut move_list, sq, legal, Rook)
+        }
+
+        self.generate_king_moves(&mut move_list);
+
+        move_list
+    }
+
     #[inline(always)]
-    fn generate_moves() {
+    fn generate_pawn_moves(&self, move_list: &mut MoveList) {
 
     }
 
     #[inline(always)]
-    fn generate_hv_pin_mask(pos: &Position, color: Color) -> u64 {
-        let mut mask = 0;
+    fn add_normal_moves(&self, move_list: &mut MoveList, from_sq: u8, mut legal_to_sq: Bitboard, piece: PieceType) {
+        let color = self.active_color;
+        while let Some(sq) = legal_to_sq.extract_bit() {
+            let is_capture = self.color_bb(opposite_color(color)).get_bit(sq);
+            move_list.insert(Move::new_normal(from_sq, sq, piece, is_capture))
+        }
+    }
 
+    #[inline(always)]
+    fn generate_king_moves(&self, move_list: &mut MoveList) {
+        let color = self.active_color;
+        let attacked = 
+            self.get_attacked_wo_king(color, Pawn) |
+            self.get_attacked_wo_king(color, Knight) |
+            self.get_attacked_wo_king(color, Bishop) |
+            self.get_attacked_wo_king(color, Rook) |
+            self.get_attacked_wo_king(color, Queen);
+
+        let king_pos = self.king_position(color);
+        let opp_or_empty = !self.color_bb(color);
+
+        let legal = king_attacks(king_pos) & !attacked & opp_or_empty;
+
+        self.add_normal_moves(
+            move_list, 
+            self.king_position(color), 
+            legal, 
+            King
+        );
+    }
+
+    #[inline(always)]
+    fn get_attacked_wo_king(&self, color: Color, piece_type: PieceType) -> Bitboard {
+        let occ_wo_king = self.all_occupancies ^ self.bb(color, King);
         let opp_color = opposite_color(color);
 
-        let mut hv_sliders = pos.bb(opp_color, Rook) | pos.bb(color, Queen);
+        let mut bb = self.bb(opp_color, piece_type);
+        let mut mask = Bitboard::EMPTY;
+        while let Some(square) = bb.extract_bit() {
+            mask |= get_attacks(square, opp_color, piece_type, occ_wo_king)
+        };
+
+        mask
+    }
+
+    #[inline(always)]
+    pub fn generate_check_mask(&self, color: Color) -> Bitboard {
+        let mut mask = Bitboard::EMPTY;
+        let king_pos = self.king_position(color);
+        let opp_color = opposite_color(color);
+
+        let king_rays = hv_attacks(king_pos, self.all_occupancies) | d12_attacks(king_pos, self.all_occupancies);
+
+        // Maybe move to pregenerated to optimize? TODO
+        let mut hv_sliders = self.bb(opp_color, Rook) | self.bb(opp_color, Queen);
         while let Some(slider) = hv_sliders.extract_bit() {
-            mask |= pin_mask_hv(pos.all_occupancies, pos.king_position(color), slider)
+            let slider_check_mask = SLIDER_HV_CHECK_MASK[king_pos as usize * 64 + slider as usize];
+
+            if (slider_check_mask & king_rays) == slider_check_mask {
+                //In check
+                mask |= slider_check_mask;
+            }
         }
 
-        mask
+        // Maybe move to pregenerated to optimize? TODO
+        let mut d12_sliders = self.bb(opp_color, Bishop) | self.bb(opp_color, Queen);
+        while let Some(slider) = d12_sliders.extract_bit() {
+            let slider_check_mask = SLIDER_D12_CHECK_MASK[king_pos as usize * 64 + slider as usize];
+
+            if (slider_check_mask & king_rays) == slider_check_mask {
+                //In check
+                mask |= slider_check_mask;
+            }
+        }
+
+        mask |= pawn_attacks(king_pos, color) & self.bb(opp_color, Pawn);
+        mask |= knight_attacks(king_pos) & self.bb(opp_color, Knight);
+
+        if mask.is_not_empty() {
+            mask
+        } else {
+            Bitboard::FULL
+        }
     }
 
     #[inline(always)]
-    fn generate_d12_pin_mask(pos: &Position, color: Color) -> u64 {
+    pub fn generate_hv_pin_mask(&self, color: Color) -> Bitboard {
         let mut mask = 0;
 
         let opp_color = opposite_color(color);
 
-        let mut d12_sliders = pos.bb(opp_color, Bishop) | pos.bb(color, Queen);
-        while let Some(slider) = d12_sliders.extract_bit() {
-            mask |= pin_mask_hv(pos.all_occupancies, pos.king_position(color), slider)
+        let mut hv_sliders = HV_RAYS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
+        while let Some(slider) = hv_sliders.extract_bit() {
+            mask |= pin_mask_hv(self.all_occupancies, self.king_position(color), slider)
         }
 
-        mask
+        Bitboard(mask)
+    }
+
+    #[inline(always)]
+    pub fn generate_d12_pin_mask(&self, color: Color) -> Bitboard {
+        let mut mask = 0;
+
+        let opp_color = opposite_color(color);
+
+        let mut d12_sliders = D12_RAYS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
+        while let Some(slider) = d12_sliders.extract_bit() {
+            mask |= pin_mask_d12(self.all_occupancies, self.king_position(color), slider)
+        }
+
+        Bitboard(mask)
     }
 }
 
 #[test]
 pub fn test() {
-    let mut pos = Position::new_from_start_pos();
-
-    // Double pawn push block
-    // let mut pos = Position::new_from_fen("rnb1kb1r/pp1p2pp/2p5/q7/8/3P4/PPP1PPPP/RN2KBNR w KQkq - 0 1").unwrap();
-
-    // Illegal enpassant pin
-    // let mut pos = Position::new_from_fen("1k6/8/8/1q1pP1K1/8/8/8/8 w - d6 0 1").unwrap();
-
-    // Legal enpassant pin
-    // let mut pos = Position::new_from_fen("1q6/8/8/3pP3/8/8/7K/8 w - d5 0 1").unwrap();
-
-    pos.pretty_print();
-
-    let moves = MoveList::new(&mut pos, false, false, None).collect::<Vec<Move>>();
-
-    println!("Moves: {}", moves.len());
-    println!("Captures: {}", moves.iter().filter(|m| m.is_capture()).count());
-    println!("E.p.: {}", moves.iter().filter(|m| if let EnpassantCapture = m.move_type { true } else { false }).count());
-    println!("Castles: {}", moves.iter().filter(|m| m.move_type == CastleKingSide || m.move_type == CastleQueenSide).count());
-    println!("Promotions: {}", moves.iter().filter(|m| if let Promotion(_) = m.move_type { true } else { false } || if let CapturePromotion(_) = m.move_type { true } else { false }).count());
-
-    println!();
     
-    for m in moves {
-        println!("{}", m)
-    }
 }
