@@ -1,4 +1,4 @@
-use crate::{zobrist_constants::*, bitboard::*, attack_tables::*, definitions::*};
+use crate::{zobrist_constants::*, bitboard::*, precalculated_interface::*, definitions::*};
 
 use Color::*;
 use PieceType::*;
@@ -193,9 +193,10 @@ impl Position {
         (pawn_attacks   (square, opposite_color(by_color)) & self.bb(by_color, Pawn  )).is_not_empty() ||
         (knight_attacks (square)                           & self.bb(by_color, Knight)).is_not_empty() ||
         (king_attacks   (square)                           & self.bb(by_color, King  )).is_not_empty() ||
-        (rook_attacks   (square, self.all_occupancies)     & self.bb(by_color, Rook  )).is_not_empty() ||
-        (bishop_attacks (square, self.all_occupancies)     & self.bb(by_color, Bishop)).is_not_empty() ||
-        (queen_attacks  (square, self.all_occupancies)     & self.bb(by_color, Queen )).is_not_empty()
+        (hv_attacks     (square, self.all_occupancies)     & self.bb(by_color, Rook  )).is_not_empty() ||
+        (d12_attacks    (square, self.all_occupancies)     & self.bb(by_color, Bishop)).is_not_empty() ||
+        ((hv_attacks    (square, self.all_occupancies) 
+           | d12_attacks(square, self.all_occupancies))    & self.bb(by_color, Queen )).is_not_empty()
     }
 
     /// Gets the position of the king of the given color

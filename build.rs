@@ -29,40 +29,40 @@ fn main() {
     // Write to file
 
     // Files/Ranks/Diagonals
-    write!(file, "{}", array_string(generate_file_masks().to_vec(), "u64", "FILE_MASKS")).expect("Couldnt write file_masks!");
+    write!(file, "{}", array_string(generate_file_masks().to_vec(), "u64", "FILE_MASKS")).expect("Couldnt write FILE_MASKS!");
     let rank_masks = generate_rank_masks();
-    write!(file, "{}", array_string(rank_masks.to_vec(), "u64", "RANK_MASKS")).expect("Couldnt write rank_masks!");
-    write!(file, "{}", array_string(generate_d1_masks().to_vec(), "u64", "DIAG1_MASKS")).expect("Couldnt write d1_masks!");
-    write!(file, "{}", array_string(generate_d2_masks().to_vec(), "u64", "DIAG2_MASKS")).expect("Couldnt write d2_masks!");
+    write!(file, "{}", array_string(rank_masks.to_vec(), "u64", "RANK_MASKS")).expect("Couldnt write RANK_MASKS!");
+    write!(file, "{}", array_string(generate_d1_masks().to_vec(), "u64", "D1_MASKS")).expect("Couldnt write D1_MASKS!");
+    write!(file, "{}", array_string(generate_d2_masks().to_vec(), "u64", "D2_MASKS")).expect("Couldnt write D2_MASKS!");
 
     // Special ranks
-    write!(file, "{}", format!("pub const END_RANKS_MASK: u64 = {};\n", rank_masks[0] | rank_masks[63])).expect("Couldnt write end_rank_mask!");
-    write!(file, "{}", format!("pub const PAWN_INIT_RANKS_MASK: u64 = {};\n\n", rank_masks[8] | rank_masks[55])).expect("Couldnt write pawn_init_rank_mask!");
+    write!(file, "{}", format!("pub const END_RANKS_MASK: u64 = {};\n", rank_masks[0] | rank_masks[63])).expect("Couldnt write END_RANKS_MASK!");
+    write!(file, "{}", format!("pub const PAWN_INIT_RANKS_MASK: u64 = {};\n\n", rank_masks[8] | rank_masks[55])).expect("Couldnt write PAWN_INIT_RANKS_MASK!");
 
     // Check and pin masks
-    write!(file, "{}", array_string(generate_check_path().to_vec(), "u64", "CHECK_PATH")).expect("Couldnt write check_path!");
-    write!(file, "{}", array_string(generate_pin_between().to_vec(), "u64", "PIN_BETWEEN")).expect("Couldnt write pin_between!");
+    write!(file, "{}", array_string(generate_check_path().to_vec(), "u64", "SLIDER_CHECK_MASK")).expect("Couldnt write SLIDER_CHECK_MASK!");
+    write!(file, "{}", array_string(generate_pin_masks().to_vec(), "u64", "PIN_MASKS")).expect("Couldnt write PIN_MASKS!");
 
     // Castling masks
-    write!(file, "{}", array_string(generate_attacked_castling_masks().to_vec(), "u64", "ATTACKED_CASTLING_MASKS")).expect("Couldnt write attacked_castling_masks!");
-    write!(file, "{}", array_string(generate_open_castling_masks().to_vec(), "u64", "OPEN_CASTLING_MASKS")).expect("Couldnt write open_castling_masks!");
+    write!(file, "{}", array_string(generate_attacked_castling_masks().to_vec(), "u64", "ATTACKED_CASTLING_MASKS")).expect("Couldnt write ATTACKED_CASTLING_MASKS!");
+    write!(file, "{}", array_string(generate_open_castling_masks().to_vec(), "u64", "OPEN_CASTLING_MASKS")).expect("Couldnt write OPEN_CASTLING_MASKS!");
 
     // Pawns
-    write!(file, "{}", array_string(generate_pawn_attacks(true).to_vec(), "u64", "WHITE_PAWN_ATTACKS")).expect("Couldnt write white_pawn_attacks!");
-    write!(file, "{}", array_string(generate_pawn_attacks(false).to_vec(), "u64", "BLACK_PAWN_ATTACKS")).expect("Couldnt write black_pawn_attacks!");
+    write!(file, "{}", array_string(generate_pawn_attacks(true).to_vec(), "u64", "WHITE_PAWN_ATTACKS")).expect("Couldnt write WHITE_PAWN_ATTACKS!");
+    write!(file, "{}", array_string(generate_pawn_attacks(false).to_vec(), "u64", "BLACK_PAWN_ATTACKS")).expect("Couldnt write BLACK_PAWN_ATTACKS!");
 
     // Leapers
-    write!(file, "{}", array_string(generate_knight_attacks().to_vec(), "u64", "KNIGHT_ATTACKS")).expect("Couldnt write knight_attacks!");
-    write!(file, "{}", array_string(generate_king_attacks().to_vec(), "u64", "KING_ATTACKS")).expect("Couldnt write king_attacks!");
+    write!(file, "{}", array_string(generate_knight_attacks().to_vec(), "u64", "KNIGHT_ATTACKS")).expect("Couldnt write KNIGHT_ATTACKS!");
+    write!(file, "{}", array_string(generate_king_attacks().to_vec(), "u64", "KING_ATTACKS")).expect("Couldnt write KING_ATTACKS!");
 
     // Sliding pieces
-    write!(file, "{}", array_string(ROOK_MASK.to_vec(), "u64", "ROOK_MASK")).expect("Couldnt write rook_masks!");
-    write!(file, "{}", array_string(BISHOP_MASK.to_vec(), "u64", "BISHOP_MASK")).expect("Couldnt write bishop_masks!");
+    write!(file, "{}", array_string(ROOK_MASK.to_vec(), "u64", "ROOK_MASK")).expect("Couldnt write ROOK_MASK!");
+    write!(file, "{}", array_string(BISHOP_MASK.to_vec(), "u64", "BISHOP_MASK")).expect("Couldnt write BISHOP_MASK!");
 
     let (rook_offsets, bishop_offsets, attacks) = generate_sliding_attacks();
-    write!(file, "{}", array_string(rook_offsets.to_vec(), "usize", "ROOK_OFFSETS")).expect("Couldnt write rook_offsets!");
-    write!(file, "{}", array_string(bishop_offsets.to_vec(), "usize", "BISHOP_OFFSETS")).expect("Couldnt write bishop_offsets!");
-    write!(file, "{}", array_string(attacks.to_vec(), "u64", "SLIDING_ATTACKS")).expect("Couldnt write sliding_attacks!");
+    write!(file, "{}", array_string(rook_offsets.to_vec(), "usize", "ROOK_OFFSETS")).expect("Couldnt write ROOK_OFFSETS!");
+    write!(file, "{}", array_string(bishop_offsets.to_vec(), "usize", "BISHOP_OFFSETS")).expect("Couldnt write BISHOP_OFFSETS!");
+    write!(file, "{}", array_string(attacks.to_vec(), "u64", "SLIDING_ATTACKS")).expect("Couldnt write SLIDING_ATTACKS!");
 }
 
 fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
@@ -369,12 +369,50 @@ fn generate_check_path() -> [u64; 4096] {
     masks
 }
 
-fn generate_pin_between() -> [u64; 4096] {
-    let mut masks: [u64; 4096] = [0; 4096];
+fn generate_pin_masks() -> Box<[u64; 16384]> {
+    let mut masks: Box<[u64; 16384]> = Box::new([0; 16384]);
     
-    for king_pos in 0..64 {
-        for square in 0..64 {
+    for king_pos in 0..8 {
+        for square in 0..8 {
+            for occ in 0..256 {
+                let mut mask = 0; 
+
+                let mut found_either: bool = false;
+                let mut between = 0;
+
+                for i in 0..8 {
+                    if i == king_pos {
+                        println!("ki: {i}");
+                        // Found king
+                        if found_either {
+                            break;
+                        }
             
+                        found_either = true;
+                    } else if i == square {
+                        println!("sl: {i}");
+                        // Found slider
+                        mask |= 1 << i;
+                        
+                        if found_either {
+                            break;
+                        }
+                        
+                        found_either = true;
+                    } else if occ & 1 << i != 0 && found_either {
+                        // Found piece between
+                        mask |= 1 << i;
+                        between += 1;
+                    } else if found_either {
+                        // Found empty between
+                        mask |= 1 << i;
+                    }
+                }
+
+                if between == 1 {
+                    masks[2048*king_pos   +   256*square   +    occ] = mask
+                }
+            }
         }
     }
     

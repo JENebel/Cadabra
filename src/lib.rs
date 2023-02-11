@@ -2,7 +2,7 @@ include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
 mod bitboard;
 mod position;
-mod attack_tables;
+mod precalculated_interface;
 mod uci;
 mod evaluation;
 mod zobrist_constants;
@@ -16,7 +16,7 @@ mod perft;
 pub use make_move::*;
 pub use bitboard::*;
 pub use position::*;
-pub use attack_tables::*;
+pub use precalculated_interface::*;
 pub use uci::*;
 pub use evaluation::*;
 pub use zobrist_constants::*;
