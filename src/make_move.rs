@@ -59,7 +59,7 @@ impl Position {
         // Reset zobrist hashes
         self.zobrist_hash ^= CASTLE_KEYS[self.castling_ability as usize];
         if move_type == EnpassantCapture {
-            self.zobrist_hash ^= ENPASSANT_KEYS[unsafe { self.enpassant_square.unwrap_unchecked() } as usize]
+            self.zobrist_hash ^= ENPASSANT_KEYS[self.enpassant_square.least_significant() as usize]
         }
 
         if move_type.is_capture() {
@@ -141,16 +141,16 @@ impl Position {
 
         if move_type == DoublePush {
             let enp_sq = match color {
-                White => Square::from(cmove.to_sq + 8),
-                Black => Square::from(cmove.to_sq - 8),
+                White => cmove.to_sq + 8,
+                Black => cmove.to_sq - 8,
             };
 
-            self.enpassant_square = Some(enp_sq);
+            self.enpassant_square = Bitboard(1 << enp_sq);
 
             self.zobrist_hash ^= ENPASSANT_KEYS[enp_sq as usize];
         }
         else {
-            self.enpassant_square = None
+            self.enpassant_square = Bitboard::EMPTY
         }
 
         // Move the piece

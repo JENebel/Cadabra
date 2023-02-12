@@ -21,7 +21,7 @@ pub fn perft<const DETAILED: bool>(pos: &Position, depth: u8, result: &mut Perft
         return;
     }
 
-    let moves = pos.generate_moves_internal();
+    let moves = pos.generate_moves();
 
     for m in moves {
         if depth == 1 {

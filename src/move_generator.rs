@@ -2,7 +2,6 @@ use super::*;
 
 use PieceType::*;
 use MoveType::*;
-use Color::*;
 
 // Macros to expand const generics for move generation
 /*macro_rules! generate_moves_match_has_enpassant {
@@ -115,18 +114,17 @@ impl Iterator for MoveList {
 
 impl Position {
     /// Generate more legal moves for the position
-    pub fn generate_moves_internal(&self) -> MoveList {
+    pub fn generate_moves(&self) -> MoveList {
         let mut move_list = MoveList::new();
 
         let color = self.active_color;
-        let opp_color = opposite_color(self.active_color);
 
         let check_mask = self.generate_check_mask(color);
 
         // If in double check, only king can move
         let checkers = (check_mask & self.color_bb(opposite_color(color))).count();
         if !(!check_mask.is_empty()) && checkers > 0 {
-            self.generate_king_moves(&mut move_list);
+            self.generate_king_moves::<false>(&mut move_list);
             return move_list
         }
 
@@ -136,13 +134,13 @@ impl Position {
         let opp_or_empty = !self.color_bb(color);
         
         // Pawn moves
-        self.generate_pawn_moves(&mut move_list);
+        self.generate_pawn_moves(&mut move_list, check_mask, hv_pin, d12_pin);
 
         // Knight moves. Only unpinned can move
-        let mut unpinned_knights = self.bb(color, Knight);
+        let mut unpinned_knights = self.bb(color, Knight) & !(hv_pin | d12_pin);
         while let Some(sq) = unpinned_knights.extract_bit() {
             let seen = knight_attacks(sq);
-            let legal = seen & opp_or_empty & check_mask & !(hv_pin | d12_pin);
+            let legal = seen & opp_or_empty & check_mask;
             self.add_normal_moves(&mut move_list, sq, legal, Knight)
         }
 
@@ -197,34 +195,131 @@ impl Position {
         let mut unpinned_queens = queens & !(hv_pin | d12_pin);
         while let Some(sq) = unpinned_queens.extract_bit() {
             let seen = d12_attacks(sq, self.all_occupancies) | hv_attacks(sq, self.all_occupancies);
-
             let legal = seen & opp_or_empty & check_mask;
-
             self.add_normal_moves(&mut move_list, sq, legal, Queen)
         }
 
         // King moves
-        self.generate_king_moves(&mut move_list);
+        self.generate_king_moves::<true>(&mut move_list);
 
         move_list
     }
 
     #[inline(always)]
-    fn generate_pawn_moves(&self, move_list: &mut MoveList) {
+    fn generate_quiet_pawn_moves(&self, move_list: &mut MoveList, from_sq: u8, valid_mask: Bitboard) {
+        let color = self.active_color;
 
+        let fwd_sq = if color.is_white() {
+            from_sq - 8
+        } else {
+            from_sq + 8
+        };
+
+        // If square in front free
+        if !self.all_occupancies.get_bit(fwd_sq) {
+            let last_rank = if color.is_white() {
+                TOP_RANK
+            } else {
+                BOTTOM_RANK
+            };
+
+            // Determine if promotion
+            if last_rank.get_bit(fwd_sq) {
+                move_list.insert(Move::new_promotion(from_sq, fwd_sq, Queen,  false));
+                move_list.insert(Move::new_promotion(from_sq, fwd_sq, Rook,   false));
+                move_list.insert(Move::new_promotion(from_sq, fwd_sq, Bishop, false));
+                move_list.insert(Move::new_promotion(from_sq, fwd_sq, Knight, false));
+            }
+            else {
+                // Normal move
+                if valid_mask.get_bit(fwd_sq) {
+                    move_list.insert(Move::new_normal(from_sq, fwd_sq, Pawn, false))
+                }
+
+                // Check for double push ability
+                let (fwd2_sq, init_rank) = if color.is_white() {
+                    (from_sq - 16, PAWN_INIT_WHITE_RANK)
+                } else {
+                    (from_sq + 16, PAWN_INIT_BLACK_RANK)
+                };
+
+                if init_rank.get_bit(from_sq) && ((!self.all_occupancies) & valid_mask).get_bit(fwd2_sq) {
+                    move_list.insert(Move::new_custom(from_sq, fwd2_sq, Pawn, DoublePush))
+                }
+            }
+        }
     }
 
     #[inline(always)]
-    fn add_normal_moves(&self, move_list: &mut MoveList, from_sq: u8, mut legal_to_sq: Bitboard, piece: PieceType) {
+    fn generate_pawn_captures(&self, move_list: &mut MoveList, from_sq: u8, valid_mask: Bitboard) {
         let color = self.active_color;
-        while let Some(sq) = legal_to_sq.extract_bit() {
+
+        let promotion_rank = if color.is_white() {
+            PAWN_INIT_BLACK_RANK
+        } else {
+            PAWN_INIT_WHITE_RANK
+        };
+
+        let promoting = promotion_rank.get_bit(from_sq);
+
+        let attacks = pawn_attacks(from_sq, color);
+
+        let mut captures = attacks & valid_mask & self.color_bb(opposite_color(color));
+        while let Some(sq) = captures.extract_bit() {
+            if !promoting {
+                move_list.insert(Move::new_normal(from_sq, sq, Pawn, true))
+            } else {
+                move_list.insert(Move::new_promotion(from_sq, sq, Queen,  true));
+                move_list.insert(Move::new_promotion(from_sq, sq, Rook,   true));
+                move_list.insert(Move::new_promotion(from_sq, sq, Bishop, true));
+                move_list.insert(Move::new_promotion(from_sq, sq, Knight, true));
+            }
+        }
+
+        // Enpassant - Mabe move to compile time constant
+        let mut captures = attacks & valid_mask & self.enpassant_square;
+        if let Some(sq) = captures.extract_bit() {
+            let pin_mask = self.generate_enpassant_pin_mask(color, from_sq);
+            if pin_mask.is_empty() {
+                // Not opening up after enpassant capture
+                move_list.insert(Move::new_custom(from_sq, sq, Pawn, EnpassantCapture))
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn generate_pawn_moves(&self, move_list: &mut MoveList, check_mask: Bitboard, hv_pin: Bitboard, d12_pin: Bitboard) {
+        let color = self.active_color;
+        let pawns = self.bb(color, Pawn);
+
+        let mut hv_pinned_pawns = pawns & hv_pin;
+        while let Some(sq) = hv_pinned_pawns.extract_bit() {
+            self.generate_quiet_pawn_moves(move_list, sq, check_mask & hv_pin)
+        }
+
+        let mut d12_pinned_pawns = pawns & d12_pin;
+        while let Some(sq) = d12_pinned_pawns.extract_bit() {
+            self.generate_pawn_captures(move_list, sq, check_mask & d12_pin)
+        }
+
+        let mut unpinned_pawns = pawns & !(hv_pin | d12_pin);
+        while let Some(sq) = unpinned_pawns.extract_bit() {
+            self.generate_quiet_pawn_moves(move_list, sq, check_mask);
+            self.generate_pawn_captures(move_list, sq, check_mask);
+        }
+    }
+
+    #[inline(always)]
+    fn add_normal_moves(&self, move_list: &mut MoveList, from_sq: u8, mut legal_to_sqs: Bitboard, piece: PieceType) {
+        let color = self.active_color;
+        while let Some(sq) = legal_to_sqs.extract_bit() {
             let is_capture = self.color_bb(opposite_color(color)).get_bit(sq);
             move_list.insert(Move::new_normal(from_sq, sq, piece, is_capture))
         }
     }
 
     #[inline(always)]
-    fn generate_king_moves(&self, move_list: &mut MoveList) {
+    fn generate_king_moves<const CHECK_CASTLING: bool>(&self, move_list: &mut MoveList) {
         let color = self.active_color;
         let attacked = 
             self.get_attacked_wo_king(color, Pawn) |
@@ -244,6 +339,46 @@ impl Position {
             legal, 
             King
         );
+
+        if !CHECK_CASTLING {
+            return
+        }
+
+        // Castling
+        match color {
+            Color::White => {
+                if self.castling_ability & (CastlingAbility::WhiteKingSide as u8) != 0 {
+                    let none_attacked = (CastlingAbility::WhiteKingSide.attacked_mask() & attacked).is_empty();
+                    let between_open =  (CastlingAbility::WhiteKingSide.open_mask() & self.all_occupancies).is_empty();
+                    if none_attacked && between_open {
+                        move_list.insert(Move::new_custom(Square::e1 as u8, Square::g1 as u8, King, MoveType::CastleKingSide))
+                    }
+                }
+                if self.castling_ability & (CastlingAbility::WhiteQueenSide as u8) != 0 {
+                    let none_attacked = (CastlingAbility::WhiteQueenSide.attacked_mask() & attacked).is_empty();
+                    let between_open =  (CastlingAbility::WhiteQueenSide.open_mask() & self.all_occupancies).is_empty();
+                    if none_attacked && between_open {
+                        move_list.insert(Move::new_custom(Square::e1 as u8, Square::c1 as u8, King, MoveType::CastleQueenSide))
+                    }
+                }
+            },
+            Color::Black => {
+                if self.castling_ability & (CastlingAbility::BlackKingSide as u8) != 0 {
+                    let none_attacked = (CastlingAbility::BlackKingSide.attacked_mask() & attacked).is_empty();
+                    let between_open =  (CastlingAbility::BlackKingSide.open_mask() & self.all_occupancies).is_empty();
+                    if none_attacked && between_open {
+                        move_list.insert(Move::new_custom(Square::e8 as u8, Square::g8 as u8, King, MoveType::CastleKingSide))
+                    }
+                }
+                if self.castling_ability & (CastlingAbility::BlackQueenSide as u8) != 0 {
+                    let none_attacked = (CastlingAbility::BlackQueenSide.attacked_mask() & attacked).is_empty();
+                    let between_open =  (CastlingAbility::BlackQueenSide.open_mask() &self.all_occupancies).is_empty();
+                    if none_attacked && between_open {
+                        move_list.insert(Move::new_custom(Square::e8 as u8, Square::c8 as u8, King, MoveType::CastleQueenSide))
+                    }
+                }
+            }
+        }
     }
 
     #[inline(always)]
@@ -320,16 +455,34 @@ impl Position {
 
         let opp_color = opposite_color(color);
 
-        let mut d12_sliders = D12_RAYS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
-        while let Some(slider) = d12_sliders.extract_bit() {
-            mask |= pin_mask_d12(self.all_occupancies, self.king_position(color), slider)
+        let mut d1_sliders = D1_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
+        while let Some(slider) = d1_sliders.extract_bit() {
+            mask |= pin_mask_d1(self.all_occupancies, self.king_position(color), slider)
         }
+
+        let mut d2_sliders = D2_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
+        while let Some(slider) = d2_sliders.extract_bit() {
+            mask |= pin_mask_d2(self.all_occupancies, self.king_position(color), slider)
+        }
+        
+        Bitboard(mask)
+    }
+
+    #[inline(always)]
+    pub fn generate_enpassant_pin_mask(&self, color: Color, from_sq: u8) -> Bitboard {
+        let mut mask = 0;
+
+        let opp_color = opposite_color(color);
+
+        let occ = self.all_occupancies ^ 1 << from_sq;
+
+        let mut h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
+        while let Some(slider) = h_sliders.extract_bit() {
+            mask |= pin_mask_h(occ, self.king_position(color), slider)
+        }
+
+        mask |= self.generate_d12_pin_mask(color);
 
         Bitboard(mask)
     }
-}
-
-#[test]
-pub fn test() {
-    
 }

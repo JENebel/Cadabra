@@ -12,7 +12,7 @@ pub struct Position {
     pub all_occupancies:   Bitboard,
 
     pub active_color: Color,
-    pub enpassant_square: Option<Square>,
+    pub enpassant_square: Bitboard,
     pub castling_ability: u8,
 
     pub full_moves: u16,
@@ -44,8 +44,8 @@ impl Position {
 
         print!("   Active:     {}", self.active_color);
         println!("\tFull moves: {}", self.full_moves);
-        if let Some(enpassant) = self.enpassant_square {
-            print!("   Enpassant:  {}", enpassant);
+        if self.enpassant_square.is_not_empty() {
+            print!("   Enpassant:  {}", Square::from(self.enpassant_square.least_significant()));
         }
         println!("\tHalf moves: {}", self.half_moves);
         print!("   Castling:   {}  ", self.castling_ability_string());
@@ -110,7 +110,7 @@ impl Position {
         if castling_str.contains('q') {castling_ability = castling_ability | CastlingAbility::BlackQueenSide as u8}
 
         let enpassant_str = if split.peek().is_some() { split.next().unwrap() } else { "-" };
-        let enpassant_square: Option<Square> = if enpassant_str != "-" { Some(Square::from(enpassant_str)) } else { None };
+        let enpassant_square: Bitboard = if enpassant_str != "-" { Bitboard(1 << Square::from(enpassant_str) as u8) } else { Bitboard::EMPTY };
 
         let half_moves: u8 =  if split.peek().is_some() { split.next().unwrap().parse::<u8>().unwrap()  } else { 0 };
         let full_moves: u16 = if split.peek().is_some() { split.next().unwrap().parse::<u16>().unwrap() } else { 0 };
@@ -180,8 +180,8 @@ impl Position {
             hash ^= SIDE_KEY;
         }
 
-        if let Some(enpassant) = self.enpassant_square {
-            hash ^= ENPASSANT_KEYS[enpassant as usize];
+        if self.enpassant_square.is_not_empty() {
+            hash ^= ENPASSANT_KEYS[self.enpassant_square.least_significant() as usize];
         }
 
         self.zobrist_hash = hash

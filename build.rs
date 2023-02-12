@@ -42,6 +42,12 @@ fn main() {
     write!(file, "{}", format!("pub const END_RANKS_MASK: u64 = {};\n", rank_masks[0] | rank_masks[63])).expect("Couldnt write END_RANKS_MASK!");
     write!(file, "{}", format!("pub const PAWN_INIT_RANKS_MASK: u64 = {};\n\n", rank_masks[8] | rank_masks[55])).expect("Couldnt write PAWN_INIT_RANKS_MASK!");
 
+    write!(file, "{}", format!("pub const TOP_RANK: u64 = {};\n", rank_masks[0])).expect("Couldnt write TOP_RANK!");
+    write!(file, "{}", format!("pub const BOTTOM_RANK: u64 = {};\n\n", rank_masks[63])).expect("Couldnt write BOTTOM_RANK!");
+
+    write!(file, "{}", format!("pub const PAWN_INIT_WHITE_RANK: u64 = {};\n", rank_masks[55])).expect("Couldnt write PAWN_INIT_WHITE_RANK!");
+    write!(file, "{}", format!("pub const PAWN_INIT_BLACK_RANK: u64 = {};\n\n", rank_masks[8])).expect("Couldnt write PAWN_INIT_BLACK_RANK!");
+
     // Check and pin masks
     write!(file, "/// Use king_sq * 64 + slider_sq\n").unwrap();
     write!(file, "{}", array_string(generate_hv_slider_check_mask().to_vec(), "u64", "SLIDER_HV_CHECK_MASK")).expect("Couldnt write SLIDER_HV_CHECK_MASK!");
