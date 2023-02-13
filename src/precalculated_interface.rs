@@ -62,11 +62,6 @@ pub fn d12_attacks(square: u8, occ: Bitboard) -> u64 {
 }
 
 #[inline(always)]
-pub fn pin_mask_hv(occ: Bitboard, king_pos: u8, slider_pos: u8) -> u64 {
-    pin_mask_h(occ, king_pos, slider_pos) | pin_mask_v(occ, king_pos, slider_pos)
-}
-
-#[inline(always)]
 pub fn pin_mask_h(occ: Bitboard, king_pos: u8, slider_pos: u8) -> u64 {
     let rank = RANK_MASKS[king_pos as usize];
 
@@ -102,8 +97,8 @@ pub fn pin_mask_d1(occ: Bitboard, king_pos: u8, slider_pos: u8) -> u64 {
     let diagonal = D1_MASKS[king_pos as usize];
 
     let pexed = pext(occ.as_u64(), diagonal);
-    let kp = LOOKUP_FILE[king_pos as usize];
-    let sq = LOOKUP_FILE[slider_pos as usize];
+    let kp = LOOKUP_D2[king_pos as usize];
+    let sq = LOOKUP_D2[slider_pos as usize];
 
     let index = 2048*kp + 256*sq + pexed as usize;
     let mask = PIN_MASKS[index];
@@ -118,8 +113,8 @@ pub fn pin_mask_d2(occ: Bitboard, king_pos: u8, slider_pos: u8) -> u64 {
     let pexed = pext(occ.as_u64(), diagonal);
 
     // sq and kp are flipped to get correct mask
-    let kp = 7 - LOOKUP_RANK[king_pos as usize];
-    let sq = 7 - LOOKUP_RANK[slider_pos as usize];
+    let kp = LOOKUP_D1[king_pos as usize];
+    let sq = LOOKUP_D1[slider_pos as usize];
 
     let index = 2048*kp + 256*sq + pexed as usize;
     let mask = PIN_MASKS[index];

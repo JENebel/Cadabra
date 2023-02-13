@@ -278,11 +278,11 @@ impl Position {
 
         // Enpassant - Mabe move to compile time constant
         let mut captures = attacks & valid_mask & self.enpassant_square;
-        if let Some(sq) = captures.extract_bit() {
+        if let Some(enp_sq) = captures.extract_bit() {
             let pin_mask = self.generate_enpassant_pin_mask(color, from_sq);
-            if pin_mask.is_empty() {
+            if !pin_mask.get_bit(enp_sq) {
                 // Not opening up after enpassant capture
-                move_list.insert(Move::new_custom(from_sq, sq, Pawn, EnpassantCapture))
+                move_list.insert(Move::new_custom(from_sq, enp_sq, Pawn, EnpassantCapture))
             }
         }
     }
@@ -441,9 +441,14 @@ impl Position {
 
         let opp_color = opposite_color(color);
 
-        let mut hv_sliders = HV_RAYS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
-        while let Some(slider) = hv_sliders.extract_bit() {
-            mask |= pin_mask_hv(self.all_occupancies, self.king_position(color), slider)
+        let mut h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
+        while let Some(slider) = h_sliders.extract_bit() {
+            mask |= pin_mask_h(self.all_occupancies, self.king_position(color), slider);
+        }
+
+        let mut v_sliders = FILE_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
+        while let Some(slider) = v_sliders.extract_bit() {
+            mask |= pin_mask_v(self.all_occupancies, self.king_position(color), slider);
         }
 
         Bitboard(mask)
@@ -479,6 +484,16 @@ impl Position {
         let mut h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
         while let Some(slider) = h_sliders.extract_bit() {
             mask |= pin_mask_h(occ, self.king_position(color), slider)
+        }
+
+        let mut d1_sliders = D1_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
+        while let Some(slider) = d1_sliders.extract_bit() {
+            mask |= pin_mask_d1(occ, self.king_position(color), slider)
+        }
+
+        let mut d2_sliders = D2_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
+        while let Some(slider) = d2_sliders.extract_bit() {
+            mask |= pin_mask_d2(occ, self.king_position(color), slider)
         }
 
         mask |= self.generate_d12_pin_mask(color);
