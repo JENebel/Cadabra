@@ -31,9 +31,11 @@ fn main() {
     let path = "./lines.txt";
 
     let mut output = File::create(path).unwrap();
+    write!(output, "pub const TEST_POSITIONS: Vec<(&str, &str)> = vec![\n").unwrap();
     for pos in positions {
-        write!(output, "{}: {}\n", pos.0, pos.1).unwrap()
+        write!(output, "\t(\"{}\", \"{}\"),\n", pos.0, pos.1).unwrap()
     }
+    write!(output, "];").unwrap()
 }
 
 fn read_lines(filename: &str) -> io::Lines<BufReader<File>> {
