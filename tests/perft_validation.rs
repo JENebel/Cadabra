@@ -1,12 +1,11 @@
-#![feature(buf_read_has_data_left)]
-
 mod common;
 
-use std::{process::{Command, Stdio, Child}, thread, io::{BufReader, BufRead, BufWriter, Read}};
+use std::{process::{Command, Stdio, Child}, thread, io::{BufReader, BufWriter, BufRead, Write, stdout}, collections::HashMap, sync::mpsc::{Receiver, Sender, channel}};
 
-use cadabra::Position;
+use cadabra::{Position, debug_perft};
 use common::{test_positions::TEST_POSITIONS, load_config};
-use std::io::Write;
+
+const RUN_REDUCED: bool = false; 
 
 #[test]
 #[ignore]
@@ -14,67 +13,124 @@ fn run_perft_tests() {
     let config = load_config();
     let ref_engine_path = config.get("reference_engine_path").expect("please provide 'reference_engine_path' in cfg");
     
-    let mut ref_engine = Command::new(ref_engine_path).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().expect("Could not launch reference engine. Check path.");
+    let (mut send_task, mut recv_result, handle) = {
+        let (send_task, recv_task) = channel();
+        let (send_result, recv_result) = channel();
 
-    let mut bufread = BufReader::new(ref_engine.stdout.as_mut().unwrap());
+        let path = ref_engine_path.clone();
+        let handle = thread::spawn(move || {
+            let ref_engine = Command::new(path)
+                                    .stdin(Stdio::piped())
+                                    .stdout(Stdio::piped())
+                                    .spawn()
+                                    .expect("Could not launch reference engine. Check path.");
 
-    thread::sleep(mi)
+            ref_engine_loop(ref_engine, (send_result, recv_task))
+        });
 
-    println!("{:?}", bufread.buffer().len());
+        (send_task, recv_result, handle)
+    };
 
-    return;
+    let positions = TEST_POSITIONS.iter().take(if RUN_REDUCED {24} else {TEST_POSITIONS.len()});
 
-    println!("{:?}", ref_engine);
+    for (name, fen, mut depth) in positions {
+        if RUN_REDUCED {
+            depth -= 1;
+        }
 
-    for test_pos in TEST_POSITIONS {
-        let name = test_pos.0;
-        let fen = test_pos.1;
-        validate_position(name.to_string(), fen.to_string(), 5, &mut ref_engine, Vec::new())
+        print!(" {name} at depth {depth} ... ");
+        stdout().flush().unwrap();
+
+        for depth in 1..=depth {
+            if let Err((err, pos)) = validate_position(fen.to_string(), name, depth, false, (&mut send_task, &mut recv_result)) {
+                println!("Error at {name}:\n{err}\n");
+                pos.pretty_print();
+                
+                assert!(false)
+            }
+        }
+
+        println!("\tok")
     }
+
+    send_task.send(("close".to_string(), 0)).unwrap();
+
+    handle.join().unwrap();
+
+    println!("Validated all test positions")
 }
 
-fn validate_position(name: String, fen: String, depth: u8, ref_engine: &mut Child, moves: Vec<&str>) {
-    
-    // Reference engine io
-    let stdin = ref_engine.stdin.take().unwrap();
-    let stdout = ref_engine.stdout.take().unwrap();
+fn ref_engine_loop(mut ref_engine: Child, (send_result, recv_task): (Sender<HashMap<String, u64>>, Receiver<(String, u8)>)) {
+    let ref_in = ref_engine.stdin.take().unwrap();
+    let ref_out = ref_engine.stdout.take().unwrap();
 
-    let thread = thread::spawn(move || {
+    let mut reader = BufReader::new(ref_out);
+    let mut writer = BufWriter::new(ref_in);
+
+    loop {
+        let buffer = reader.fill_buf().unwrap();
+        let length = buffer.len();
+        reader.consume(length);
         
-        let mut bufread = BufReader::new(stdout);
-        let mut bufwrite = BufWriter::new(stdin);
+        let (fen, depth) = match recv_task.recv() {
+            Ok((s, _)) if s == "close" => break,
+            Ok(rec) => rec,
+            Err(_) => todo!(),
+        };
 
-        // Send position, and start perft
-        bufwrite.write_all(format!("position fen {}", fen).as_bytes()).unwrap();
-        bufwrite.flush().unwrap();
-        bufwrite.write_all(format!("go perft {}", depth).as_bytes()).unwrap();
-        bufwrite.flush().unwrap();
-        let mut buf = String::new();
+        writeln!(writer, "{}", format!("position fen {}", fen)).unwrap();
+        writeln!(writer, "{}", format!("go perft {}", depth)).unwrap();
+        writer.flush().unwrap();
 
-        let mut results = Vec::new();
-
+        let mut results = HashMap::new();
         loop {
-            println!("reading...");
-            bufread.read_line(&mut buf).unwrap();
-            println!("{buf}");
-            let split: Vec<&str> = buf.split(':').collect();
+            let mut buf = String::new();
 
+            reader.read_line(&mut buf).unwrap();
+
+            let split: Vec<&str> = buf.split(':').collect();
             if split.len() != 2 {
                 break;
             }
-
-            // Valid move
-            results.push((split[0].trim().to_string(), split[0].trim().parse::<u64>()));
+            results.insert(split[0].trim().to_string(), split[1].trim().parse::<u64>().unwrap());
         }
-        //thread::sleep(std::time::Duration::from_millis(25));
-        bufread.read_to_end(&mut Vec::new()).unwrap();
+        send_result.send(results).unwrap();
+    }
+}
 
-    });
-    
-    //let pos = Position::new_from_fen(fen);
+fn validate_position(fen: String, name: &str, depth: u8, tracing: bool, (send_task, recv_result): (&mut Sender<(String, u8)>, &mut Receiver<HashMap<String, u64>>)) -> Result<(), (String, Position)> {
+    assert!(depth >= 1);
+    // Reference engine io
 
+    send_task.send((fen.clone(), depth)).unwrap();
 
-    let results = thread.join().unwrap();
+    let mut pos = Position::from_fen(fen.as_str()).unwrap();
+    let own_res = debug_perft(&pos, depth);
 
-    println!("{results:?}")
+    let ref_res = recv_result.recv().unwrap();
+
+    if depth == 1 {
+        let missed_moves = ref_res.iter().filter(|m| !own_res.contains_key(m.0)).map(|m| m.0).collect::<Vec<&String>>();
+        if missed_moves.len() > 0 {
+            return Err((format!("Missed {} legal: {missed_moves:?}", missed_moves.len()), pos))
+        }
+
+        let extra_moves = own_res.iter().filter(|m| !ref_res.contains_key(m.0)).map(|m| m.0).collect::<Vec<&String>>();
+        if extra_moves.len() > 0 {
+            return Err((format!("Found {} too many: {extra_moves:?}", extra_moves.len()), pos))
+        }
+
+        if tracing {
+            return Err((format!("This is weird, Probably an error in the move generator"), pos));
+        }
+    } else {
+        for (key, nodes) in ref_res {
+            if nodes != *own_res.get(&key).unwrap() {
+                pos.make_uci_move(&key).unwrap();
+                println!("Wrong move count on {name} at depth {depth}! Tracing with {key}");
+                return validate_position(pos.get_fen_string(), name, depth - 1, true, (send_task, recv_result));
+            };
+        }
+    }
+    Ok(())
 }

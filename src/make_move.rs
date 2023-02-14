@@ -50,6 +50,16 @@ impl Position {
         make_move!(self, move_to_make)
     }
 
+    pub fn make_uci_move(&mut self, mov: &str) -> Result<(), String> {
+        let m = self.generate_moves().find(|m| m.to_uci_string() == *mov);
+        if let Some(m) = m {
+            self.make_move(m);
+            Ok(())
+        } else {
+            Err(format!("Illegal move: {mov}"))
+        }
+    }
+
     #[inline(always)]
     fn make_move_internal<const IS_WHITE: bool, const MOVE_TYPE: u16>(&mut self, cmove: Move) {
         let move_type = MoveType::from(MOVE_TYPE);
@@ -94,16 +104,6 @@ impl Position {
             
             self.remove_piece(opp_color, Pawn, captured);
             self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Pawn)][captured as usize];
-        }
-
-        if move_type.is_promotion() {
-            let pawn = Self::get_bitboard_index(color, Pawn);
-            self.bitboards[pawn].unset_bit(cmove.to_sq);
-            self.zobrist_hash ^= PIECE_KEYS[pawn][cmove.to_sq as usize];
-
-            let queen = Self::get_bitboard_index(color, Queen);
-            self.bitboards[queen].set_bit(cmove.to_sq);
-            self.zobrist_hash ^= PIECE_KEYS[queen][cmove.to_sq as usize];
         }
 
         if move_type.is_castling() {
@@ -153,11 +153,24 @@ impl Position {
             self.enpassant_square = Bitboard::EMPTY
         }
 
-        // Move the piece
+        // Remove piece from source
         self.remove_piece(color, cmove.piece, cmove.from_sq);
         self.zobrist_hash ^= PIECE_KEYS[cmove.piece as usize][cmove.from_sq as usize];
-        self.place_piece(color, cmove.piece, cmove.to_sq);
-        self.zobrist_hash ^= PIECE_KEYS[cmove.piece as usize][cmove.to_sq as usize];
+        
+
+        if move_type.is_promotion() {
+            // Place upgraded
+            let promo = match move_type {
+                Promotion(promo) | CapturePromotion(promo) => promo,
+                _ => unreachable!()
+            };
+            self.place_piece(color, promo, cmove.to_sq);
+            self.zobrist_hash ^= PIECE_KEYS[promo as usize][cmove.to_sq as usize];
+        } else {
+            // Place same piece on destination
+            self.place_piece(color, cmove.piece, cmove.to_sq);
+            self.zobrist_hash ^= PIECE_KEYS[cmove.piece as usize][cmove.to_sq as usize];
+        }
 
         //Update castling abililties
         self.castling_ability &= CASTLING_RIGHTS[cmove.to_sq as usize] & CASTLING_RIGHTS[cmove.from_sq as usize];

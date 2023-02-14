@@ -2,6 +2,7 @@ use super::*;
 
 use PieceType::*;
 use MoveType::*;
+use Color::*;
 
 // Macros to expand const generics for move generation
 /*macro_rules! generate_moves_match_has_enpassant {
@@ -123,7 +124,7 @@ impl Position {
 
         // If in double check, only king can move
         let checkers = (check_mask & self.color_bb(opposite_color(color))).count();
-        if !(!check_mask.is_empty()) && checkers > 0 {
+        if (!check_mask).is_not_empty() && checkers > 1 {
             self.generate_king_moves::<false>(&mut move_list);
             return move_list
         }
@@ -225,10 +226,12 @@ impl Position {
 
             // Determine if promotion
             if last_rank.get_bit(fwd_sq) {
-                move_list.insert(Move::new_promotion(from_sq, fwd_sq, Queen,  false));
-                move_list.insert(Move::new_promotion(from_sq, fwd_sq, Rook,   false));
-                move_list.insert(Move::new_promotion(from_sq, fwd_sq, Bishop, false));
-                move_list.insert(Move::new_promotion(from_sq, fwd_sq, Knight, false));
+                if valid_mask.get_bit(fwd_sq) {
+                    move_list.insert(Move::new_promotion(from_sq, fwd_sq, Queen,  false));
+                    move_list.insert(Move::new_promotion(from_sq, fwd_sq, Rook,   false));
+                    move_list.insert(Move::new_promotion(from_sq, fwd_sq, Bishop, false));
+                    move_list.insert(Move::new_promotion(from_sq, fwd_sq, Knight, false));
+                }
             }
             else {
                 // Normal move
@@ -251,8 +254,9 @@ impl Position {
     }
 
     #[inline(always)]
-    fn generate_pawn_captures(&self, move_list: &mut MoveList, from_sq: u8, valid_mask: Bitboard) {
+    fn generate_pawn_captures(&self, move_list: &mut MoveList, from_sq: u8, check_mask: Bitboard, pin_mask: Bitboard) {
         let color = self.active_color;
+        let valid_mask = check_mask & pin_mask;
 
         let promotion_rank = if color.is_white() {
             PAWN_INIT_BLACK_RANK
@@ -277,10 +281,27 @@ impl Position {
         }
 
         // Enpassant - Mabe move to compile time constant
-        let mut captures = attacks & valid_mask & self.enpassant_square;
+        if self.enpassant_square.is_empty() {
+            return
+        }
+
+        let mut captures = attacks & pin_mask & self.enpassant_square;
+
+        //println!("{}", captures);
+
         if let Some(enp_sq) = captures.extract_bit() {
+            let captured = match color {
+                White => enp_sq + 8,
+                Black => enp_sq - 8,
+            };
+
+            // Check mask check
+            if !(check_mask.get_bit(enp_sq) || check_mask.get_bit(captured)) {
+                return
+            }
+
             let pin_mask = self.generate_enpassant_pin_mask(color, from_sq);
-            if !pin_mask.get_bit(enp_sq) {
+            if !pin_mask.get_bit(captured) {
                 // Not opening up after enpassant capture
                 move_list.insert(Move::new_custom(from_sq, enp_sq, Pawn, EnpassantCapture))
             }
@@ -299,13 +320,13 @@ impl Position {
 
         let mut d12_pinned_pawns = pawns & d12_pin;
         while let Some(sq) = d12_pinned_pawns.extract_bit() {
-            self.generate_pawn_captures(move_list, sq, check_mask & d12_pin)
+            self.generate_pawn_captures(move_list, sq, check_mask, d12_pin)
         }
 
         let mut unpinned_pawns = pawns & !(hv_pin | d12_pin);
         while let Some(sq) = unpinned_pawns.extract_bit() {
             self.generate_quiet_pawn_moves(move_list, sq, check_mask);
-            self.generate_pawn_captures(move_list, sq, check_mask);
+            self.generate_pawn_captures(move_list, sq, check_mask, Bitboard::FULL);
         }
     }
 
@@ -326,7 +347,8 @@ impl Position {
             self.get_attacked_wo_king(color, Knight) |
             self.get_attacked_wo_king(color, Bishop) |
             self.get_attacked_wo_king(color, Rook) |
-            self.get_attacked_wo_king(color, Queen);
+            self.get_attacked_wo_king(color, Queen) |
+            self.get_attacked_wo_king(color, King);
 
         let king_pos = self.king_position(color);
         let opp_or_empty = !self.color_bb(color);
@@ -340,7 +362,7 @@ impl Position {
             King
         );
 
-        if !CHECK_CASTLING {
+        if !CHECK_CASTLING || (attacked & self.bb(color, King)).is_not_empty() {
             return
         }
 

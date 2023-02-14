@@ -5,13 +5,13 @@ authors = ["Joachim Enggård Nebel"]
 edition = "2021"
 
 [build]
-RUSTFLAGS = "-C target-cpu=native codegen-units=1" # 
+RUSTFLAGS = "-C target-cpu=native codegen-units=1"
 
 [profile.test]
-opt-level = 2
+opt-level = 3
 
 [profile.dev]
-opt-level = 2
+opt-level = 3
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -19,3 +19,4 @@ opt-level = 2
 #cadabra = { path = "../cadabra" }
 rayon = { version = "1.5.3" }
 rand = "0.8"
+filedescriptor = "0.8.2"

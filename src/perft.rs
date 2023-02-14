@@ -1,52 +1,48 @@
-use std::fmt::Display;
+use std::{collections::HashMap};
 
 use super::*;
 
-pub struct PerftResult {
-    pub nodes: u64,
-    pub captures: u64,
-    pub promotions: u64,
-    pub castles: u64,
-    pub enpassants: u64,
+pub fn perft<const DETAILED: bool>(pos: &Position, depth: u8) -> u64 {
+    let moves = pos.generate_moves();
+
+    if depth == 1 {
+        return moves.len() as u64
+    } else if depth == 0 {
+        return 1
+    }
+
+    let mut nodes = 0;
+
+    for m in moves {
+        let mut copy = *pos;
+        copy.make_move(m);
+
+        let temp_res = perft::<false>(&copy, depth - 1);
+
+        if DETAILED {
+            println!("{}: {temp_res}", m.to_uci_string());
+        }
+
+        nodes += temp_res
+    }
+
+    nodes
 }
 
-impl Display for PerftResult {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, " Moves: {}\n Captures: {}\n Promotions: {}\n Castles: {}, \n E.P.: {}", self.nodes, self.captures, self.promotions, self.castles, self.enpassants)
-    }
-}
 
-pub fn perft<const DETAILED: bool>(pos: &Position, depth: u8, result: &mut PerftResult) {
-    if depth == 0 {
-        return;
-    }
+pub fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
+    assert!(depth > 0);
 
     let moves = pos.generate_moves();
 
-    for m in moves {
-        if depth == 1 {
-            result.nodes += 1;
-            if m.is_capture() {
-                result.captures += 1
-            }
-            if m.is_promotion() {
-                result.promotions += 1
-            }
-            if m.is_castling() {
-                result.castles += 1
-            }
-            if m.move_type == MoveType::EnpassantCapture {
-                result.enpassants += 1;
-                result.captures += 1
-            }
-        }
+    let mut result: HashMap<String, u64> = HashMap::new();
 
+    for m in moves {
         let mut copy = *pos;
         copy.make_move(m);
-        let sub_res = result.nodes;
-        perft::<false>(&copy, depth - 1, result);
-        if DETAILED {
-            println!("{}:\t{m}", result.nodes - sub_res)
-        }
+        let sub_nodes = perft::<false>(&copy, depth - 1);
+        result.insert(m.to_uci_string(), sub_nodes);
     }
+
+    result
 }

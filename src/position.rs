@@ -29,7 +29,7 @@ impl Position {
             print!("{} │", format!("{}", 8-y ).as_str());
             for x in 0..8 {
                 if let Some(piece_index) = (0..=11).find(|i| self.bitboards[*i].get_bit(8*y+x)) {
-                    print!(" {}{} ", PIECE_STRINGS[piece_index], if piece_index < 6 {" "} else {"."});
+                    print!(" {}{} ", PIECE_STRINGS[piece_index], if piece_index < 6 {"."} else {" "});
                 } else {
                     print!("    ");
                 }
@@ -42,6 +42,7 @@ impl Position {
         println!("  └────┴────┴────┴────┴────┴────┴────┴────┘");
         println!("    a    b    c    d    e    f    g    h\n");
 
+        print!("   FEN: {}\n", self.get_fen_string());
         print!("   Active:     {}", self.active_color);
         println!("\tFull moves: {}", self.full_moves);
         if self.enpassant_square.is_not_empty() {
@@ -53,6 +54,10 @@ impl Position {
     }
 
     fn castling_ability_string(&self) -> String {
+        if self.castling_ability == 0 {
+            return '-'.to_string()
+        }
+        
         let mut result = String::new();
         if self.castling_ability & CastlingAbility::WhiteKingSide   as u8 != 0  { result += "K" }
         if self.castling_ability & CastlingAbility::WhiteQueenSide  as u8 != 0  { result += "Q" }
@@ -61,11 +66,11 @@ impl Position {
         result
     }
 
-    pub fn new_from_start_pos() -> Self {
-        Position::new_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap()
+    pub fn start_pos() -> Self {
+        Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap()
     }
 
-    pub fn new_from_fen(input: &str) -> Result<Self, &str> {
+    pub fn from_fen(input: &str) -> Result<Self, &str> {
         let fen = input.trim();
         let mut split = fen.split(' ').peekable();
 
@@ -132,6 +137,82 @@ impl Position {
         pos.generate_zobrist_hash();
 
         Ok(pos)
+    }
+
+    pub fn get_fen_string(&self) -> String {
+        let mut pieces = String::new();
+        for r in 0..8 {
+            let mut since = 0;
+
+            for f in 0..8 {
+                let square = r * 8 + f;
+                if let Some(p) = self.piece_at(square) {
+                    if since > 0 {
+                        pieces = format!("{pieces}{since}");
+                        since = 0;
+                    }
+                    pieces = format!("{pieces}{}", piece_to_char(p.0, p.1));
+                } else {
+                    since += 1
+                }
+            }
+
+            if since > 0 {
+                pieces = format!("{pieces}{since}");
+            }
+
+            if r != 7 {
+                pieces = format!("{pieces}/");
+            }
+        }
+
+        let color = match self.active_color {
+            White => 'w',
+            Black => 'b',
+        };
+
+        let castling = self.castling_ability_string();
+
+        let enpassant = if self.enpassant_square.is_not_empty() {
+            format!("{}", Square::from(self.enpassant_square.least_significant()))
+        } else {
+            "-".to_string()
+        };
+
+        let half_moves = self.half_moves;
+        let full_moves = self.full_moves;
+
+        format!("{pieces} {color} {castling} {enpassant} {half_moves} {full_moves}")
+    }
+
+    pub fn piece_at(&self, square: u8) -> Option<(Color, PieceType)> {
+        if self.bb(White, Pawn).get_bit(square) {
+            Some((White, Pawn))
+        } else if self.bb(Black, Pawn).get_bit(square) {
+            Some((Black, Pawn))
+        } else if self.bb(White, Knight).get_bit(square) {
+            Some((White, Knight))
+        } else if self.bb(Black, Knight).get_bit(square) {
+            Some((Black, Knight))
+        } else if self.bb(White, Bishop).get_bit(square) {
+            Some((White, Bishop))
+        } else if self.bb(Black, Bishop).get_bit(square) {
+            Some((Black, Bishop))
+        } else if self.bb(White, Rook).get_bit(square) {
+            Some((White, Rook))
+        } else if self.bb(Black, Rook).get_bit(square) {
+            Some((Black, Rook))
+        } else if self.bb(White, Queen).get_bit(square) {
+            Some((White, Queen))
+        } else if self.bb(Black, Queen).get_bit(square) {
+            Some((Black, Queen))
+        } else if self.bb(White, King).get_bit(square) {
+            Some((White, King))
+        } else if self.bb(Black, King).get_bit(square) {
+            Some((Black, King))
+        } else {
+            None
+        }
     }
 
     #[inline(always)]
