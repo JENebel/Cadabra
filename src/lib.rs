@@ -1,7 +1,7 @@
 include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
 mod bitboard;
-mod position;
+pub mod position;
 mod precalculated_interface;
 mod uci;
 mod evaluation;
@@ -11,7 +11,7 @@ mod definitions;
 mod constants;
 mod cmove;
 mod make_move;
-mod perft;
+pub mod perft;
 
 pub use make_move::*;
 pub use bitboard::*;

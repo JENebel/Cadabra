@@ -2,6 +2,7 @@ use std::{collections::HashMap};
 
 use super::*;
 
+#[inline]
 pub fn perft<const DETAILED: bool>(pos: &Position, depth: u8) -> u64 {
     let moves = pos.generate_moves();
 
