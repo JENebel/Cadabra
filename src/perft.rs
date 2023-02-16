@@ -6,8 +6,6 @@ pub fn perft<const DETAILED: bool>(pos: &Position, depth: u8) -> u64 {
 
     if depth == 1 {
         return moves.len() as u64
-    } else if depth == 0 {
-        return 1
     }
 
     let mut nodes = 0;

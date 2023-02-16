@@ -20,7 +20,7 @@ pub fn perft_bench(c: &mut Criterion) {
 
     c.bench_function("Perft bench", |b|  b.iter(||
         for (_, depth, fen) in &positions {
-            perft::<false>(black_box(&Position::from_fen(fen).unwrap()), *depth);
+            black_box(perft::<false>(black_box(&Position::from_fen(fen).unwrap()), *depth));
         }
     ));
 }

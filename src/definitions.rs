@@ -149,19 +149,27 @@ impl Display for Color {
 }
 
 impl Color {
+    #[inline(always)]
     pub fn is_white(&self) -> bool {
         *self == White
     }
 
+    #[inline(always)]
     pub fn is_black(&self) -> bool {
         *self == Black
     }
 
+    #[inline(always)]
     pub fn piece_offset(&self) -> usize {
         match self {
             White => 0,
             Black => 6,
         }
+    }
+
+    #[inline(always)]
+    pub fn opposite(&self) -> Color {
+        if self.is_white() { Color::Black } else { Color::White }
     }
 }
 
@@ -227,10 +235,6 @@ pub fn piece_to_char(color: Color, piece_type: PieceType) -> char {
 }
 
 pub const PIECE_STRINGS: [&str; 13] = ["P", "N", "B", "R", "Q", "K", "p", "n", "b", "r", "q", "k", "None"];
-
-pub fn opposite_color(color: Color) -> Color {
-    if color == Color::White { Color::Black } else { Color::White }
-}
 
 pub struct Settings {
     pub threads: u8,

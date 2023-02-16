@@ -64,7 +64,7 @@ impl Position {
     fn make_move_internal<const IS_WHITE: bool, const MOVE_TYPE: u16>(&mut self, cmove: Move) {
         let move_type = MoveType::from(MOVE_TYPE);
         let color = if IS_WHITE { Color::White } else { Color::Black };
-        let opp_color = opposite_color(color);
+        let opp_color = color.opposite();
 
         // Reset zobrist hashes
         self.zobrist_hash ^= CASTLE_KEYS[self.castling_ability as usize];

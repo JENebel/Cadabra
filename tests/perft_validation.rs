@@ -17,7 +17,11 @@ fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
     for m in moves {
         let mut copy = *pos;
         copy.make_move(m);
-        let sub_nodes = perft::<false>(&copy, depth - 1);
+        let sub_nodes = if depth > 1 {
+            perft::<false>(&copy, depth - 1)
+        } else {
+            1
+        };
         result.insert(m.to_uci_string(), sub_nodes);
     }
 

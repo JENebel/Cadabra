@@ -271,13 +271,13 @@ impl Position {
     #[inline(always)]
     /// Indicates whether a square is attacked
     pub fn is_square_attacked(&self, square: u8, by_color: Color) -> bool {
-        (pawn_attacks   (square, opposite_color(by_color)) & self.bb(by_color, Pawn  )).is_not_empty() ||
-        (knight_attacks (square)                           & self.bb(by_color, Knight)).is_not_empty() ||
-        (king_attacks   (square)                           & self.bb(by_color, King  )).is_not_empty() ||
-        (hv_attacks     (square, self.all_occupancies)     & self.bb(by_color, Rook  )).is_not_empty() ||
-        (d12_attacks    (square, self.all_occupancies)     & self.bb(by_color, Bishop)).is_not_empty() ||
+        (pawn_attacks   (square, by_color.opposite())   & self.bb(by_color, Pawn  )).is_not_empty() ||
+        (knight_attacks (square)                        & self.bb(by_color, Knight)).is_not_empty() ||
+        (king_attacks   (square)                        & self.bb(by_color, King  )).is_not_empty() ||
+        (hv_attacks     (square, self.all_occupancies)  & self.bb(by_color, Rook  )).is_not_empty() ||
+        (d12_attacks    (square, self.all_occupancies)  & self.bb(by_color, Bishop)).is_not_empty() ||
         ((hv_attacks    (square, self.all_occupancies) 
-           | d12_attacks(square, self.all_occupancies))    & self.bb(by_color, Queen )).is_not_empty()
+           | d12_attacks(square, self.all_occupancies)) & self.bb(by_color, Queen )).is_not_empty()
     }
 
     /// Gets the position of the king of the given color
@@ -288,16 +288,6 @@ impl Position {
 
     #[inline(always)]
     pub fn is_in_check(&self, color: Color) -> bool {
-        self.is_square_attacked(self.king_position(color), opposite_color(color))
+        self.is_square_attacked(self.king_position(color), color.opposite())
     }
-
-    // Get all squares attacked by pieces of this type and color
-    /*pub fn get_attacked(&self, color: Color, piece_type: PieceType) -> Bitboard {
-        let mut bb = self.bb(color, piece_type);
-        let mut mask = Bitboard::EMPTY;
-        while let Some(square) = bb.extract_bit() {
-            mask |= get_attacks(square, color, piece_type, self.all_occupancies)
-        };
-        mask
-    }*/
 }

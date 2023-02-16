@@ -4,46 +4,6 @@ use PieceType::*;
 use MoveType::*;
 use Color::*;
 
-// Macros to expand const generics for move generation
-/*macro_rules! generate_moves_match_has_enpassant {
-    ($move_gen: expr, $pos: expr, $is_quiescence: expr, $is_white: expr, $is_sorting: expr) => {
-        match $pos.enpassant_square.is_some() {
-            true =>  $move_gen.generate_moves::<$is_quiescence, $is_white, $is_sorting, true>($pos),
-            false => $move_gen.generate_moves::<$is_quiescence, $is_white, $is_sorting, false>($pos),
-        }
-    };
-}
-macro_rules! generate_moves_match_is_sorting {
-    ($move_gen: expr, $pos: expr, $is_quiescence: expr, $is_white: expr, $is_sorting: expr) => {
-        match $is_sorting {
-            true =>  generate_moves_match_has_enpassant!($move_gen, $pos, $is_quiescence, $is_white, true),
-            false => generate_moves_match_has_enpassant!($move_gen, $pos, $is_quiescence, $is_white, false),
-        }
-    };
-}
-macro_rules! generate_moves_match_color {
-    ($move_gen: expr, $pos: expr, $is_quiescence: expr, $is_sorting: expr) => {
-        match $pos.active_color {
-            Color::White => generate_moves_match_is_sorting!($move_gen, $pos, $is_quiescence, true, $is_sorting),
-            Color::Black => generate_moves_match_is_sorting!($move_gen, $pos, $is_quiescence, false, $is_sorting),
-        }
-    };
-}
-macro_rules! generate_moves_match_move_types {
-    ($move_gen: expr, $pos: expr, $is_quiescence: expr, $is_sorting: expr) => {
-        match $is_quiescence {
-            true =>  generate_moves_match_color!($move_gen, $pos, true, $is_sorting),
-            false => generate_moves_match_color!($move_gen, $pos, false, $is_sorting),
-        }
-    };
-}
-macro_rules! generate_moves {
-    ($move_gen: expr, $pos: expr, $is_quiescence: expr, $is_sorting: expr) => {
-        // Match color
-        generate_moves_match_move_types!($move_gen, $pos, $is_quiescence, $is_sorting)
-    };
-}*/
-
 macro_rules! generate_pawn_captures {
     ($pos: expr, $move_list: expr, $has_enpassant_sq: expr, $from_sq: expr, $check_mask: expr, $pin_mask: expr) => {
         match $has_enpassant_sq {
@@ -61,6 +21,7 @@ pub struct MoveList {
 }
 
 impl MoveList {
+    #[inline(always)]
     pub fn new() -> Self {
         Self {
             insert_index: 0,
@@ -70,11 +31,13 @@ impl MoveList {
     }
 
     /// Gets the amount of moves stored in the list
+    #[inline(always)]
     pub fn len(&self) -> usize {
         self.insert_index
     }
 
     /// Extracts a new move into the list
+    #[inline(always)]
     pub fn insert(&mut self, new_move: Move) {
         self.move_list[self.insert_index] = new_move;
         self.insert_index += 1;
@@ -123,8 +86,7 @@ impl Iterator for MoveList {
 }
 
 impl Position {
-    /// Generate more legal moves for the position
-    #[inline(always)]
+    /// Generate all legal moves for the position
     pub fn generate_moves(&self) -> MoveList {
         let mut move_list = MoveList::new();
         let color = self.active_color;
@@ -132,7 +94,7 @@ impl Position {
         let check_mask = self.generate_check_mask(color);
 
         // If in double check, only king can move
-        let checkers = (check_mask & self.color_bb(opposite_color(color))).count();
+        let checkers = (check_mask & self.color_bb(color.opposite())).count();
         if (!check_mask).is_not_empty() && checkers > 1 {
             self.generate_king_moves::<false>(&mut move_list);
             return move_list
@@ -277,7 +239,7 @@ impl Position {
 
         let attacks = pawn_attacks(from_sq, color);
 
-        let mut captures = attacks & valid_mask & self.color_bb(opposite_color(color));
+        let mut captures = attacks & valid_mask & self.color_bb(color.opposite());
         while let Some(sq) = captures.extract_bit() {
             if !promoting {
                 move_list.insert(Move::new_normal(from_sq, sq, Pawn, true))
@@ -342,7 +304,7 @@ impl Position {
     fn add_normal_moves(&self, move_list: &mut MoveList, from_sq: u8, mut legal_to_sqs: Bitboard, piece: PieceType) {
         let color = self.active_color;
         while let Some(sq) = legal_to_sqs.extract_bit() {
-            let is_capture = self.color_bb(opposite_color(color)).get_bit(sq);
+            let is_capture = self.color_bb(color.opposite()).get_bit(sq);
             move_list.insert(Move::new_normal(from_sq, sq, piece, is_capture))
         }
     }
@@ -409,7 +371,7 @@ impl Position {
     #[inline(always)]
     fn get_attacked_wo_king(&self, color: Color, piece_type: PieceType) -> Bitboard {
         let occ_wo_king = self.all_occupancies ^ self.bb(color, King);
-        let opp_color = opposite_color(color);
+        let opp_color = color.opposite();
 
         let mut bb = self.bb(opp_color, piece_type);
         let mut mask = Bitboard::EMPTY;
@@ -424,7 +386,7 @@ impl Position {
     pub fn generate_check_mask(&self, color: Color) -> Bitboard {
         let mut mask = Bitboard::EMPTY;
         let king_pos = self.king_position(color);
-        let opp_color = opposite_color(color);
+        let opp_color = color.opposite();
 
         let king_rays = hv_attacks(king_pos, self.all_occupancies) | d12_attacks(king_pos, self.all_occupancies);
 
@@ -464,7 +426,7 @@ impl Position {
     pub fn generate_hv_pin_mask(&self, color: Color) -> Bitboard {
         let mut mask = 0;
 
-        let opp_color = opposite_color(color);
+        let opp_color = color.opposite();
 
         let mut h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
         while let Some(slider) = h_sliders.extract_bit() {
@@ -483,7 +445,7 @@ impl Position {
     pub fn generate_d12_pin_mask(&self, color: Color) -> Bitboard {
         let mut mask = 0;
 
-        let opp_color = opposite_color(color);
+        let opp_color = color.opposite();
 
         let mut d1_sliders = D1_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
         while let Some(slider) = d1_sliders.extract_bit() {
@@ -502,7 +464,7 @@ impl Position {
     pub fn generate_enpassant_pin_mask(&self, color: Color, from_sq: u8) -> Bitboard {
         let mut mask = 0;
 
-        let opp_color = opposite_color(color);
+        let opp_color = color.opposite();
 
         let occ = self.all_occupancies ^ 1 << from_sq;
 
