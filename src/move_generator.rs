@@ -44,6 +44,14 @@ macro_rules! generate_moves {
     };
 }*/
 
+macro_rules! generate_pawn_captures {
+    ($move_list: expr, $has_enpassant_sq: expr, from_sq: expr, check_mask: expr, pin_mask: expr) => {
+        match has_enpassant_sq {
+            true => self.generate_pawn_captures::<has_enpassant_sq>(move_list, from_sq, check_mask, pin_mask);
+        }
+    };
+}
+
 pub struct MoveList {
     insert_index: usize,
     extract_index: usize,
@@ -286,8 +294,6 @@ impl Position {
         }
 
         let mut captures = attacks & pin_mask & self.enpassant_square;
-
-        //println!("{}", captures);
 
         if let Some(enp_sq) = captures.extract_bit() {
             let captured = match color {

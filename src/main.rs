@@ -1,17 +1,17 @@
-use std::{time::Instant, io::{self, Write, BufReader, BufRead}, fs::File};
+use std::time::Instant;
 
 use cadabra::*;
-use Square::*;
+/*use Square::*;
 use PieceType::*;
 use MoveType::*;
-use Color::*;
+use Color::*;*/
 
 fn main() {
-    let pos = Position::start_pos();
+    let pos = Position::from_fen("3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -").unwrap();
 
     pos.pretty_print();
 
-    let depth = 6;
+    let depth = 5;
 
     let before = Instant::now();
 

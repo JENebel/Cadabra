@@ -2,10 +2,27 @@ mod common;
 
 use std::{process::{Command, Stdio, Child}, thread, io::{BufReader, BufWriter, BufRead, Write, stdout}, collections::HashMap, sync::mpsc::{Receiver, Sender, channel}};
 
-use cadabra::{Position, debug_perft};
+use cadabra::{Position, perft};
 use common::{test_positions::TEST_POSITIONS, load_config};
 
 const RUN_REDUCED: bool = false; 
+
+fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
+    assert!(depth > 0);
+
+    let moves = pos.generate_moves();
+
+    let mut result: HashMap<String, u64> = HashMap::new();
+
+    for m in moves {
+        let mut copy = *pos;
+        copy.make_move(m);
+        let sub_nodes = perft::<false>(&copy, depth - 1);
+        result.insert(m.to_uci_string(), sub_nodes);
+    }
+
+    result
+}
 
 #[test]
 #[ignore]
