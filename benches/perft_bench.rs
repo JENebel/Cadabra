@@ -4,6 +4,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use cadabra::{perft::*, Position};
 
 pub fn perft_bench(c: &mut Criterion) {
+    let mut c = c.benchmark_group("perft_bench_group");
+    c.sampling_mode(criterion::SamplingMode::Flat);
     // Load positions
     let lines = fs::read_to_string("./benches/bench_positions.txt")
         .expect("Should have been able to read the file");
@@ -14,7 +16,7 @@ pub fn perft_bench(c: &mut Criterion) {
         let depth = parts[1].trim().parse::<u8>().unwrap();
         let fen = parts[2].trim();
         (name, depth, fen)
-    }).collect();
+    }).filter(|n| !n.0.starts_with("#")).collect();
 
     c.bench_function("Perft bench", |b|  b.iter(||
         for (_, depth, fen) in &positions {
@@ -24,12 +26,13 @@ pub fn perft_bench(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name = benches;
+    name = perft_bench_group;
     config = Criterion::default()
-        .measurement_time(Duration::from_secs(120))
-        .warm_up_time(Duration::from_secs(5))
-        .sample_size(10);
+        .measurement_time(Duration::from_secs(60))
+        .warm_up_time(Duration::from_secs(15))
+        .sample_size(10)
+        .confidence_level(0.9);
     targets = perft_bench
 }
 
-criterion_main!(benches);
+criterion_main!(perft_bench_group);

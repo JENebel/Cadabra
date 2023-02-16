@@ -45,9 +45,10 @@ macro_rules! generate_moves {
 }*/
 
 macro_rules! generate_pawn_captures {
-    ($move_list: expr, $has_enpassant_sq: expr, from_sq: expr, check_mask: expr, pin_mask: expr) => {
-        match has_enpassant_sq {
-            true => self.generate_pawn_captures::<has_enpassant_sq>(move_list, from_sq, check_mask, pin_mask);
+    ($pos: expr, $move_list: expr, $has_enpassant_sq: expr, $from_sq: expr, $check_mask: expr, $pin_mask: expr) => {
+        match $has_enpassant_sq {
+            true =>  $pos.generate_pawn_captures::<true>($move_list, $from_sq, $check_mask, $pin_mask),
+            false => $pos.generate_pawn_captures::<false>($move_list, $from_sq, $check_mask, $pin_mask)
         }
     };
 }
@@ -123,9 +124,9 @@ impl Iterator for MoveList {
 
 impl Position {
     /// Generate more legal moves for the position
+    #[inline(always)]
     pub fn generate_moves(&self) -> MoveList {
         let mut move_list = MoveList::new();
-
         let color = self.active_color;
 
         let check_mask = self.generate_check_mask(color);
@@ -262,7 +263,7 @@ impl Position {
     }
 
     #[inline(always)]
-    fn generate_pawn_captures(&self, move_list: &mut MoveList, from_sq: u8, check_mask: Bitboard, pin_mask: Bitboard) {
+    fn generate_pawn_captures<const HAS_ENPASSANT: bool>(&self, move_list: &mut MoveList, from_sq: u8, check_mask: Bitboard, pin_mask: Bitboard) {
         let color = self.active_color;
         let valid_mask = check_mask & pin_mask;
 
@@ -288,8 +289,8 @@ impl Position {
             }
         }
 
-        // Enpassant - Mabe move to compile time constant
-        if self.enpassant_square.is_empty() {
+        // Return if no npassant
+        if !HAS_ENPASSANT {
             return
         }
 
@@ -318,6 +319,7 @@ impl Position {
     fn generate_pawn_moves(&self, move_list: &mut MoveList, check_mask: Bitboard, hv_pin: Bitboard, d12_pin: Bitboard) {
         let color = self.active_color;
         let pawns = self.bb(color, Pawn);
+        let has_enpassant = self.enpassant_square.is_not_empty();
 
         let mut hv_pinned_pawns = pawns & hv_pin;
         while let Some(sq) = hv_pinned_pawns.extract_bit() {
@@ -326,13 +328,13 @@ impl Position {
 
         let mut d12_pinned_pawns = pawns & d12_pin;
         while let Some(sq) = d12_pinned_pawns.extract_bit() {
-            self.generate_pawn_captures(move_list, sq, check_mask, d12_pin)
+            generate_pawn_captures!(self, move_list, has_enpassant, sq, check_mask, d12_pin);
         }
 
         let mut unpinned_pawns = pawns & !(hv_pin | d12_pin);
         while let Some(sq) = unpinned_pawns.extract_bit() {
             self.generate_quiet_pawn_moves(move_list, sq, check_mask);
-            self.generate_pawn_captures(move_list, sq, check_mask, Bitboard::FULL);
+            generate_pawn_captures!(self, move_list, has_enpassant, sq, check_mask, Bitboard::FULL);
         }
     }
 
@@ -361,12 +363,7 @@ impl Position {
 
         let legal = king_attacks(king_pos) & !attacked & opp_or_empty;
 
-        self.add_normal_moves(
-            move_list, 
-            self.king_position(color), 
-            legal, 
-            King
-        );
+        self.add_normal_moves(move_list, king_pos, legal, King);
 
         if !CHECK_CASTLING || (attacked & self.bb(color, King)).is_not_empty() {
             return

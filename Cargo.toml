@@ -3,22 +3,11 @@ name = "cadabra"
 version = "0.1.0"
 authors = ["Joachim Enggård Nebel"]
 edition = "2021"
-
-[build]
-RUSTFLAGS = "-C target-cpu=native codegen-units=1"
-
-[profile.test]
-opt-level = 3
-
-[profile.dev]
-opt-level = 3
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license-file = "LICENSE.txt"
+build = "./prepare_constants.rs"
 
 [dependencies]
-#cadabra = { path = "../cadabra" }
-rayon = { version = "1.5.3" }
-rand = "0.8"
+bitintr = "0.3.0"
 
 [dev-dependencies]
 criterion = "0.4.0"
