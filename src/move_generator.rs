@@ -44,7 +44,7 @@ impl MoveList {
     }
 
     /// Extracts the best move in the list
-    #[inline(always)]
+    #[inline]
     pub fn next_best(&mut self) -> Option<Move> {
         if self.extract_index == self.insert_index {
             return None

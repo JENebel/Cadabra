@@ -1,27 +1,24 @@
 use super::*;
 
 #[inline]
-pub fn perft<const DETAILED: bool>(pos: &Position, depth: u8) -> u64 {
+pub fn perft<const ROOT: bool>(pos: &Position, depth: u8) -> u64 {
     let moves = pos.generate_moves();
 
-    if depth == 1 {
-        return moves.len() as u64
-    }
+    let is_next_leaf = depth == 2;
 
-    let mut nodes = 0;
-
-    for m in moves {
+    moves.fold(0, |acc, m| {
         let mut copy = *pos;
         copy.make_move(m);
 
-        let temp_res = perft::<false>(&copy, depth - 1);
+        let sub_nodes = match is_next_leaf {
+            true => copy.generate_moves().len() as u64,
+            false => perft::<false>(&copy, depth - 1)
+        };
 
-        if DETAILED {
-            println!("{}: {temp_res}", m.to_uci_string());
+        if ROOT {
+            println!("{}: {sub_nodes}", m.to_uci_string());
         }
 
-        nodes += temp_res
-    }
-
-    nodes
+        acc + sub_nodes
+    })
 }
