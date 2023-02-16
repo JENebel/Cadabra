@@ -9,5 +9,5 @@ fn main() {
 
     let before = Instant::now();
 
-    println!(" Found: {} moves at depth {depth} in {}ms", perft::<true>(&pos, depth), before.elapsed().as_millis());
+    println!(" Found: {} moves at depth {depth} in {}ms", pos.perft::<true>(depth), before.elapsed().as_millis());
 }

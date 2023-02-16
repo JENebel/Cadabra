@@ -1,7 +1,7 @@
 use std::{fs, time::Duration};
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use cadabra::{perft::*, Position};
+use cadabra::Position;
 
 pub fn perft_bench(c: &mut Criterion) {
     let mut c = c.benchmark_group("perft_bench_group");
@@ -20,7 +20,7 @@ pub fn perft_bench(c: &mut Criterion) {
 
     c.bench_function("Perft bench", |b|  b.iter(||
         for (_, depth, fen) in &positions {
-            black_box(perft::<false>(black_box(&Position::from_fen(fen).unwrap()), *depth));
+            black_box(Position::from_fen(fen).unwrap().perft::<false>(*depth));
         }
     ));
 }
