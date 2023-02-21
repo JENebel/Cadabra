@@ -2,10 +2,10 @@ mod common;
 
 use std::{process::{Command, Stdio, Child}, thread, io::{BufReader, BufWriter, BufRead, Write, stdout}, collections::HashMap, sync::mpsc::{Receiver, Sender, channel}};
 
-use cadabra::{Position};
+use cadabra::Position;
 use common::{test_positions::TEST_POSITIONS, load_config};
 
-const RUN_REDUCED: bool = false; 
+const RUN_REDUCED: bool = true; 
 
 fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
     assert!(depth > 0);
@@ -17,8 +17,10 @@ fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
     for m in moves {
         let mut copy = *pos;
         copy.make_move(m);
-        let sub_nodes = if depth > 1 {
+        let sub_nodes = if depth >2 {
             copy.perft::<false>(depth - 1)
+        } else if depth > 1 {
+            debug_perft(&copy, depth - 1).iter().map(|m| m.1).sum()
         } else {
             1
         };

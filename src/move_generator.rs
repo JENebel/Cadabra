@@ -105,72 +105,90 @@ impl Position {
         let hv_pin = self.generate_hv_pin_mask(color);
         let d12_pin = self.generate_d12_pin_mask(color);
         let opp_or_empty = !self.color_bb(color);
+        let valid_mask = opp_or_empty & check_mask;
+        let occ = self.all_occupancies;
         
         // Pawn moves
         self.generate_pawn_moves(&mut move_list, check_mask, hv_pin, d12_pin);
 
         // Knight moves. Only unpinned can move
-        let mut unpinned_knights = self.bb(color, Knight) & !(hv_pin | d12_pin);
-        while let Some(sq) = unpinned_knights.extract_bit() {
-            let seen = knight_attacks(sq);
-            let legal = seen & opp_or_empty & check_mask;
-            self.add_normal_moves(&mut move_list, sq, legal, Knight)
-        }
+        let knights = self.bb(color, Knight);
+        self.generate_piece_moves(
+            &mut move_list, 
+            Knight, 
+            knights & !(hv_pin | d12_pin), // All unpinned
+            |sq| knight_attacks(sq),
+            valid_mask
+        );
 
-        // Rook moves
+        // ROOK MOVES
         let rooks = self.bb(color, Rook);
-        let mut pinned_rooks = rooks & hv_pin;
-        while let Some(sq) = pinned_rooks.extract_bit() {
-            let seen = hv_attacks(sq, self.all_occupancies);
-            let legal = seen & opp_or_empty & check_mask & hv_pin;
-            self.add_normal_moves(&mut move_list, sq, legal, Rook)
-        }
+        // Unpinned rooks
+        self.generate_piece_moves(
+            &mut move_list, 
+            Rook, 
+            rooks & hv_pin, 
+            |sq| hv_attacks(sq, occ),
+            valid_mask & hv_pin
+        );
 
-        let mut unpinned_rooks = rooks & !(hv_pin | d12_pin);
-        while let Some(sq) = unpinned_rooks.extract_bit() {
-            let seen = hv_attacks(sq, self.all_occupancies);
-            let legal = seen & opp_or_empty & check_mask;
-            self.add_normal_moves(&mut move_list, sq, legal, Rook)
-        }
+        // Unpinned rooks
+        self.generate_piece_moves(
+            &mut move_list, 
+            Rook, 
+            rooks & !(hv_pin | d12_pin), 
+            |sq| hv_attacks(sq, occ),
+            valid_mask
+        );
 
-        // Bishop moves
+        // BISHOP MOVES
         let bishops = self.bb(color, Bishop);
-        let mut pinned_bishops = bishops & d12_pin;
-        while let Some(sq) = pinned_bishops.extract_bit() {
-            let seen = d12_attacks(sq, self.all_occupancies);
-            let legal = seen & opp_or_empty & check_mask & d12_pin;
-            self.add_normal_moves(&mut move_list, sq, legal, Bishop)
-        }
+        // Pinned bishops
+        self.generate_piece_moves(
+            &mut move_list, 
+            Bishop, 
+            bishops & d12_pin, 
+            |sq| d12_attacks(sq, occ), // Can only move on ranks/files
+            valid_mask & d12_pin
+        );
 
-        let mut unpinned_bishops = bishops & !(hv_pin | d12_pin);
-        while let Some(sq) = unpinned_bishops.extract_bit() {
-            let seen = d12_attacks(sq, self.all_occupancies);
-            let legal = seen & opp_or_empty & check_mask;
-            self.add_normal_moves(&mut move_list, sq, legal, Bishop)
-        }
+        // Unpinned bishops
+        self.generate_piece_moves(
+            &mut move_list, 
+            Bishop, 
+            bishops & !(hv_pin | d12_pin), 
+            |sq| d12_attacks(sq, occ), // Can only move on ranks/files
+            valid_mask
+        );
 
-        // Queen moves
+        // QUEEN MOVES
         let queens = self.bb(color, Queen);
-        let mut hv_pinned_queens = queens & hv_pin;
-        while let Some(sq) = hv_pinned_queens.extract_bit() {
-            let seen = hv_attacks(sq, self.all_occupancies);
-            let legal = seen & opp_or_empty & check_mask & hv_pin;
-            self.add_normal_moves(&mut move_list, sq, legal, Queen)
-        }
+        // Rank/file pinned queens
+        self.generate_piece_moves(
+            &mut move_list, 
+            Queen,
+            queens & hv_pin,
+            |sq| hv_attacks(sq, occ), // Can only move on ranks/files
+            valid_mask & hv_pin
+        );
 
-        let mut d12_pinned_queens = queens & d12_pin;
-        while let Some(sq) = d12_pinned_queens.extract_bit() {
-            let seen = d12_attacks(sq, self.all_occupancies);
-            let legal = seen & opp_or_empty & check_mask & d12_pin;
-            self.add_normal_moves(&mut move_list, sq, legal, Queen)
-        }
+        // Diagonally pinned queens
+        self.generate_piece_moves(
+            &mut move_list, 
+            Queen, 
+            queens & d12_pin,
+            |sq| d12_attacks(sq, occ), // Can only move on diagonal
+            valid_mask & d12_pin
+        );
 
-        let mut unpinned_queens = queens & !(hv_pin | d12_pin);
-        while let Some(sq) = unpinned_queens.extract_bit() {
-            let seen = d12_attacks(sq, self.all_occupancies) | hv_attacks(sq, self.all_occupancies);
-            let legal = seen & opp_or_empty & check_mask;
-            self.add_normal_moves(&mut move_list, sq, legal, Queen)
-        }
+        // Unpinned queens
+        self.generate_piece_moves(
+            &mut move_list, 
+            Queen,
+            queens & !(hv_pin | d12_pin), 
+            |sq| hv_attacks(sq, occ) | d12_attacks(sq, occ), 
+            valid_mask
+        );
 
         // King moves
         self.generate_king_moves::<true>(&mut move_list);
@@ -178,22 +196,16 @@ impl Position {
         move_list
     }
 
-    //#[inline(always)]
+    #[inline(always)]
     /// Generates all piece moves for the squares selected (But not for pawns and kings)
     /// Valid_mask is  (opp_or_empty & check_mask)
-    /*fn generate_piece_moves(&self, move_list: &mut MoveList, piece: PieceType, mut pieces: Bitboard, valid_mask: Bitboard, pin_mask: Bitboard) {
+    fn generate_piece_moves<F: Fn(u8) -> u64>(&self, move_list: &mut MoveList, piece: PieceType, mut pieces: Bitboard, attacks: F, valid_mask: Bitboard) {
         while let Some(sq) = pieces.extract_bit() {
-            let seen = match piece {
-                Knight => knight_attacks(sq),
-                Bishop => d12_attacks(sq, self.all_occupancies),
-                Rook => hv_attacks(sq, self.all_occupancies),
-                Queen => d12_attacks(sq, self.all_occupancies) | hv_attacks(sq, self.all_occupancies),
-                _ => panic!("Pawn and king moves should not be generated here!"),
-            };
-            let legal = seen & valid_mask & pin_mask;
-            self.add_normal_moves(move_list, sq, legal, Queen)
+            let seen = attacks(sq);
+            let legal = seen & valid_mask;
+            self.add_normal_moves(move_list, sq, legal, piece)
         }
-    }*/
+    }
 
     #[inline(always)]
     fn add_normal_moves(&self, move_list: &mut MoveList, from_sq: u8, mut legal_to_sqs: Bitboard, piece: PieceType) {
