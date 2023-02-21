@@ -94,8 +94,9 @@ impl Position {
         let check_mask = self.generate_check_mask(color);
 
         // If in double check, only king can move
+        let in_check = (!check_mask).is_not_empty();
         let checkers = (check_mask & self.color_bb(color.opposite())).count();
-        if (!check_mask).is_not_empty() && checkers > 1 {
+        if in_check && checkers > 1 {
             self.generate_king_moves::<false>(&mut move_list);
             return move_list
         }
@@ -175,6 +176,32 @@ impl Position {
         self.generate_king_moves::<true>(&mut move_list);
 
         move_list
+    }
+
+    //#[inline(always)]
+    /// Generates all piece moves for the squares selected (But not for pawns and kings)
+    /// Valid_mask is  (opp_or_empty & check_mask)
+    /*fn generate_piece_moves(&self, move_list: &mut MoveList, piece: PieceType, mut pieces: Bitboard, valid_mask: Bitboard, pin_mask: Bitboard) {
+        while let Some(sq) = pieces.extract_bit() {
+            let seen = match piece {
+                Knight => knight_attacks(sq),
+                Bishop => d12_attacks(sq, self.all_occupancies),
+                Rook => hv_attacks(sq, self.all_occupancies),
+                Queen => d12_attacks(sq, self.all_occupancies) | hv_attacks(sq, self.all_occupancies),
+                _ => panic!("Pawn and king moves should not be generated here!"),
+            };
+            let legal = seen & valid_mask & pin_mask;
+            self.add_normal_moves(move_list, sq, legal, Queen)
+        }
+    }*/
+
+    #[inline(always)]
+    fn add_normal_moves(&self, move_list: &mut MoveList, from_sq: u8, mut legal_to_sqs: Bitboard, piece: PieceType) {
+        let color = self.active_color;
+        while let Some(sq) = legal_to_sqs.extract_bit() {
+            let is_capture = self.color_bb(color.opposite()).get_bit(sq);
+            move_list.insert(Move::new_normal(from_sq, sq, piece, is_capture))
+        }
     }
 
     #[inline(always)]
@@ -301,16 +328,7 @@ impl Position {
     }
 
     #[inline(always)]
-    fn add_normal_moves(&self, move_list: &mut MoveList, from_sq: u8, mut legal_to_sqs: Bitboard, piece: PieceType) {
-        let color = self.active_color;
-        while let Some(sq) = legal_to_sqs.extract_bit() {
-            let is_capture = self.color_bb(color.opposite()).get_bit(sq);
-            move_list.insert(Move::new_normal(from_sq, sq, piece, is_capture))
-        }
-    }
-
-    #[inline(always)]
-    fn generate_king_moves<const CHECK_CASTLING: bool>(&self, move_list: &mut MoveList) {
+    fn generate_king_moves<const GEN_CASTLING: bool>(&self, move_list: &mut MoveList) {
         let color = self.active_color;
         let attacked = 
             self.get_attacked_wo_king(color, Pawn) |
@@ -327,7 +345,7 @@ impl Position {
 
         self.add_normal_moves(move_list, king_pos, legal, King);
 
-        if !CHECK_CASTLING || (attacked & self.bb(color, King)).is_not_empty() {
+        if !GEN_CASTLING || (attacked & self.bb(color, King)).is_not_empty() {
             return
         }
 

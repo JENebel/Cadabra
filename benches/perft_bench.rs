@@ -6,6 +6,7 @@ use cadabra::{perft::*, Position};
 pub fn perft_bench(c: &mut Criterion) {
     let mut c = c.benchmark_group("perft_bench_group");
     c.sampling_mode(criterion::SamplingMode::Flat);
+    
     // Load positions
     let lines = fs::read_to_string("./benches/bench_positions.txt")
         .expect("Should have been able to read the file");
@@ -29,7 +30,7 @@ criterion_group! {
     name = perft_bench_group;
     config = Criterion::default()
         .measurement_time(Duration::from_secs(60))
-        .warm_up_time(Duration::from_secs(15))
+        .warm_up_time(Duration::from_secs(5))
         .sample_size(10)
         .confidence_level(0.9);
     targets = perft_bench
