@@ -2,9 +2,8 @@ use std::{io::stdin, process, thread, sync::mpsc::{channel, Receiver}, time::Ins
 use super::*;
 
 pub fn interface_loop() {
-
     let mut pos = Position::start_pos();
-
+    
     // Spawn listening thread that reads input without blocking main thread
     let ui_receiver = spawn_ui_listener_thread();
 
@@ -39,6 +38,7 @@ pub fn interface_loop() {
                 }
             },
             "perft" => parse_perft(command, &pos),
+            "bench" => run_bench(),
 
 
             // UCI commands
@@ -72,7 +72,8 @@ pub fn interface_loop() {
             "quit" => {
                 quit()
             },
-            _ => println!("Unknown command")
+
+            _ => println!("Unknown command '{cmd_name}', use 'help' command for all commands")
         }
     }
 }
