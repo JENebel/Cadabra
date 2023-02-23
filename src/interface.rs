@@ -38,7 +38,13 @@ pub fn interface_loop() {
                 }
             },
             "perft" => parse_perft(command, &pos),
-            "bench" => run_bench(),
+            "bench" => {
+                match take_next(command) {
+                    Some("save") => run_bench(true),
+                    None => run_bench(false),
+                    Some(arg) => println!("Illegal parameter for benhc '{arg}'"),
+                }
+            },
 
 
             // UCI commands

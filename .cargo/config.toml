@@ -4,12 +4,6 @@ rustflags = ["-Ctarget-cpu=native"]
 [profile.test]
 opt-level = 3
 
-[profile.bench]
-opt-level = 2
-lto = true
-codegen-units = 1
-incremental = true
-
 [profile.dev]
 opt-level = 1
 
@@ -21,3 +15,4 @@ incremental = true
 
 [alias]
 validate = "run --release --bin validator stockfish short"
+benchmark = "run --release bench"

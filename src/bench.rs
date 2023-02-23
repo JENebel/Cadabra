@@ -1,4 +1,5 @@
-use std::{time::Instant, io::{stdout, Write}};
+use std::{time::Instant, io::{stdout, Write, self, BufRead}, fs::File, path::PathBuf};
+use colored::Colorize;
 
 use crate::Position;
 
@@ -10,19 +11,19 @@ pub const BENCH_POSITIONS: [(&'static str, &'static str, u8); 5] = [
     ("Karpov v Kasparov",   "r1bq1rk1/3n1pbp/2pQ2p1/4n3/1p2PP2/1P2B3/P3N1PP/1N1RKB1R b K - 1 15", 5),
 ];
 
-const ITERATIONS: u8 = 10;
+const ITERATIONS: u8 = 15;
 
-pub fn run_bench() {
+pub fn run_bench(save: bool) {
     let positions = BENCH_POSITIONS.iter().map(|(_, fen, depth)| (Position::from_fen(fen).unwrap(), *depth)).collect::<Vec<(Position, u8)>>();
 
-    println!("\nWarming up...");
+    println!("Warming up...");
     let mut before = Instant::now();
     for (pos, depth) in &positions {
         pos.perft::<false>(*depth);
     }
     let elapsed = before.elapsed().as_millis();
 
-    println!("Running perft bench. Done in approximately {:.2}s...", (elapsed as f64 / 1000.) * ITERATIONS as f64);
+    println!("Running perft bench. Will take approximately {:.2}s...", (elapsed as f64 / 1000.) * ITERATIONS as f64);
 
     let mut nodes = 0;
 
@@ -39,7 +40,52 @@ pub fn run_bench() {
     }
 
     let perft_time = before.elapsed().as_millis();
-    println!("\nFinished perft bench in {:.2}s", perft_time as f64 / 1000.);
+    
     let perft_mnps = (nodes as f64 / perft_time as f64) / 1000.;
-    println!("Speed was: {perft_mnps:.2} MNodes/s\n")
+
+    show_results(perft_time, perft_mnps);
+
+    // Save results as baseline if relevant
+    if !save {
+        return
+    }
+
+    let mut file = File::create(baseline_path()).expect("Could not create baseline file");
+    writeln!(file, "perft:{}", perft_mnps).expect("Could not write benchmark");
+    println!("Baseline saved");
+}
+
+fn show_results(perft_time: u128, perft_mnps: f64) {
+    println!("Finished perft bench in {:.2}s", perft_time as f64 / 1000.);
+    println!("Speed was: {perft_mnps:.2} MNodes/s");
+
+    // Load baseline
+    // TODO handle errors here
+    let file = File::open(baseline_path()).unwrap(); 
+    let lines = io::BufReader::new(file).lines().map(|l| l.unwrap()).collect::<Vec<String>>();
+    let prev_perft_line = lines.iter().find(|l| l.starts_with("perft")).unwrap();
+    let prev_perft_mnps = prev_perft_line.split_once(':').unwrap().1.parse::<f64>().unwrap();
+
+    let perft_diff_pc = (prev_perft_mnps / perft_mnps - 1.) * 100.;
+    let perft_diff_pc_str = format!("{:.3}", perft_diff_pc);
+
+    // Set color
+    let result_str = if f64::abs(perft_diff_pc) > 0.5 {
+        if perft_diff_pc < 0. {
+            perft_diff_pc_str.red()
+        } else {
+            perft_diff_pc_str.green()
+        }
+        
+    } else {
+        perft_diff_pc_str.normal()
+    };
+
+    println!("MNodes/s changed by {}%", result_str);
+}
+
+fn baseline_path() -> PathBuf {
+    let mut path = std::env::current_exe().unwrap();
+    path.pop();
+    path.join("bench_baseline.txt")
 }
