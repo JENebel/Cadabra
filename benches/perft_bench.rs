@@ -29,7 +29,7 @@ pub fn perft_bench(c: &mut Criterion) {
 criterion_group! {
     name = perft_bench_group;
     config = Criterion::default()
-        .measurement_time(Duration::from_secs(180))
+        .measurement_time(Duration::from_secs(30))
         .warm_up_time(Duration::from_secs(5))
         .sample_size(10)
         .confidence_level(0.9);

@@ -1,10 +1,13 @@
 [package]
 name = "cadabra"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Joachim Enggård Nebel"]
 edition = "2021"
-license-file = "LICENSE.txt"
+license-file = "BSD-2-Clause"
 build = "./prepare_constants.rs"
+description = "UCI compatible chess engine"
+repository = "https://github.com/JENebel/Cadabra/"
+
 
 [dependencies]
 bitintr = "0.3.0"

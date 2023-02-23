@@ -45,7 +45,7 @@ checksum = "0d261e256854913907f67ed06efbc3338dfe6179796deefc1ff763fc1aee5535"
 
 [[package]]
 name = "cadabra"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bitintr",
  "criterion",
