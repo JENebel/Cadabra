@@ -1,9 +1,6 @@
 [build]
 rustflags = ["-Ctarget-cpu=native"]
 
-[profile.test]
-opt-level = 3
-
 [profile.dev]
 opt-level = 1
 

@@ -66,19 +66,23 @@ fn show_results(perft_time: u128, perft_mnps: f64) {
     let prev_perft_line = lines.iter().find(|l| l.starts_with("perft")).unwrap();
     let prev_perft_mnps = prev_perft_line.split_once(':').unwrap().1.parse::<f64>().unwrap();
 
-    let perft_diff_pc = (prev_perft_mnps / perft_mnps - 1.) * 100.;
+    let perft_diff_pc = f64::abs(perft_mnps - prev_perft_mnps)/((perft_mnps + prev_perft_mnps) / 2.) * 100.;
     let perft_diff_pc_str = format!("{:.3}", perft_diff_pc);
 
     // Set color
-    let result_str = if f64::abs(perft_diff_pc) > 0.5 {
-        if perft_diff_pc < 0. {
-            perft_diff_pc_str.red()
+    let result_str = if perft_diff_pc > 0.5 {
+        if perft_mnps < prev_perft_mnps {
+            format!("-{}", perft_diff_pc_str).red()
         } else {
-            perft_diff_pc_str.green()
+            format!("+{}", perft_diff_pc_str).green()
         }
-        
-    } else {
-        perft_diff_pc_str.normal()
+    } 
+    else {
+        if perft_mnps < prev_perft_mnps {
+            format!("-{}", perft_diff_pc_str).normal()
+        } else {
+            format!("+{}", perft_diff_pc_str).normal()
+        }
     };
 
     println!("MNodes/s changed by {}%", result_str);
