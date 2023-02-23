@@ -18,3 +18,6 @@ opt-level = 2
 lto = true
 codegen-units = 1
 incremental = true
+
+[alias]
+validate = "run --release --bin validator stockfish short"

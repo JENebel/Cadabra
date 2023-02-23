@@ -1,15 +1,17 @@
-mod common;
-
-use std::{process::{Command, Stdio, Child}, thread, io::{BufReader, BufWriter, BufRead, Write, stdout}, collections::HashMap, sync::mpsc::{Receiver, Sender, channel}};
+use std::{process::{Command, Stdio, Child}, thread, io::{BufReader, BufWriter, BufRead, Write, stdout}, collections::HashMap, sync::mpsc::{Receiver, Sender, channel}, env};
 
 use cadabra::Position;
-use common::{test_positions::TEST_POSITIONS, load_config};
+mod test_positions;
+use test_positions::*;
 
-const RUN_REDUCED: bool = true; 
+// Run with something like this, if 'stockfish.exe' is in executing directory
+// "cargo validate" is alias for "cargo run --release --bin validator stockfish short"
+
+fn main() {
+    run_perft_tests()
+}
 
 fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
-    assert!(depth > 0);
-
     let moves = pos.generate_moves();
 
     let mut result: HashMap<String, u64> = HashMap::new();
@@ -30,19 +32,16 @@ fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
     result
 }
 
-#[test]
-#[ignore]
 fn run_perft_tests() {
-    let config = load_config();
-    let ref_engine_path = config.get("reference_engine_path").expect("please provide 'reference_engine_path' in cfg");
-    
+    let args: Vec<String> = env::args().collect();
+
     let (mut send_task, mut recv_result, handle) = {
         let (send_task, recv_task) = channel();
         let (send_result, recv_result) = channel();
+        let args = args.clone();
 
-        let path = ref_engine_path.clone();
         let handle = thread::spawn(move || {
-            let ref_engine = Command::new(path)
+            let ref_engine = Command::new(args[1].as_str())
                                     .stdin(Stdio::piped())
                                     .stdout(Stdio::piped())
                                     .spawn()
@@ -54,10 +53,16 @@ fn run_perft_tests() {
         (send_task, recv_result, handle)
     };
 
-    let positions = TEST_POSITIONS.iter().take(if RUN_REDUCED {24} else {TEST_POSITIONS.len()});
+    let short = if let Some("short") = args.get(2).map(|a| a.as_str()) {
+        true
+    } else {
+        false
+    };
+
+    let positions = TEST_POSITIONS.iter().take(if short {24} else {TEST_POSITIONS.len()});
 
     for (name, fen, mut depth) in positions {
-        if RUN_REDUCED {
+        if short {
             depth -= 1;
         }
 
