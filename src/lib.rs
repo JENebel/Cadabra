@@ -11,8 +11,9 @@ mod definitions;
 mod constants;
 mod cmove;
 mod make_move;
+mod perft;
 mod bench;
-pub mod perft;
+mod search;
 
 pub use make_move::*;
 pub use bitboard::*;
@@ -27,3 +28,4 @@ pub use constants::*;
 pub use cmove::*;
 pub use perft::*;
 pub use bench::*;
+pub use search::*;

@@ -51,7 +51,7 @@ impl Position {
     }
 
     pub fn make_uci_move(&mut self, mov: &str) -> Result<(), String> {
-        let m = self.generate_moves().find(|m| m.to_uci_string() == *mov);
+        let m = self.generate_moves().find(|m| format!("{m}") == mov);
         if let Some(m) = m {
             self.make_move(m);
             Ok(())

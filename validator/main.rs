@@ -26,7 +26,7 @@ fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
         } else {
             1
         };
-        result.insert(m.to_uci_string(), sub_nodes);
+        result.insert(format!("{m}"), sub_nodes);
     }
 
     result

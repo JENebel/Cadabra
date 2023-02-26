@@ -82,7 +82,7 @@ fn main() {
 
 fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
     let len = data.len();
-    let mut result = (if len < 1000 { "pub const "} else { "pub static " } ).to_string();
+    let mut result = String::new();
     result += cons_name;
     result += &format!(": [{}; {}] = [", type_string, len).to_string();
 
@@ -93,7 +93,7 @@ fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
     }
     result += "\n];\n\n";
 
-    result
+    format!("pub const {result}")
 }
 
 fn generate_open_castling_masks() -> [u64; 4] {

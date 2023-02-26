@@ -17,7 +17,7 @@ impl Position {
             };
     
             if ROOT {
-                println!("{}: {sub_nodes}", m.to_uci_string());
+                println!("{m}: {sub_nodes}");
             }
     
             acc + sub_nodes

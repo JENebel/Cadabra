@@ -136,24 +136,14 @@ impl Move {
     pub fn is_castling(&self) -> bool {
         self.move_type.is_castling()
     }
-
-    pub fn to_uci_string(&self) -> String {
-        let mut res = format!("{}{}", Square::from(self.from_sq), Square::from(self.to_sq));
-
-        if let Promotion(p) | CapturePromotion(p) = self.move_type {
-            res = format!("{res}{}", piece_to_char(Color::Black, p));
-        }
-
-        res
-    }
 }
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut res = format!("{}: {} -> {}", self.piece, Square::from(self.from_sq), Square::from(self.to_sq));
+        let mut res = format!("{}{}", Square::from(self.from_sq), Square::from(self.to_sq));
 
-        if self.move_type != MoveType::Quiet {
-            res = format!("{res} - {}", self.move_type)
+        if let Promotion(p) | CapturePromotion(p) = self.move_type {
+            res = format!("{res}{}", piece_to_char(Color::Black, p));
         }
 
         write!(f, "{res}")

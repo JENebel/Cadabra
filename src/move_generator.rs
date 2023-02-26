@@ -95,7 +95,7 @@ impl Position {
 
         // If in double check, only king can move
         let in_check = (!check_mask).is_not_empty();
-        let checkers = (check_mask & self.color_bb(color.opposite())).count();
+        let checkers = (check_mask & self.color_bb(color.opposite())).count_bits();
         if in_check && checkers > 1 {
             self.generate_king_moves::<false>(&mut move_list);
             return move_list

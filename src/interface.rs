@@ -1,6 +1,8 @@
 use std::{io::stdin, process, thread, sync::mpsc::{channel, Receiver}, time::Instant};
 use super::*;
 
+
+
 pub fn interface_loop() {
     let mut pos = Position::start_pos();
     
@@ -37,6 +39,9 @@ pub fn interface_loop() {
                     println!("{err}")
                 }
             },
+            "eval" => {
+                println!("Heuristic value: {}", pos.evaluate())
+            }
             "perft" => parse_perft(command, &pos),
             "bench" => {
                 match take_next(command) {
@@ -68,7 +73,7 @@ pub fn interface_loop() {
             "position " => {
                 todo!()
             },
-            "go" => todo!(),//parse_go(command, &pos),
+            "go" => parse_go(command, &pos),
             "stop" => {
                 todo!()
             },
@@ -113,25 +118,58 @@ pub fn take_next<'a>(command: &'a mut &str) -> Option<&'a str> {
     Some(next)
 }
 
-fn quit() {
-    process::exit(0)
-}
-
-fn parse_perft(command: &mut &str, pos: &Position) {
+pub fn take_next_u8<'a>(command: &'a mut &str) -> Option<u8> {
     let depth_str = match take_next(command) {
         None => {
-            println!("Please provide a depth");
-            return
+            return None
         },
         Some(depth) => {
             depth
         },
     };
 
-    let depth = match depth_str.parse::<u8>() {
-        Ok(depth) => depth,
+    match depth_str.parse::<u8>() {
+        Ok(depth) => Some(depth),
         Err(_) => {
-            println!("Depth arg must be an integer in [0..255], got '{depth_str}'");
+            None
+        },
+    }
+}
+
+fn quit() {
+    process::exit(0)
+}
+
+fn parse_go(command: &mut &str, pos: &Position) {
+    let arg = match take_next(command) {
+        Some(arg) => arg,
+        None => {
+            println!("Provide arguments for go command");
+            return
+        },
+    };
+    
+    match arg {
+        "depth" => {
+            let depth = match take_next_u8(command) {
+                Some(d) => d,
+                None => {
+                    println!("Illegal go command");
+                    return
+                },
+            };
+
+            search(pos, depth)
+        },
+        _ => println!("Illegal go command")
+    }
+}
+
+fn parse_perft(command: &mut &str, pos: &Position) {
+    let depth = match take_next_u8(command) {
+        Some(d) => d,
+        None => {
+            println!("Illegal perft command");
             return
         },
     };
