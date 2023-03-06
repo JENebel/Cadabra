@@ -72,7 +72,7 @@ fn run_perft_tests() {
         for depth in 1..=depth {
             if let Err((err, pos)) = validate_position(fen.to_string(), name, depth, false, (&mut send_task, &mut recv_result)) {
                 println!("Error at {name}:\n{err}\n");
-                pos.pretty_print();
+                println!("{}", pos);
                 
                 assert!(false)
             }
@@ -155,7 +155,7 @@ fn validate_position(fen: String, name: &str, depth: u8, tracing: bool, (send_ta
             if nodes != *own_res.get(&key).unwrap() {
                 pos.make_uci_move(&key).unwrap();
                 println!("Wrong move count on {name} at depth {depth}! Tracing with {key}");
-                return validate_position(pos.get_fen_string(), name, depth - 1, true, (send_task, recv_result));
+                return validate_position(pos.fen_string(), name, depth - 1, true, (send_task, recv_result));
             };
         }
     }

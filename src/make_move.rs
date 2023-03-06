@@ -2,147 +2,132 @@ use super::*;
 use MoveType::*;
 use PieceType::*;
 use Color::*;
-
-pub const CASTLING_RIGHTS: [u8; 64] = [
-    7, 15, 15, 15,  3, 15, 15, 11,
-   15, 15, 15, 15, 15, 15, 15, 15,
-   15, 15, 15, 15, 15, 15, 15, 15,
-   15, 15, 15, 15, 15, 15, 15, 15,
-   15, 15, 15, 15, 15, 15, 15, 15,
-   15, 15, 15, 15, 15, 15, 15, 15,
-   15, 15, 15, 15, 15, 15, 15, 15,
-   13, 15, 15, 15, 12, 15, 15, 14
-];
+use Square::*;
 
 impl Position {
-    pub fn make_uci_move(&mut self, mov: &str) -> Result<(), String> {
-        let m = self.generate_moves().find(|m| format!("{m}") == mov);
+    pub fn make_uci_move(&mut self, moov: &str) -> Result<(), String> {
+        let m = self.generate_moves().find(|m| format!("{m}") == moov);
         if let Some(m) = m {
             self.make_move(m);
             Ok(())
         } else {
-            Err(format!("Illegal move: {mov}"))
+            Err(format!("Illegal move: {moov}"))
         }
     }
 
     #[inline(always)]
-    pub fn make_move(&mut self, cmove: Move) {
-        let move_type = cmove.move_type;
+    pub fn make_move(&mut self, moov: Move) {
+        //let move_type = moov.move_type;
         let color = self.active_color;
         let opp_color = color.opposite();
 
-        // Reset zobrist hashes
-        self.zobrist_hash ^= CASTLE_KEYS[self.castling_ability as usize];
-        if move_type == EnpassantCapture {
-            self.zobrist_hash ^= ENPASSANT_KEYS[self.enpassant_square.least_significant() as usize]
-        }
+        // Unapply current castling ability zobrist (reapplied after castling)
+        self.apply_castling_zobrist();
 
-        if move_type.is_capture() {
+        if moov.is_capture() {
             // Find the taken piece and remove it
-            if self.bb(opp_color, Pawn).get_bit(cmove.to_sq) {
-                self.remove_piece(opp_color, Pawn, cmove.to_sq);
-                self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Pawn)][cmove.to_sq as usize];
+            if self.bb(opp_color, Pawn).get_bit(moov.dst) {
+                self.remove_piece(opp_color, Pawn, moov.dst);
+                self.apply_piece_zobrist(opp_color, Pawn, moov.dst);
             }
-            else if self.bb(opp_color, Knight).get_bit(cmove.to_sq) {
-                self.remove_piece(opp_color, Knight, cmove.to_sq);
-                self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Knight)][cmove.to_sq as usize];
+            else if self.bb(opp_color, Knight).get_bit(moov.dst) {
+                self.remove_piece(opp_color, Knight, moov.dst);
+                self.apply_piece_zobrist(opp_color, Knight, moov.dst);
             }
-            else if self.bb(opp_color, Bishop).get_bit(cmove.to_sq) {
-                self.remove_piece(opp_color, Bishop, cmove.to_sq);
-                self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Bishop)][cmove.to_sq as usize];
+            else if self.bb(opp_color, Bishop).get_bit(moov.dst) {
+                self.remove_piece(opp_color, Bishop, moov.dst);
+                self.apply_piece_zobrist(opp_color, Bishop, moov.dst);
             }
-            else if self.bb(opp_color, Rook).get_bit(cmove.to_sq) {
-                self.remove_piece(opp_color, Rook, cmove.to_sq);
-                self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Rook)][cmove.to_sq as usize];
+            else if self.bb(opp_color, Rook).get_bit(moov.dst) {
+                self.remove_piece(opp_color, Rook, moov.dst);
+                self.apply_piece_zobrist(opp_color, Rook, moov.dst);
             }
-            else if self.bb(opp_color, Queen).get_bit(cmove.to_sq) {
-                self.remove_piece(opp_color, Queen, cmove.to_sq);
-                self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Queen)][cmove.to_sq as usize];
+            else if self.bb(opp_color, Queen).get_bit(moov.dst) {
+                self.remove_piece(opp_color, Queen, moov.dst);
+                self.apply_piece_zobrist(opp_color, Queen, moov.dst);
             }
         }
 
-        if move_type == EnpassantCapture {
+        if moov.move_type == EnpassantCapture {
             let captured = match color {
-                White => cmove.to_sq + 8,
-                Black => cmove.to_sq - 8,
+                White => moov.dst + 8,
+                Black => moov.dst - 8,
             };
             
             self.remove_piece(opp_color, Pawn, captured);
-            self.zobrist_hash ^= PIECE_KEYS[Self::get_bitboard_index(opp_color, Pawn)][captured as usize];
+            self.apply_piece_zobrist(opp_color, Pawn, captured);
+            self.apply_enpassant_zobrist(self.enpassant_square.least_significant());
         }
 
-        if move_type.is_castling() {
+        if moov.is_castling() {
             let rook_origin;
             let rook_target;
 
-            match (color, move_type) {
+            match (color, moov.move_type) {
                 (White, CastleKingSide) => {
-                    rook_origin = Square::h1 as u8;
-                    rook_target = Square::f1 as u8;
+                    rook_origin = h1 as u8;
+                    rook_target = f1 as u8;
                 },
                 (White, CastleQueenSide) => {
-                    rook_origin = Square::a1 as u8;
-                    rook_target = Square::d1 as u8;
+                    rook_origin = a1 as u8;
+                    rook_target = d1 as u8;
                 },
                 (Black, CastleKingSide) => {
-                    rook_origin = Square::h8 as u8;
-                    rook_target = Square::f8 as u8;
+                    rook_origin = h8 as u8;
+                    rook_target = f8 as u8;
                 },
                 (Black, CastleQueenSide) => {
-                    rook_origin = Square::a8 as u8;
-                    rook_target = Square::d8 as u8;
+                    rook_origin = a8 as u8;
+                    rook_target = d8 as u8;
                 },
                 _ => unreachable!() // Only enters with castling move_types
             }
 
-            let rook_index = Self::get_bitboard_index(color, Rook);
-
             self.remove_piece(color, Rook, rook_origin);
-            self.zobrist_hash ^= PIECE_KEYS[rook_index][rook_origin as usize];
+            self.apply_piece_zobrist(color, Rook, rook_origin);
 
             self.place_piece(color, Rook, rook_target);
-            self.zobrist_hash ^= PIECE_KEYS[rook_index][rook_target as usize];
+            self.apply_piece_zobrist(color, Rook, rook_target);
         }
 
-        if move_type == DoublePush {
+        if moov.move_type == DoublePush {
             let enp_sq = match color {
-                White => cmove.to_sq + 8,
-                Black => cmove.to_sq - 8,
+                White => moov.dst + 8,
+                Black => moov.dst - 8,
             };
 
             self.enpassant_square = Bitboard(1 << enp_sq);
 
-            self.zobrist_hash ^= ENPASSANT_KEYS[enp_sq as usize];
+            self.apply_enpassant_zobrist(enp_sq)
         }
         else {
             self.enpassant_square = Bitboard::EMPTY
         }
 
         // Remove piece from source
-        self.remove_piece(color, cmove.piece, cmove.from_sq);
-        self.zobrist_hash ^= PIECE_KEYS[cmove.piece as usize][cmove.from_sq as usize];
-        
+        self.remove_piece(color, moov.piece, moov.src);
+        self.apply_piece_zobrist(color, moov.piece, moov.src);
 
-        if move_type.is_promotion() {
+        if moov.is_promotion() {
             // Place upgraded
-            let promo = match move_type {
+            let promo = match moov.move_type {
                 Promotion(promo) | CapturePromotion(promo) => promo,
                 _ => unreachable!()
             };
-            self.place_piece(color, promo, cmove.to_sq);
-            self.zobrist_hash ^= PIECE_KEYS[promo as usize][cmove.to_sq as usize];
+            self.place_piece(color, promo, moov.dst);
+            self.apply_piece_zobrist(color, promo, moov.dst);
         } else {
-            // Place same piece on destination
-            self.place_piece(color, cmove.piece, cmove.to_sq);
-            self.zobrist_hash ^= PIECE_KEYS[cmove.piece as usize][cmove.to_sq as usize];
+            // Normally move piece to target square
+            self.place_piece(color, moov.piece, moov.dst);
+            self.apply_piece_zobrist(color, moov.piece, moov.dst);
         }
 
         //Update castling abililties
-        self.castling_ability &= CASTLING_RIGHTS[cmove.to_sq as usize] & CASTLING_RIGHTS[cmove.from_sq as usize];
-        self.zobrist_hash ^= CASTLE_KEYS[self.castling_ability as usize];
+        self.update_castling_rights(moov.src, moov.dst);
+        self.apply_castling_zobrist();
 
         // Update half moves counter
-        if move_type.is_capture() || cmove.piece == Pawn {
+        if moov.is_capture() || moov.piece == Pawn {
             self.half_moves = 0;
         }
         else {
@@ -156,6 +141,6 @@ impl Position {
 
         // Switch side
         self.active_color = opp_color;
-        self.zobrist_hash ^= SIDE_KEY;
+        self.apply_side_zobrist();
     }
 }

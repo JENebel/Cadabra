@@ -7,9 +7,9 @@ impl Position {
     
         let is_next_leaf = depth == 2;
     
-        moves.fold(0, |acc, m| {
+        moves.fold(0, |acc, moov| {
             let mut copy = *self;
-            copy.make_move(m);
+            copy.make_move(moov);
     
             let sub_nodes = match is_next_leaf {
                 true =>  copy.generate_moves().len() as u64,
@@ -17,7 +17,7 @@ impl Position {
             };
     
             if ROOT {
-                println!("{m}: {sub_nodes}");
+                println!("{moov}: {sub_nodes}");
             }
     
             acc + sub_nodes

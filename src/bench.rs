@@ -17,7 +17,10 @@ const ITERATIONS: u16 = 10;
 pub fn run_bench(save: bool) {
     let positions = BENCH_POSITIONS.iter().map(|(_, fen, depth)| (Position::from_fen(fen).unwrap(), *depth)).collect::<Vec<(Position, u8)>>();
 
-    println!("Warming up...");
+    if WARMUPS > 0 {
+        println!("Warming up...");
+    }
+    
     let before_wu = Instant::now();
     for i in 1..=WARMUPS {
         print!(" Warm up ite. {i}/{WARMUPS} ...\t");

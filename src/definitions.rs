@@ -56,6 +56,17 @@ pub const LOOKUP_D2: [usize; 64] =
 	0, 1, 2, 3, 4, 5, 6, 7,
 ];
 
+pub const CASTLING_RIGHTS: [u8; 64] = [
+    7, 15, 15, 15,  3, 15, 15, 11,
+   15, 15, 15, 15, 15, 15, 15, 15,
+   15, 15, 15, 15, 15, 15, 15, 15,
+   15, 15, 15, 15, 15, 15, 15, 15,
+   15, 15, 15, 15, 15, 15, 15, 15,
+   15, 15, 15, 15, 15, 15, 15, 15,
+   15, 15, 15, 15, 15, 15, 15, 15,
+   13, 15, 15, 15, 12, 15, 15, 14
+];
+
 #[derive(Copy, Clone, PartialEq)]
 #[allow(non_camel_case_types)]
 #[allow(dead_code)]
@@ -115,6 +126,7 @@ pub enum CastlingAbility {
 
 impl CastlingAbility {
     /// Gets the castling mask. This consists of the squares between the king and the rook, including both
+    #[inline(always)]
     pub fn attacked_mask(&self) -> u64 {
         match self {
             CastlingAbility::WhiteKingSide =>  ATTACKED_CASTLING_MASKS[0],
@@ -125,6 +137,7 @@ impl CastlingAbility {
     }
 
     /// Gets the castling mask. This consists of the squares between the king and the rook, including both
+    #[inline(always)]
     pub fn open_mask(&self) -> u64 {
         match self {
             CastlingAbility::WhiteKingSide =>  OPEN_CASTLING_MASKS[0],
@@ -189,7 +202,15 @@ pub enum PieceType {
 
 impl Default for PieceType {
     fn default() -> Self {
-        Self::Pawn
+        Pawn
+    }
+}
+
+impl PieceType {
+    /// Calculates the bitboard index of the piece, given its offset
+    #[inline(always)]
+    pub fn index(&self, color: Color) -> usize {
+        *self as usize + color.piece_offset()
     }
 }
 
@@ -249,9 +270,4 @@ impl Default for Settings {
     fn default() -> Self {
         Self { threads: 1, transposition_table_mb: 128 }
     }
-}
-
-pub struct SearchContext {
-    // TranspositionTable
-    // 
 }

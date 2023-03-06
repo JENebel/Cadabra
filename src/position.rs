@@ -1,7 +1,10 @@
-use crate::{zobrist_constants::*, bitboard::*, precalculated_interface::*, definitions::*};
+use std::fmt::Display;
+
+use crate::{bitboard::*, definitions::*};
 
 use Color::*;
 use PieceType::*;
+use CastlingAbility::*;
 
 #[derive(Clone, Copy)]
 pub struct Position {
@@ -18,54 +21,9 @@ pub struct Position {
     pub full_moves: u16,
     pub half_moves: u8,
     pub zobrist_hash: u64,
-
-    // Repetition table should be included for make/unmake
 }
 
 impl Position {
-    pub fn pretty_print(&self) {
-        println!("\n  ┌────┬────┬────┬────┬────┬────┬────┬────┐");
-        for y in 0..8 {
-            print!("{} │", format!("{}", 8-y ).as_str());
-            for x in 0..8 {
-                if let Some(piece_index) = (0..=11).find(|i| self.bitboards[*i].get_bit(8*y+x)) {
-                    print!(" {}{} ", PIECE_STRINGS[piece_index], if piece_index < 6 {"."} else {" "});
-                } else {
-                    print!("    ");
-                }
-                
-                if x != 7 { print!("│") };
-            }
-            println!("│");
-            if y != 7 { println!("  ├────┼────┼────┼────┼────┼────┼────┼────┤")};
-        }
-        println!("  └────┴────┴────┴────┴────┴────┴────┴────┘");
-        println!("    a    b    c    d    e    f    g    h\n");
-
-        print!("   FEN: {}\n", self.get_fen_string());
-        print!("   Active:     {}", self.active_color);
-        println!("\tFull moves: {}", self.full_moves);
-        if self.enpassant_square.is_not_empty() {
-            print!("   Enpassant:  {}", Square::from(self.enpassant_square.least_significant()));
-        }
-        println!("\tHalf moves: {}", self.half_moves);
-        print!("   Castling:   {}  ", self.castling_ability_string());
-        println!("\tZobrist:   {:#0x}\n", self.zobrist_hash);
-    }
-
-    fn castling_ability_string(&self) -> String {
-        if self.castling_ability == 0 {
-            return '-'.to_string()
-        }
-        
-        let mut result = String::new();
-        if self.castling_ability & CastlingAbility::WhiteKingSide   as u8 != 0  { result += "K" }
-        if self.castling_ability & CastlingAbility::WhiteQueenSide  as u8 != 0  { result += "Q" }
-        if self.castling_ability & CastlingAbility::BlackKingSide   as u8 != 0  { result += "k" }
-        if self.castling_ability & CastlingAbility::BlackQueenSide  as u8 != 0  { result += "q" }
-        result
-    }
-
     pub fn start_pos() -> Self {
         Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap()
     }
@@ -91,7 +49,7 @@ impl Position {
             }
             else if char != '/' {
                 if let Ok((color, piece_type)) = char_to_piece(char) {
-                    bitboards[Position::get_bitboard_index(color, piece_type)].set_bit(i);
+                    bitboards[piece_type.index(color)].set_bit(i);
                     color_occupancies[color as usize].set_bit(i)
                 } else {
                     return Err("Illegal character")
@@ -109,10 +67,10 @@ impl Position {
 
         let castling_str =  if split.peek().is_some() { split.next().unwrap() } else { "" };
         let mut castling_ability: u8 = 0;
-        if castling_str.contains('K') {castling_ability = castling_ability | CastlingAbility::WhiteKingSide as u8 }
-        if castling_str.contains('Q') {castling_ability = castling_ability | CastlingAbility::WhiteQueenSide as u8}
-        if castling_str.contains('k') {castling_ability = castling_ability | CastlingAbility::BlackKingSide as u8}
-        if castling_str.contains('q') {castling_ability = castling_ability | CastlingAbility::BlackQueenSide as u8}
+        if castling_str.contains('K') {castling_ability = castling_ability | WhiteKingSide as u8 }
+        if castling_str.contains('Q') {castling_ability = castling_ability | WhiteQueenSide as u8}
+        if castling_str.contains('k') {castling_ability = castling_ability | BlackKingSide as u8}
+        if castling_str.contains('q') {castling_ability = castling_ability | BlackQueenSide as u8}
 
         let enpassant_str = if split.peek().is_some() { split.next().unwrap() } else { "-" };
         let enpassant_square: Bitboard = if enpassant_str != "-" { Bitboard(1 << Square::from(enpassant_str) as u8) } else { Bitboard::EMPTY };
@@ -139,14 +97,44 @@ impl Position {
         Ok(pos)
     }
 
-    pub fn get_fen_string(&self) -> String {
+    pub fn fen_string(&self) -> String {
+        fn piece_at(pos: &Position, square: u8) -> Option<(Color, PieceType)> {
+            if pos.bb(White, Pawn).get_bit(square) {
+                Some((White, Pawn))
+            } else if pos.bb(Black, Pawn).get_bit(square) {
+                Some((Black, Pawn))
+            } else if pos.bb(White, Knight).get_bit(square) {
+                Some((White, Knight))
+            } else if pos.bb(Black, Knight).get_bit(square) {
+                Some((Black, Knight))
+            } else if pos.bb(White, Bishop).get_bit(square) {
+                Some((White, Bishop))
+            } else if pos.bb(Black, Bishop).get_bit(square) {
+                Some((Black, Bishop))
+            } else if pos.bb(White, Rook).get_bit(square) {
+                Some((White, Rook))
+            } else if pos.bb(Black, Rook).get_bit(square) {
+                Some((Black, Rook))
+            } else if pos.bb(White, Queen).get_bit(square) {
+                Some((White, Queen))
+            } else if pos.bb(Black, Queen).get_bit(square) {
+                Some((Black, Queen))
+            } else if pos.bb(White, King).get_bit(square) {
+                Some((White, King))
+            } else if pos.bb(Black, King).get_bit(square) {
+                Some((Black, King))
+            } else {
+                None
+            }
+        }
+
         let mut pieces = String::new();
         for r in 0..8 {
             let mut since = 0;
 
             for f in 0..8 {
                 let square = r * 8 + f;
-                if let Some(p) = self.piece_at(square) {
+                if let Some(p) = piece_at(self, square) {
                     if since > 0 {
                         pieces = format!("{pieces}{since}");
                         since = 0;
@@ -185,44 +173,26 @@ impl Position {
         format!("{pieces} {color} {castling} {enpassant} {half_moves} {full_moves}")
     }
 
-    pub fn piece_at(&self, square: u8) -> Option<(Color, PieceType)> {
-        if self.bb(White, Pawn).get_bit(square) {
-            Some((White, Pawn))
-        } else if self.bb(Black, Pawn).get_bit(square) {
-            Some((Black, Pawn))
-        } else if self.bb(White, Knight).get_bit(square) {
-            Some((White, Knight))
-        } else if self.bb(Black, Knight).get_bit(square) {
-            Some((Black, Knight))
-        } else if self.bb(White, Bishop).get_bit(square) {
-            Some((White, Bishop))
-        } else if self.bb(Black, Bishop).get_bit(square) {
-            Some((Black, Bishop))
-        } else if self.bb(White, Rook).get_bit(square) {
-            Some((White, Rook))
-        } else if self.bb(Black, Rook).get_bit(square) {
-            Some((Black, Rook))
-        } else if self.bb(White, Queen).get_bit(square) {
-            Some((White, Queen))
-        } else if self.bb(Black, Queen).get_bit(square) {
-            Some((Black, Queen))
-        } else if self.bb(White, King).get_bit(square) {
-            Some((White, King))
-        } else if self.bb(Black, King).get_bit(square) {
-            Some((Black, King))
-        } else {
-            None
+    fn castling_ability_string(&self) -> String {
+        if self.castling_ability == 0 {
+            return '-'.to_string()
         }
+        
+        let mut result = String::new();
+        if self.castling_ability & WhiteKingSide   as u8 != 0  { result += "K" }
+        if self.castling_ability & WhiteQueenSide  as u8 != 0  { result += "Q" }
+        if self.castling_ability & BlackKingSide   as u8 != 0  { result += "k" }
+        if self.castling_ability & BlackQueenSide  as u8 != 0  { result += "q" }
+        result
     }
 
-    #[inline(always)]
-    pub fn get_bitboard_index(color: Color, piece_type: PieceType) -> usize {
-        piece_type as usize + color.piece_offset()
+    pub fn update_castling_rights(&mut self, src: u8, dst: u8) {
+        self.castling_ability &= CASTLING_RIGHTS[src as usize] & CASTLING_RIGHTS[dst as usize];
     }
 
     #[inline(always)]
     pub fn bb(&self, color: Color, piece_type: PieceType) -> Bitboard {
-        self.bitboards[Self::get_bitboard_index(color, piece_type)]
+        self.bitboards[piece_type.index(color)]
     }
 
     #[inline(always)]
@@ -232,52 +202,16 @@ impl Position {
 
     #[inline(always)]
     pub fn place_piece(&mut self, color: Color, piece_type: PieceType, square: u8) {
-        self.bitboards[Self::get_bitboard_index(color, piece_type)].set_bit(square);
+        self.bitboards[piece_type.index(color)].set_bit(square);
         self.color_occupancies[color as usize].set_bit(square);
         self.all_occupancies.set_bit(square);
     }
 
     #[inline(always)]
     pub fn remove_piece(&mut self, color: Color, piece_type: PieceType, square: u8) {
-        self.bitboards[Self::get_bitboard_index(color, piece_type)].unset_bit(square);
+        self.bitboards[piece_type.index(color)].unset_bit(square);
         self.color_occupancies[color as usize].unset_bit(square);
         self.all_occupancies.unset_bit(square);
-    }
-
-    /// Creates a zobrist hash from scratch for the current position
-    fn generate_zobrist_hash(&mut self) {
-        let mut hash = 0;
-
-        for piece in 0..12 {
-            let mut bb = self.bitboards[piece];
-            while let Some(square) = bb.extract_bit() {
-                hash ^= PIECE_KEYS[piece][square as usize];
-            }
-        }
-
-        hash ^= CASTLE_KEYS[self.castling_ability as usize];
-        
-        if self.active_color == Black {
-            hash ^= SIDE_KEY;
-        }
-
-        if self.enpassant_square.is_not_empty() {
-            hash ^= ENPASSANT_KEYS[self.enpassant_square.least_significant() as usize];
-        }
-
-        self.zobrist_hash = hash
-    }
-
-    #[inline(always)]
-    /// Indicates whether a square is attacked
-    pub fn is_square_attacked(&self, square: u8, by_color: Color) -> bool {
-        (pawn_attacks   (square, by_color.opposite())   & self.bb(by_color, Pawn  )).is_not_empty() ||
-        (knight_attacks (square)                        & self.bb(by_color, Knight)).is_not_empty() ||
-        (king_attacks   (square)                        & self.bb(by_color, King  )).is_not_empty() ||
-        (hv_attacks     (square, self.all_occupancies)  & self.bb(by_color, Rook  )).is_not_empty() ||
-        (d12_attacks    (square, self.all_occupancies)  & self.bb(by_color, Bishop)).is_not_empty() ||
-        ((hv_attacks    (square, self.all_occupancies) 
-           | d12_attacks(square, self.all_occupancies)) & self.bb(by_color, Queen )).is_not_empty()
     }
 
     /// Gets the position of the king of the given color
@@ -285,9 +219,28 @@ impl Position {
     pub fn king_position(&self, color: Color) -> u8 {
         self.bb(color, King).least_significant()
     }
+}
 
-    #[inline(always)]
-    pub fn is_in_check(&self, color: Color) -> bool {
-        self.is_square_attacked(self.king_position(color), color.opposite())
+impl Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "\n  ┌────┬────┬────┬────┬────┬────┬────┬────┐")?;
+        for y in 0..8 {
+            write!(f, "{} │", format!("{}", 8-y ).as_str())?;
+            for x in 0..8 {
+                if let Some(piece_index) = (0..=11).find(|i| self.bitboards[*i].get_bit(8*y+x)) {
+                    write!(f, " {}{} ", PIECE_STRINGS[piece_index], if piece_index < 6 {"."} else {" "})?;
+                } else {
+                    write!(f, "    ")?;
+                }
+                
+                if x != 7 { write!(f, "│")? };
+            }
+            writeln!(f, "│")?;
+            if y != 7 { writeln!(f, "  ├────┼────┼────┼────┼────┼────┼────┼────┤")? };
+        }
+        writeln!(f, "  └────┴────┴────┴────┴────┴────┴────┴────┘")?;
+        writeln!(f, "    a    b    c    d    e    f    g    h\n")?;
+
+        writeln!(f, "{}", self.fen_string())
     }
 }

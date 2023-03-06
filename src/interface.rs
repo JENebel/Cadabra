@@ -1,8 +1,6 @@
 use std::{io::stdin, process, thread, sync::mpsc::{channel, Receiver}, time::Instant};
 use super::*;
 
-
-
 pub fn interface_loop() {
     let mut pos = Position::start_pos();
     
@@ -21,7 +19,10 @@ pub fn interface_loop() {
         match cmd_name {
             // Cadabra commands
             "d" => {
-                pos.pretty_print();
+                println!("{}", pos);
+            },
+            "fen" => {
+                println!("{}", pos.fen_string());
             },
             "x" => { // "x" added for conveniece. Does the same as UCI's quit
                 quit()
