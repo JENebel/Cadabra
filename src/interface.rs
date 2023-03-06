@@ -140,7 +140,7 @@ fn quit() {
     process::exit(0)
 }
 
-fn parse_go(command: &mut &str, pos: &Position) {
+fn parse_go(command: &mut &str, _pos: &Position) {
     let arg = match take_next(command) {
         Some(arg) => arg,
         None => {
@@ -151,7 +151,7 @@ fn parse_go(command: &mut &str, pos: &Position) {
     
     match arg {
         "depth" => {
-            let depth = match take_next_u8(command) {
+            let _depth = match take_next_u8(command) {
                 Some(d) => d,
                 None => {
                     println!("Illegal go command");
@@ -159,7 +159,7 @@ fn parse_go(command: &mut &str, pos: &Position) {
                 },
             };
 
-            search(pos, depth)
+            //search(pos, depth)
         },
         _ => println!("Illegal go command")
     }

@@ -1,53 +1,47 @@
-use crate::{Position, Move};
+/*use std::sync::{Mutex, Arc, atomic::{AtomicU8, AtomicI32, AtomicBool}, mpsc::{channel, Sender, Receiver}};
 
-const PVSIZE: usize = 128;
+use crate::{Position/*, MoveList*/};
 
-struct PVTable {
-    pv_table: [[Option<Move>; PVSIZE]; PVSIZE],
-    pv_lengths: [usize; PVSIZE],
+enum ThreadMsg {
+
 }
 
-impl PVTable {
-    pub fn new() -> Self {
-        Self {
-            pv_table: [[None; PVSIZE]; PVSIZE],
-            pv_lengths: [0; PVSIZE],
-        }
-    }
+struct Worker {
+    is_running: AtomicBool,
+    last_split_node: Node,
+}
 
-    pub fn best_move(&self) -> Option<Move> {
-        self.pv_table[0][0]
-    }
+struct WorkerPool {
+    workers: Vec<Worker>,
+}
 
-    pub fn insert_pv_node(&mut self, cmove: Move, ply: u8) {
-        let ply = ply as usize;
-
-        self.pv_table[ply][ply] = Some(cmove);
-        
-        for next_ply in (ply + 1)..self.pv_lengths[ply + 1] {
-            self.pv_table[ply][next_ply] = self.pv_table[ply + 1][next_ply];
-        }
-
-        self.pv_lengths[ply] = self.pv_lengths[ply + 1];
-    }
+struct Node {
+    move_list: Arc<Mutex<MoveList>>,
+    ply: AtomicU8,
+    alpha: AtomicI32,
+    threads_here: AtomicU8,
 }
 
 pub fn search(pos: &Position, depth: u8) {
-    let mut pv_table = PVTable::new();
-
-    let score = negamax(pos, -50000, 50000, depth, 0, &mut pv_table);
+    let score = negamax(pos, -50000, 50000, depth, 0);
 
     println!("Estimated CP score: {score}");
 
-    print!("bestmove {}\n", pv_table.best_move().unwrap());
+    let (rx, tx) = channel::<ThreadMsg>();
+
+    spawn_worker(tx);
 }
 
-fn negamax(pos: &Position, mut alpha: i32, beta: i32, depth: u8, ply: u8, pv_table: &mut PVTable) -> i32 {
+fn spawn_worker(tx: Receiver<ThreadMsg>) -> Sender<ThreadMsg> {
+    let (rx, _) = channel::<ThreadMsg>();
+    
+    rx
+}
+
+fn negamax(pos: &Position, mut alpha: i32, beta: i32, depth: u8, thread_id: u16) -> i32 {
     if depth == 0 {
         return pos.evaluate()
     };
-
-    pv_table.pv_lengths[ply as usize] = ply as usize;
 
     let move_list = pos.generate_moves();
 
@@ -56,11 +50,9 @@ fn negamax(pos: &Position, mut alpha: i32, beta: i32, depth: u8, ply: u8, pv_tab
 
         new_pos.make_move(m);
 
-        let score = -negamax(&new_pos, -beta, -alpha, depth - 1, ply + 1, pv_table);
+        let score = -negamax(&new_pos, -beta, -alpha, depth - 1, thread_id);
 
         if score > alpha {
-            pv_table.insert_pv_node(m, ply);
-
             if score >= beta {
                 return beta;
             }
@@ -70,4 +62,4 @@ fn negamax(pos: &Position, mut alpha: i32, beta: i32, depth: u8, ply: u8, pv_tab
     }
 
     alpha
-}
+}*/

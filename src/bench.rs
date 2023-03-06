@@ -61,7 +61,11 @@ fn show_results(perft_time: u128, perft_mnps: f64) {
 
     // Load baseline
     // TODO handle errors here
-    let file = File::open(baseline_path()).unwrap(); 
+    let file = match File::open(baseline_path()) {
+        Ok(file) => file,
+        Err(_) => return,
+    };
+    
     let lines = io::BufReader::new(file).lines().map(|l| l.unwrap()).collect::<Vec<String>>();
     let prev_perft_line = lines.iter().find(|l| l.starts_with("perft")).unwrap();
     let prev_perft_mnps = prev_perft_line.split_once(':').unwrap().1.parse::<f64>().unwrap();

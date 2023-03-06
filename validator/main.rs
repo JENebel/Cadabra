@@ -127,7 +127,6 @@ fn ref_engine_loop(mut ref_engine: Child, (send_result, recv_task): (Sender<Hash
 }
 
 fn validate_position(fen: String, name: &str, depth: u8, tracing: bool, (send_task, recv_result): (&mut Sender<(String, u8)>, &mut Receiver<HashMap<String, u64>>)) -> Result<(), (String, Position)> {
-    assert!(depth >= 1);
     // Reference engine io
 
     send_task.send((fen.clone(), depth)).unwrap();
