@@ -146,7 +146,7 @@ impl Bitboard {
 
     #[inline(always)]
     pub fn least_significant(&self) -> u8 {
-        unsafe { core::arch::x86_64::_tzcnt_u64(self.0) as u8 }
+        self.0.trailing_zeros() as u8
     }
 
     /// Extract the least significant set bit. Modifies the bitboard and returns the position of the extracted bit
@@ -155,7 +155,7 @@ impl Bitboard {
 
         let bit = self.least_significant();
 
-        self.0 = unsafe { core::arch::x86_64::_blsr_u64(self.0) };
+        self.0 = bitintr::Blsr::blsr(self.0);
 
         Some(bit as u8)
     }
