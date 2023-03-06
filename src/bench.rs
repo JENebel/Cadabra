@@ -3,7 +3,7 @@ use colored::Colorize;
 
 use crate::Position;
 
-pub const BENCH_POSITIONS: [(&'static str, &'static str, u8); 5] = [
+static BENCH_POSITIONS: [(&'static str, &'static str, u8); 5] = [
 	("Startpos",            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",           6),
     ("Kiwipete",            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",   5),
     ("JENCE",               "r2q1rk1/5pp1/1ppp3p/2n1nbN1/4p1PP/P1P1P3/Q2PBP2/R1B2RK1 b - - 1 17", 5),
@@ -11,23 +11,32 @@ pub const BENCH_POSITIONS: [(&'static str, &'static str, u8); 5] = [
     ("Karpov v Kasparov",   "r1bq1rk1/3n1pbp/2pQ2p1/4n3/1p2PP2/1P2B3/P3N1PP/1N1RKB1R b K - 1 15", 5),
 ];
 
-const ITERATIONS: u8 = 15;
+const ITERATIONS: u8 = 10;
+const WARMUPS: u8 = 25;
 
 pub fn run_bench(save: bool) {
     let positions = BENCH_POSITIONS.iter().map(|(_, fen, depth)| (Position::from_fen(fen).unwrap(), *depth)).collect::<Vec<(Position, u8)>>();
 
     println!("Warming up...");
-    let mut before = Instant::now();
-    for (pos, depth) in &positions {
-        pos.perft::<false>(*depth);
+    let before_wu = Instant::now();
+    for i in 1..=WARMUPS {
+        print!(" Warm up {i}/{WARMUPS} ...\t");
+        stdout().flush().unwrap();
+        for (pos, depth) in &positions {
+            pos.perft::<false>(*depth);
+        }
+        println!("Done");
+        stdout().flush().unwrap();
+        if i == 1 {
+            println!("  Estimated time to completion: {:.2}s...", (before_wu.elapsed().as_millis() as f64 / 1000.) * (WARMUPS + ITERATIONS) as f64);
+        }
     }
-    let elapsed = before.elapsed().as_millis();
-
-    println!("Running perft bench. Will take approximately {:.2}s...", (elapsed as f64 / 1000.) * ITERATIONS as f64);
 
     let mut nodes = 0;
 
-    before = Instant::now();
+    println!("Running perft benchmark...");
+
+    let before = Instant::now();
 
     for i in 1..=ITERATIONS {
         print!(" Iteration {i}/{ITERATIONS} ...\t");
@@ -43,7 +52,7 @@ pub fn run_bench(save: bool) {
     
     let perft_mnps = (nodes as f64 / perft_time as f64) / 1000.;
 
-    show_results(perft_time, perft_mnps);
+    show_results(before_wu.elapsed().as_millis(), perft_mnps);
 
     // Save results as baseline if relevant
     if !save {

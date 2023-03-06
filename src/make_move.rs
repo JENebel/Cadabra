@@ -14,42 +14,7 @@ pub const CASTLING_RIGHTS: [u8; 64] = [
    13, 15, 15, 15, 12, 15, 15, 14
 ];
 
-macro_rules! make_move_match_move_type {
-    ($pos: expr, $is_white: expr, $move_to_make: expr) => {
-        match $move_to_make.move_type {
-            Quiet =>                                $pos.make_move_internal::<$is_white, 0>($move_to_make),
-            Capture =>                              $pos.make_move_internal::<$is_white, 1>($move_to_make),
-            Promotion(PieceType::Queen) =>          $pos.make_move_internal::<$is_white, 2>($move_to_make),
-            Promotion(PieceType::Rook) =>           $pos.make_move_internal::<$is_white, 3>($move_to_make),
-            Promotion(PieceType::Bishop) =>         $pos.make_move_internal::<$is_white, 4>($move_to_make),
-            Promotion(PieceType::Knight) =>         $pos.make_move_internal::<$is_white, 5>($move_to_make),
-            CapturePromotion(PieceType::Queen) =>   $pos.make_move_internal::<$is_white, 6>($move_to_make),
-            CapturePromotion(PieceType::Rook) =>    $pos.make_move_internal::<$is_white, 7>($move_to_make),
-            CapturePromotion(PieceType::Bishop) =>  $pos.make_move_internal::<$is_white, 8>($move_to_make),
-            CapturePromotion(PieceType::Knight) =>  $pos.make_move_internal::<$is_white, 9>($move_to_make),
-            CastleKingSide =>                       $pos.make_move_internal::<$is_white, 10>($move_to_make),
-            CastleQueenSide =>                      $pos.make_move_internal::<$is_white, 11>($move_to_make),
-            DoublePush =>                           $pos.make_move_internal::<$is_white, 12>($move_to_make),
-            EnpassantCapture =>                     $pos.make_move_internal::<$is_white, 13>($move_to_make),
-            _ => unreachable!(),
-        }
-    };
-}
-macro_rules! make_move {
-    ($pos: expr, $move_to_make: expr) => {
-        match $pos.active_color {
-            White => make_move_match_move_type!($pos, true, $move_to_make),
-            Black => make_move_match_move_type!($pos, false, $move_to_make)
-        }
-    };
-}
-
 impl Position {
-    #[inline(always)]
-    pub fn make_move(&mut self, move_to_make: Move) {
-        make_move!(self, move_to_make)
-    }
-
     pub fn make_uci_move(&mut self, mov: &str) -> Result<(), String> {
         let m = self.generate_moves().find(|m| format!("{m}") == mov);
         if let Some(m) = m {
@@ -61,9 +26,9 @@ impl Position {
     }
 
     #[inline(always)]
-    fn make_move_internal<const IS_WHITE: bool, const MOVE_TYPE: u16>(&mut self, cmove: Move) {
-        let move_type = MoveType::from(MOVE_TYPE);
-        let color = if IS_WHITE { Color::White } else { Color::Black };
+    pub fn make_move(&mut self, cmove: Move) {
+        let move_type = cmove.move_type;
+        let color = self.active_color;
         let opp_color = color.opposite();
 
         // Reset zobrist hashes

@@ -44,7 +44,7 @@ impl MoveList {
     }
 
     /// Extracts the best move in the list
-    #[inline]
+    #[inline(always)]
     pub fn next_best(&mut self) -> Option<Move> {
         if self.extract_index == self.insert_index {
             return None
@@ -87,6 +87,7 @@ impl Iterator for MoveList {
 
 impl Position {
     /// Generate all legal moves for the position
+    #[inline(always)]
     pub fn generate_moves(&self) -> MoveList {
         let mut move_list = MoveList::new();
         let color = self.active_color;

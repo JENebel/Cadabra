@@ -5,7 +5,6 @@ rustflags = ["-Ctarget-cpu=native"]
 opt-level = 1
 
 [profile.release]
-opt-level = 2
 lto = true
 codegen-units = 1
 incremental = true
