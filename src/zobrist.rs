@@ -1,6 +1,6 @@
 use crate::{Color, PieceType, Position};
 
-const PIECE_KEYS: [[u64; 64]; 12] = generate_piece_keys(); // SHOULD BE FIXED TO NOT USE PIECE_TYPE! TODO
+const PIECE_KEYS: [u64; 12 * 64] = generate_piece_keys(); // SHOULD BE FIXED TO NOT USE PIECE_TYPE! TODO
 const ENPASSANT_KEYS: [u64; 64] = generate_enpassant_keys();
 const CASTLING_KEYS: [u64; 16] = generate_castle_keys();
 const SIDE_KEY: u64 = get_random_u64_number(4084590338).0;
@@ -13,7 +13,7 @@ impl Position {
 
     #[inline(always)]
     pub fn apply_piece_zobrist(&mut self, color: Color, piece_type: PieceType, square: u8) {
-        self.zobrist_hash ^= PIECE_KEYS[piece_type.index(color)][square as usize]
+        self.zobrist_hash ^= PIECE_KEYS[piece_type.index(color) * 12 + square as usize]
     }
 
     #[inline(always)]
@@ -28,41 +28,50 @@ impl Position {
 
     /// Creates a zobrist hash from scratch for the current position
     pub fn generate_zobrist_hash(&mut self) {
-        let mut hash = 0;
+        self.zobrist_hash = 0;
 
         for piece in 0..12 {
             let mut bb = self.bitboards[piece];
             while let Some(square) = bb.extract_bit() {
-                hash ^= PIECE_KEYS[piece][square as usize];
+                self.zobrist_hash ^= PIECE_KEYS[piece * 12 + square as usize];
             }
         }
 
-        hash ^= CASTLING_KEYS[self.castling_ability as usize];
+        self.apply_castling_zobrist();
         
         if self.active_color == Color::Black {
-            hash ^= SIDE_KEY;
+            self.apply_side_zobrist()
         }
 
         if self.enpassant_square.is_not_empty() {
-            hash ^= ENPASSANT_KEYS[self.enpassant_square.least_significant() as usize];
+            self.apply_enpassant_zobrist(self.enpassant_square.least_significant());
         }
-
-        self.zobrist_hash = hash
     }
+}
+
+macro_rules! const_for {
+    ($var: ident, $from: expr => $to: expr; $body: expr) => {
+        {
+            let mut $var = 0;
+            while $var < $to {
+                $body
+
+                $var += 1;
+            }
+        }
+    };
 }
 
 pub const fn generate_castle_keys() -> [u64; 16] {
     let mut keys = [0; 16];
 
-    let mut i = 0;
     let mut state = 3667794840;
 
-    while i < 16 {
+    const_for!(i, 0 => 16; {
         let res = get_random_u64_number(state);
         state = res.1;
         keys[i] = res.0;
-        i+=1;
-    }
+    });
 
     keys
 }
@@ -83,8 +92,8 @@ pub const fn generate_enpassant_keys() -> [u64; 64] {
     keys
 }
 
-pub const fn generate_piece_keys() -> [[u64; 64]; 12] {
-    let mut keys = [[0; 64]; 12];
+pub const fn generate_piece_keys() -> [u64; 12 * 64] {
+    let mut keys = [0; 12 * 64];
 
     let mut p  = 0;
     let mut sq;
@@ -95,7 +104,7 @@ pub const fn generate_piece_keys() -> [[u64; 64]; 12] {
         while sq < 64 {
             let res = get_random_u64_number(state);
             state = res.1;
-            keys[p][sq] = res.0;
+            keys[p * 12 + sq] = res.0;
             sq+=1;
         }
         p+=1

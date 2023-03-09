@@ -78,6 +78,8 @@ fn main() {
     write!(file, "{}", array_string(rook_offsets.to_vec(), "usize", "ROOK_OFFSETS")).expect("Couldnt write ROOK_OFFSETS!");
     write!(file, "{}", array_string(bishop_offsets.to_vec(), "usize", "BISHOP_OFFSETS")).expect("Couldnt write BISHOP_OFFSETS!");
     write!(file, "{}", array_string(attacks.to_vec(), "u64", "SLIDING_ATTACKS")).expect("Couldnt write SLIDING_ATTACKS!");
+
+    println!("cargo:rerun-if-changed=prepare_constants.rs");
 }
 
 fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
