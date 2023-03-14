@@ -1,6 +1,6 @@
 use std::{process::{Command, Stdio, Child}, thread, io::{BufReader, BufWriter, BufRead, Write, stdout}, collections::HashMap, sync::mpsc::{Receiver, Sender, channel}, env};
 
-use cadabra::Position;
+use cadabra::*;
 mod test_positions;
 use test_positions::*;
 

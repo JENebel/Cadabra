@@ -129,7 +129,7 @@ impl Display for Move {
         let mut res = format!("{}{}", Square::from(self.src), Square::from(self.dst));
 
         if let Promotion(p) | CapturePromotion(p) = self.move_type {
-            res = format!("{res}{}", piece_to_char(Color::Black, p));
+            res = format!("{res}{}", piece_char(Color::Black, p));
         }
 
         write!(f, "{res}")

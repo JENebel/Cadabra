@@ -1,7 +1,7 @@
 use std::{time::Instant, io::{stdout, Write, self, BufRead}, fs::File, path::PathBuf};
 use colored::Colorize;
 
-use crate::Position;
+use super::Position;
 
 const  BENCH_POSITIONS: [(&'static str, &'static str, u8); 5] = [
 	("Startpos",            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",           6),

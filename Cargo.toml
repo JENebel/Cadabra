@@ -3,7 +3,7 @@ name = "cadabra"
 version = "0.2.0"
 authors = ["Joachim Enggård Nebel"]
 edition = "2021"
-license-file = "BSD-2-Clause"
+license = "BSD-2-Clause"
 build = "prepare_constants.rs"
 description = "UCI compatible chess engine"
 repository = "https://github.com/JENebel/Cadabra/"  
@@ -20,3 +20,7 @@ path = "src/main.rs"
 [dependencies]
 bitintr = "0.3.0"
 colored = "2.0.0"
+const-random = "0.1.15"
+
+[build-dependencies]
+const_for = "0.1.0"

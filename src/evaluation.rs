@@ -1,4 +1,4 @@
-use super::*;
+use super::{position::*, constants::*};
 
 /// Mirror positional score tables for opposite side
 pub const MIRRORED: [usize; 64] = 
@@ -73,6 +73,6 @@ impl Position {
             }
         }
 
-        if self.active_color == Color::White { score } else { -score } // Colud avoid branching here
+        if self.active_color.is_white() { score } else { -score } // Colud avoid branching here
     }
 }

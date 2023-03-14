@@ -3,8 +3,9 @@ use super::*;
 use PieceType::*;
 use MoveType::*;
 use Color::*;
-use CastlingAbility::*;
+use CastlingSide::*;
 use Square::*;
+use bitintr::{Pext, Pdep};
 
 macro_rules! generate_pawn_captures {
     ($pos: expr, $move_list: expr, $has_enpassant_sq: expr, $src: expr, $check_mask: expr, $pin_mask: expr) => {
@@ -39,7 +40,7 @@ impl MoveList {
 
     /// Extracts a new move into the list
     #[inline(always)]
-    pub fn insert(&mut self, new_move: Move) {
+    fn insert(&mut self, new_move: Move) {
         self.move_list[self.insert_index] = new_move;
         self.insert_index += 1;
     }
@@ -277,7 +278,7 @@ impl Position {
             };
 
             // Check mask check
-            if !(check_mask.get_bit(enp_sq) || check_mask.get_bit(captured)) {
+            if !check_mask.get_bit(enp_sq) && !check_mask.get_bit(captured) {
                 return
             }
 
@@ -337,14 +338,14 @@ impl Position {
         // Castling
         match color {
             Color::White => {
-                if self.castling_ability & (WhiteKingSide as u8) != 0 {
+                if self.castling_ability.is_side_available(WhiteKingSide) {
                     let none_attacked = (WhiteKingSide.attacked_mask() & attacked).is_empty();
                     let between_open =  (WhiteKingSide.open_mask() & self.all_occupancies).is_empty();
                     if none_attacked && between_open {
                         move_list.insert(Move::new(e1 as u8, g1 as u8, King, CastleKingSide))
                     }
                 }
-                if self.castling_ability & (WhiteQueenSide as u8) != 0 {
+                if self.castling_ability.is_side_available(WhiteQueenSide) {
                     let none_attacked = (WhiteQueenSide.attacked_mask() & attacked).is_empty();
                     let between_open =  (WhiteQueenSide.open_mask() & self.all_occupancies).is_empty();
                     if none_attacked && between_open {
@@ -353,14 +354,14 @@ impl Position {
                 }
             },
             Color::Black => {
-                if self.castling_ability & (BlackKingSide as u8) != 0 {
+                if self.castling_ability.is_side_available(BlackKingSide) {
                     let none_attacked = (BlackKingSide.attacked_mask() & attacked).is_empty();
                     let between_open =  (BlackKingSide.open_mask() & self.all_occupancies).is_empty();
                     if none_attacked && between_open {
                         move_list.insert(Move::new(e8 as u8, g8 as u8, King, CastleKingSide))
                     }
                 }
-                if self.castling_ability & (BlackQueenSide as u8) != 0 {
+                if self.castling_ability.is_side_available(BlackQueenSide) {
                     let none_attacked = (BlackQueenSide.attacked_mask() & attacked).is_empty();
                     let between_open =  (BlackQueenSide.open_mask() &self.all_occupancies).is_empty();
                     if none_attacked && between_open {
@@ -426,45 +427,45 @@ impl Position {
     }
 
     #[inline(always)]
-    pub fn generate_hv_pin_mask(&self, color: Color) -> Bitboard {
+    fn generate_hv_pin_mask(&self, color: Color) -> Bitboard {
         let mut mask = 0;
 
         let opp_color = color.opposite();
 
         let mut h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
         while let Some(slider) = h_sliders.extract_bit() {
-            mask |= pin_mask_h(self.all_occupancies, self.king_position(color), slider);
+            mask |= self.pin_mask_h(self.all_occupancies, slider);
         }
 
         let mut v_sliders = FILE_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
         while let Some(slider) = v_sliders.extract_bit() {
-            mask |= pin_mask_v(self.all_occupancies, self.king_position(color), slider);
+            mask |= self.pin_mask_v(self.all_occupancies, slider);
         }
 
         Bitboard(mask)
     }
 
     #[inline(always)]
-    pub fn generate_d12_pin_mask(&self, color: Color) -> Bitboard {
+    fn generate_d12_pin_mask(&self, color: Color) -> Bitboard {
         let mut mask = 0;
 
         let opp_color = color.opposite();
 
         let mut d1_sliders = D1_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
         while let Some(slider) = d1_sliders.extract_bit() {
-            mask |= pin_mask_d1(self.all_occupancies, self.king_position(color), slider)
+            mask |= self.pin_mask_d1(self.all_occupancies, slider)
         }
 
         let mut d2_sliders = D2_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
         while let Some(slider) = d2_sliders.extract_bit() {
-            mask |= pin_mask_d2(self.all_occupancies, self.king_position(color), slider)
+            mask |= self.pin_mask_d2(self.all_occupancies, slider)
         }
         
         Bitboard(mask)
     }
 
     #[inline(always)]
-    pub fn generate_enpassant_pin_mask(&self, color: Color, src: u8) -> Bitboard {
+    fn generate_enpassant_pin_mask(&self, color: Color, src: u8) -> Bitboard {
         let mut mask = 0;
 
         let opp_color = color.opposite();
@@ -473,21 +474,89 @@ impl Position {
 
         let mut h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
         while let Some(slider) = h_sliders.extract_bit() {
-            mask |= pin_mask_h(occ, self.king_position(color), slider)
+            mask |= self.pin_mask_h(occ, slider)
         }
 
         let mut d1_sliders = D1_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
         while let Some(slider) = d1_sliders.extract_bit() {
-            mask |= pin_mask_d1(occ, self.king_position(color), slider)
+            mask |= self.pin_mask_d1(occ, slider)
         }
 
         let mut d2_sliders = D2_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
         while let Some(slider) = d2_sliders.extract_bit() {
-            mask |= pin_mask_d2(occ, self.king_position(color), slider)
+            mask |= self.pin_mask_d2(occ, slider)
         }
 
         mask |= self.generate_d12_pin_mask(color);
 
         Bitboard(mask)
+    }
+
+    #[inline(always)]
+    fn pin_mask_h(&self, occ: Bitboard, slider_pos: u8) -> u64 {
+        let king_pos = self.king_position(self.active_color) as usize;
+
+        let rank = RANK_MASKS[king_pos];
+
+        let pexed = occ.as_u64().pext(rank);
+
+        let kp = LOOKUP_FILE[king_pos];
+        let sq = LOOKUP_FILE[slider_pos as usize];
+
+        let index = 2048*kp + 256*sq + pexed as usize;
+        let mask = PIN_MASKS[index];
+
+        mask.pdep(rank)
+    }
+
+    #[inline(always)]
+    fn pin_mask_v(&self, occ: Bitboard, slider_pos: u8) -> u64 {
+        let king_pos = self.king_position(self.active_color) as usize;
+
+        let file = FILE_MASKS[king_pos];
+
+        let pexed = occ.as_u64().pext(file);
+
+        let kp = 7 - LOOKUP_RANK[king_pos];
+        let sq = 7 - LOOKUP_RANK[slider_pos as usize];
+        let index = 2048*kp + 256*sq + pexed as usize;
+
+        let mask = PIN_MASKS[index];
+
+        mask.pdep(file)
+    }
+
+    #[inline(always)]
+    fn pin_mask_d1(&self, occ: Bitboard, slider_pos: u8) -> u64 {
+        let king_pos = self.king_position(self.active_color) as usize;
+
+        let diagonal = D1_MASKS[king_pos as usize];
+
+        let pexed = occ.as_u64().pext(diagonal);
+        let kp = LOOKUP_D2[king_pos as usize];
+        let sq = LOOKUP_D2[slider_pos as usize];
+
+        let index = 2048*kp + 256*sq + pexed as usize;
+        let mask = PIN_MASKS[index];
+
+        mask.pdep(diagonal)
+    }
+
+    #[inline(always)]
+    fn pin_mask_d2(&self, occ: Bitboard, slider_pos: u8) -> u64 {
+        let king_pos = self.king_position(self.active_color) as usize;
+
+        let diagonal = D2_MASKS[king_pos as usize];
+
+        let pexed = occ.as_u64().pext(diagonal);
+
+        // sq and kp are flipped to get correct mask
+        let kp = LOOKUP_D1[king_pos as usize];
+        let sq = LOOKUP_D1[slider_pos as usize];
+
+        let index = 2048*kp + 256*sq + pexed as usize;
+        let mask = PIN_MASKS[index];
+
+        mask.pdep(diagonal)
     }
 }

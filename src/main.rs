@@ -1,7 +1,6 @@
 use std::env;
 
 use cadabra::*;
-
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.contains(&"bench".to_string()) {

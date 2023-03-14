@@ -27,7 +27,6 @@ macro_rules! implement_bitboard_operation {
 
         impl $trait_name<Bitboard> for u64 {
             type Output = Bitboard;
-        
             fn $fn_name(self, rhs: Bitboard) -> Self::Output {
                 Bitboard(self $operator rhs.0)
             }

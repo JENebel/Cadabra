@@ -1,14 +1,10 @@
 use std::{env, path::Path, fs::{self, File}, io::Write};
+use const_for::*;
 
 pub const ROOK_MASK: [u64; 64] = generate_rook_masks();
 pub const ROOK_ATTACK_MASK: [u64; 64] = generate_rook_attack_masks();
 pub const BISHOP_MASK: [u64; 64] = generate_bishop_masks();
 pub const BISHOP_ATTACK_MASK: [u64; 64] = generate_bishop_attack_masks();
-
-/// From upper left to lower right
-//pub const DIAG1_MASKS: [u64; 64] = generate_d1_masks();
-/// From upper right to lower left
-//pub const DIAG2_MASKS: [u64; 64] = generate_d1_masks();
 
 fn main() {
     // Find file
@@ -58,10 +54,6 @@ fn main() {
     write!(file, "/// Use (king_sq * 2048) + (slider_sq * 256) + (pexed occupancies along the axis wanted)\n").unwrap();
     write!(file, "{}", array_string(generate_pin_masks().to_vec(), "u64", "PIN_MASKS")).expect("Couldnt write PIN_MASKS!");
 
-    // Castling masks
-    write!(file, "{}", array_string(generate_attacked_castling_masks().to_vec(), "u64", "ATTACKED_CASTLING_MASKS")).expect("Couldnt write ATTACKED_CASTLING_MASKS!");
-    write!(file, "{}", array_string(generate_open_castling_masks().to_vec(), "u64", "OPEN_CASTLING_MASKS")).expect("Couldnt write OPEN_CASTLING_MASKS!");
-
     // Pawns
     write!(file, "{}", array_string(generate_pawn_attacks(true).to_vec(), "u64", "WHITE_PAWN_ATTACKS")).expect("Couldnt write WHITE_PAWN_ATTACKS!");
     write!(file, "{}", array_string(generate_pawn_attacks(false).to_vec(), "u64", "BLACK_PAWN_ATTACKS")).expect("Couldnt write BLACK_PAWN_ATTACKS!");
@@ -96,32 +88,6 @@ fn array_string(data: Vec<u64>, type_string: &str, cons_name: &str) -> String {
     result += "\n];\n\n";
 
     format!("pub const {result}")
-}
-
-fn generate_open_castling_masks() -> [u64; 4] {
-    let mut masks = [0; 4];
-
-    // White
-    masks[0] |= 1 << 62 | 1 << 61;
-    masks[1] |= 1 << 59 | 1 << 58 | 1 << 57;
-
-    // Black
-    masks[2] |= 1 << 5 | 1 << 6;
-    masks[3] |= 1 << 1 | 1 << 2 | 1 << 3;
-    masks
-}
-
-fn generate_attacked_castling_masks() -> [u64; 4] {
-    let mut masks = [0; 4];
-
-    // White
-    masks[0] |= 1 << 62 | 1 << 61;
-    masks[1] |= 1 << 59 | 1 << 58;
-
-    // Black
-    masks[2] |= 1 << 5 | 1 << 6;
-    masks[3] |= 1 << 2 | 1 << 3;
-    masks
 }
 
 fn generate_hv_rays() -> [u64; 64] {
@@ -238,8 +204,7 @@ fn generate_sliding_attacks() -> ([u64; 64], [u64; 64], Box<[u64; 107648]>) {
 
         //ROOKS
         for rank in 0..8 {
-            let mut file: u8 = 0;
-            while file < 8 {
+            for file in 0..8 {
                 let square = rank * 8 + file;
                 rook_offsets[square as usize] = current_offset as u64;
                 let number_of_occupancies = (2 as u16).pow(ROOK_MASK[square as usize].count_ones()) as u32;
@@ -252,16 +217,12 @@ fn generate_sliding_attacks() -> ([u64; 64], [u64; 64], Box<[u64; 107648]>) {
                 }
                 
                 current_offset += number_of_occupancies as u32;
-                
-                file += 1;
             }
         }
         //OFFSET HER: 104600 i believe
         //Bishops
-        let mut rank: u8 = 0;
-        while rank < 8 {
-            let mut file: u8 = 0;
-            while file < 8 {
+        for rank in 0..8 {
+            for file in 0..8 {
                 let square = rank * 8 + file;
                 bishop_offsets[square as usize] = current_offset as u64;
                 let number_of_occupancies = (2 as u16).pow(BISHOP_MASK[square as usize].count_ones()) as u32;
@@ -274,10 +235,7 @@ fn generate_sliding_attacks() -> ([u64; 64], [u64; 64], Box<[u64; 107648]>) {
                 }
                 
                 current_offset += number_of_occupancies as u32;
-                
-                file += 1;
             }
-        rank += 1;
         }
     }
 
@@ -793,10 +751,8 @@ const fn set_occupancy(index: u32, attack_mask: u64) -> u64 {
 
     let mut mask = attack_mask;
 
-    let bits_in_mask = attack_mask.count_ones();
-    let mut count: u16 = 0;
     let mut square;
-    while count < bits_in_mask as u16 {
+    const_for!(count in 0..attack_mask.count_ones() => {
         //least significant 1 bit
         square = mask.trailing_zeros();
 
@@ -806,8 +762,7 @@ const fn set_occupancy(index: u32, attack_mask: u64) -> u64 {
         if (index & (1 << count)) != 0 {
             occ |= 1 << (square);
         }
+    });
 
-        count += 1;
-    }
     occ
 }

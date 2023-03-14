@@ -1,13 +1,15 @@
 include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
+pub const PKG_NAME: &str = "Cadabra";
+pub const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const PKG_AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
+
+mod utils;
 mod bitboard;
-pub mod position;
-mod precalculated_interface;
+mod position;
 mod interface;
 mod evaluation;
-mod zobrist;
 mod move_generator;
-mod definitions;
 mod constants;
 mod moov;
 mod make_move;
@@ -18,12 +20,10 @@ mod search;
 pub use make_move::*;
 pub use bitboard::*;
 pub use position::*;
-pub use precalculated_interface::*;
 pub use interface::*;
 pub use evaluation::*;
-pub use zobrist::*;
 pub use move_generator::*;
-pub use definitions::*;
+pub use utils::*;
 pub use constants::*;
 pub use moov::*;
 pub use perft::*;

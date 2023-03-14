@@ -1,10 +1,9 @@
 use std::fmt::Display;
 
-use crate::{bitboard::*, definitions::*};
+use super::*;
 
 use Color::*;
 use PieceType::*;
-use CastlingAbility::*;
 
 #[derive(Clone, Copy)]
 pub struct Position {
@@ -16,7 +15,7 @@ pub struct Position {
 
     pub active_color: Color,
     pub enpassant_square: Bitboard,
-    pub castling_ability: u8,
+    pub castling_ability: CastlingAbility,
 
     pub full_moves: u16,
     pub half_moves: u8,
@@ -28,70 +27,79 @@ impl Position {
         Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap()
     }
 
-    pub fn from_fen(input: &str) -> Result<Self, &str> {
-        let fen = input.trim();
-        let mut split = fen.split(' ').peekable();
+    pub fn from_fen(input: &str) -> Result<Self, String> {
+        let mut split = input.trim().split(' ');
+        
+        // Get and remember board pieces string
+        let board_str = match split.next() {
+            Some(str) => str,
+            None => return Err(format!("Expected board string in fen")),
+        };
 
-        let mut bitboards: [Bitboard; 12] =  [Default::default(); 12];
-        let mut color_occupancies: [Bitboard; 2] = [Default::default(); 2];
-        let mut all_occupancies: Bitboard = Default::default();
+        // Active color
+        let active_color = if let Some(color_str) = split.next() {
+            Color::from_str(color_str)?
+        } else {
+            return Err(format!("Expected a color char"))
+        };
 
-        let mut i = 0;
+        // Castling ability
+        let castling_ability = CastlingAbility::from_str(split.next().unwrap_or("-"))?;
 
-        if split.peek().is_none() { return Err("String was emmpty") }
-        let board_str = split.next().unwrap();
-
-        for char in board_str.chars() {
-            if char.is_numeric(){
-                for _i in 0..char.to_digit(10).unwrap_or(0) {
-                    i += 1;
-                }
+        // Enpassant square
+        let mut enpassant_square = Bitboard::EMPTY;
+        if let Some(enp_str) = split.next() {
+            if enp_str != "-" {
+                enpassant_square.set_bit(Square::from_str(enp_str)? as u8)
             }
-            else if char != '/' {
-                if let Ok((color, piece_type)) = char_to_piece(char) {
-                    bitboards[piece_type.index(color)].set_bit(i);
-                    color_occupancies[color as usize].set_bit(i)
-                } else {
-                    return Err("Illegal character")
-                }
-                
-                all_occupancies.set_bit(i);
+        };
 
-                i+=1;
+        // 50 move rule count
+        let half_moves: u8 = if let Some(hm_str) = split.next() {
+            match hm_str.parse() {
+                Ok(i) => i,
+                Err(_) => return Err(format!("Half moves was not a number")),
             }
-        }
+        } else { 0 };
 
-        if split.peek().is_none() { return Err("Unexteced end") }
-        let active_str = split.next().unwrap();
-        let active_color = if active_str == "w" { Color::White } else { Color::Black };
+        // Full moves
+        let full_moves: u16 = if let Some(fm_str) = split.next() {
+            match fm_str.parse() {
+                Ok(i) => i,
+                Err(_) => return Err(format!("Full moves was not a number")),
+            }
+        } else { 0 };
 
-        let castling_str =  if split.peek().is_some() { split.next().unwrap() } else { "" };
-        let mut castling_ability: u8 = 0;
-        if castling_str.contains('K') {castling_ability = castling_ability | WhiteKingSide as u8 }
-        if castling_str.contains('Q') {castling_ability = castling_ability | WhiteQueenSide as u8}
-        if castling_str.contains('k') {castling_ability = castling_ability | BlackKingSide as u8}
-        if castling_str.contains('q') {castling_ability = castling_ability | BlackQueenSide as u8}
-
-        let enpassant_str = if split.peek().is_some() { split.next().unwrap() } else { "-" };
-        let enpassant_square: Bitboard = if enpassant_str != "-" { Bitboard(1 << Square::from(enpassant_str) as u8) } else { Bitboard::EMPTY };
-
-        let half_moves: u8 =  if split.peek().is_some() { split.next().unwrap().parse::<u8>().unwrap()  } else { 0 };
-        let full_moves: u16 = if split.peek().is_some() { split.next().unwrap().parse::<u16>().unwrap() } else { 0 };
-
-        let mut pos = Self { 
-            bitboards,
-            color_occupancies,
-            all_occupancies,
-
+        // Init position with empty board
+        let mut pos = Position { 
+            bitboards: [Bitboard::EMPTY; 12],
+            color_occupancies: [Bitboard::EMPTY; 2],
+            all_occupancies:   Bitboard::EMPTY,
             active_color,
-            castling_ability,
             enpassant_square,
-
+            castling_ability,
             full_moves,
             half_moves,
-            zobrist_hash: u64::default(),
+            zobrist_hash: 0,
         };
+
+        // Place pieces
+        let mut square = 0;
+        for char in board_str.chars() {
+            if square > 63 {
+                return Err(format!("Board from fen does not fit on the board"))
+            }
+            
+            if let Some(i) = char.to_digit(10) {
+                square += i as u8
+            } else if char != '/' {
+                let (color, piece_type) = char_to_piece(char)?;
+                pos.place_piece(color, piece_type, square);
+                square += 1;
+            }
+        }
         
+        // Initialize zobrist
         pos.generate_zobrist_hash();
 
         Ok(pos)
@@ -133,13 +141,12 @@ impl Position {
             let mut since = 0;
 
             for f in 0..8 {
-                let square = r * 8 + f;
-                if let Some(p) = piece_at(self, square) {
+                if let Some(p) = piece_at(self, r * 8 + f) {
                     if since > 0 {
                         pieces = format!("{pieces}{since}");
                         since = 0;
                     }
-                    pieces = format!("{pieces}{}", piece_to_char(p.0, p.1));
+                    pieces = format!("{pieces}{}", piece_char(p.0, p.1));
                 } else {
                     since += 1
                 }
@@ -159,7 +166,7 @@ impl Position {
             Black => 'b',
         };
 
-        let castling = self.castling_ability_string();
+        let castling = self.castling_ability;
 
         let enpassant = if self.enpassant_square.is_not_empty() {
             format!("{}", Square::from(self.enpassant_square.least_significant()))
@@ -171,23 +178,6 @@ impl Position {
         let full_moves = self.full_moves;
 
         format!("{pieces} {color} {castling} {enpassant} {half_moves} {full_moves}")
-    }
-
-    fn castling_ability_string(&self) -> String {
-        if self.castling_ability == 0 {
-            return '-'.to_string()
-        }
-        
-        let mut result = String::new();
-        if self.castling_ability & WhiteKingSide   as u8 != 0  { result += "K" }
-        if self.castling_ability & WhiteQueenSide  as u8 != 0  { result += "Q" }
-        if self.castling_ability & BlackKingSide   as u8 != 0  { result += "k" }
-        if self.castling_ability & BlackQueenSide  as u8 != 0  { result += "q" }
-        result
-    }
-
-    pub fn update_castling_rights(&mut self, src: u8, dst: u8) {
-        self.castling_ability &= CASTLING_RIGHTS[src as usize] & CASTLING_RIGHTS[dst as usize];
     }
 
     #[inline(always)]

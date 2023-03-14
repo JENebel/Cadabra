@@ -123,7 +123,7 @@ impl Position {
         }
 
         //Update castling abililties
-        self.update_castling_rights(moov.src, moov.dst);
+        self.castling_ability.update(moov.src, moov.dst);
         self.apply_castling_zobrist();
 
         // Update half moves counter

@@ -12,3 +12,6 @@ incremental = true
 [alias]
 validate = "run --release --bin validator stockfish short"
 benchmark = "run --release bench"
+
+[env]
+CONST_RANDOM_SEED = "42069"
