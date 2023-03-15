@@ -105,43 +105,22 @@ impl Position {
         Ok(pos)
     }
 
-    pub fn fen_string(&self) -> String {
-        fn piece_at(pos: &Position, square: u8) -> Option<(Color, PieceType)> {
-            if pos.bb(White, Pawn).get_bit(square) {
-                Some((White, Pawn))
-            } else if pos.bb(Black, Pawn).get_bit(square) {
-                Some((Black, Pawn))
-            } else if pos.bb(White, Knight).get_bit(square) {
-                Some((White, Knight))
-            } else if pos.bb(Black, Knight).get_bit(square) {
-                Some((Black, Knight))
-            } else if pos.bb(White, Bishop).get_bit(square) {
-                Some((White, Bishop))
-            } else if pos.bb(Black, Bishop).get_bit(square) {
-                Some((Black, Bishop))
-            } else if pos.bb(White, Rook).get_bit(square) {
-                Some((White, Rook))
-            } else if pos.bb(Black, Rook).get_bit(square) {
-                Some((Black, Rook))
-            } else if pos.bb(White, Queen).get_bit(square) {
-                Some((White, Queen))
-            } else if pos.bb(Black, Queen).get_bit(square) {
-                Some((Black, Queen))
-            } else if pos.bb(White, King).get_bit(square) {
-                Some((White, King))
-            } else if pos.bb(Black, King).get_bit(square) {
-                Some((Black, King))
-            } else {
-                None
+    pub fn piece_at(&self, square: u8) -> Option<(Color, PieceType)> {
+        for p in 0..12 {
+            if self.bitboards[p].get_bit(square) {
+                return Some(index_to_piece(p))
             }
         }
+        None
+    }
 
+    pub fn fen_string(&self) -> String {
         let mut pieces = String::new();
         for r in 0..8 {
             let mut since = 0;
 
             for f in 0..8 {
-                if let Some(p) = piece_at(self, r * 8 + f) {
+                if let Some(p) = self.piece_at(r * 8 + f) {
                     if since > 0 {
                         pieces = format!("{pieces}{since}");
                         since = 0;
@@ -215,7 +194,7 @@ impl Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "\n  ┌────┬────┬────┬────┬────┬────┬────┬────┐")?;
         for y in 0..8 {
-            write!(f, "{} │", format!("{}", 8-y ).as_str())?;
+            write!(f, "{} │", 8 - y)?;
             for x in 0..8 {
                 if let Some(piece_index) = (0..=11).find(|i| self.bitboards[*i].get_bit(8*y+x)) {
                     write!(f, " {}{} ", PIECE_STRINGS[piece_index], if piece_index < 6 {"."} else {" "})?;

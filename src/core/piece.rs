@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, mem};
 
 use PieceType::*;
 use crate::Color::{*, self};
@@ -40,6 +40,13 @@ impl Display for PieceType {
             King =>   "King",
         })
     }
+}
+
+pub fn index_to_piece(index: usize) -> (Color, PieceType) {
+    debug_assert!(index < 12);
+    let color = unsafe { mem::transmute::<u8, Color>((index / 6) as u8) };
+    let piece = unsafe { mem::transmute::<u8, PieceType>((index % 6) as u8) };
+    (color, piece)
 }
 
 pub fn char_to_piece(char: char) -> Result<(Color, PieceType), String> {

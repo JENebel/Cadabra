@@ -1,7 +1,7 @@
 const ATTACKED_CASTLING_MASKS: [u64; 4] = generate_attacked_castling_masks();
 const OPEN_CASTLING_MASKS: [u64; 4] = generate_open_castling_masks();
 
-pub const CASTLING_RIGHTS: [u8; 64] = [
+const CASTLING_RIGHTS: [u8; 64] = [
     7, 15, 15, 15,  3, 15, 15, 11,
    15, 15, 15, 15, 15, 15, 15, 15,
    15, 15, 15, 15, 15, 15, 15, 15,
