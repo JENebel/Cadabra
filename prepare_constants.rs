@@ -25,7 +25,7 @@ fn main() {
     // Write to file
 
     // Files/Ranks/Diagonals
-    write!(file, "{}", array_string(generate_file_masks().to_vec(), "u64", "FILE_MASKS")).expect("Couldnt write FILE_MASKS!");
+    /*write!(file, "{}", array_string(generate_file_masks().to_vec(), "u64", "FILE_MASKS")).expect("Couldnt write FILE_MASKS!");
     let rank_masks = generate_rank_masks();
     write!(file, "{}", array_string(rank_masks.to_vec(), "u64", "RANK_MASKS")).expect("Couldnt write RANK_MASKS!");
     write!(file, "{}", array_string(generate_d1_masks().to_vec(), "u64", "D1_MASKS")).expect("Couldnt write D1_MASKS!");
@@ -70,7 +70,7 @@ fn main() {
     write!(file, "{}", array_string(rook_offsets.to_vec(), "usize", "ROOK_OFFSETS")).expect("Couldnt write ROOK_OFFSETS!");
     write!(file, "{}", array_string(bishop_offsets.to_vec(), "usize", "BISHOP_OFFSETS")).expect("Couldnt write BISHOP_OFFSETS!");
     write!(file, "{}", array_string(attacks.to_vec(), "u64", "SLIDING_ATTACKS")).expect("Couldnt write SLIDING_ATTACKS!");
-
+*/
     println!("cargo:rerun-if-changed=prepare_constants.rs");
 }
 

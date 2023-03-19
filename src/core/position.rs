@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Display, Write};
 
 use super::*;
 
@@ -115,48 +115,44 @@ impl Position {
     }
 
     pub fn fen_string(&self) -> String {
-        let mut pieces = String::new();
+        let mut result = String::new();
         for r in 0..8 {
             let mut since = 0;
 
             for f in 0..8 {
                 if let Some(p) = self.piece_at(r * 8 + f) {
                     if since > 0 {
-                        pieces = format!("{pieces}{since}");
+                        write!(result, "{since}").unwrap();
                         since = 0;
                     }
-                    pieces = format!("{pieces}{}", piece_char(p.0, p.1));
+                    write!(result, "{}", piece_char(p.0, p.1)).unwrap();
                 } else {
                     since += 1
                 }
             }
-
-            if since > 0 {
-                pieces = format!("{pieces}{since}");
-            }
-
-            if r != 7 {
-                pieces = format!("{pieces}/");
-            }
+            if since > 0 { write!(result, "{since}").unwrap() }
+            if r < 7 { write!(result, "/").unwrap() }
         }
 
-        let color = match self.active_color {
-            White => 'w',
-            Black => 'b',
-        };
+        write!(result, " {}", 
+            match self.active_color {
+                White => 'w',
+                Black => 'b',
+            }
+        ).unwrap();
 
-        let castling = self.castling_ability;
+        write!(result, " {}", self.castling_ability).unwrap();
 
-        let enpassant = if self.enpassant_square.is_not_empty() {
-            format!("{}", Square::from(self.enpassant_square.least_significant()))
+        if self.enpassant_square.is_not_empty() {
+            write!(result, " {}", Square::from(self.enpassant_square.least_significant())).unwrap()
         } else {
-            "-".to_string()
-        };
+            write!(result, " -").unwrap()
+        }
 
-        let half_moves = self.half_moves;
-        let full_moves = self.full_moves;
+        write!(result, " {}", self.half_moves).unwrap();
+        write!(result, " {}", self.full_moves).unwrap();
 
-        format!("{pieces} {color} {castling} {enpassant} {half_moves} {full_moves}")
+        result
     }
 
     #[inline(always)]
@@ -202,10 +198,10 @@ impl Display for Position {
                     write!(f, "    ")?;
                 }
                 
-                if x != 7 { write!(f, "│")? };
+                if x < 7 { write!(f, "│")? };
             }
             writeln!(f, "│")?;
-            if y != 7 { writeln!(f, "  ├────┼────┼────┼────┼────┼────┼────┼────┤")? };
+            if y < 7 { writeln!(f, "  ├────┼────┼────┼────┼────┼────┼────┼────┤")? };
         }
         writeln!(f, "  └────┴────┴────┴────┴────┴────┴────┴────┘")?;
         writeln!(f, "    a    b    c    d    e    f    g    h\n")?;

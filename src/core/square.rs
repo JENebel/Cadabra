@@ -59,7 +59,6 @@ impl From<u8> for Square {
     }
 }
 
-
 impl Display for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", Self::SQUARE_STRINGS[*self as usize])

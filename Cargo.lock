@@ -27,6 +27,7 @@ dependencies = [
  "colored",
  "const-random",
  "const_for",
+ "lazy_static",
 ]
 
 [[package]]

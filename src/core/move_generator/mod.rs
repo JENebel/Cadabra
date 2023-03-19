@@ -9,3 +9,7 @@ pub use castling::*;
 pub use generate_moves::*;
 
 pub use super::*;
+
+pub fn init_attack_tables() {
+    lazy_static::initialize(&SLIDING_ATTACKS);
+}

@@ -1,7 +1,10 @@
 use std::env;
 
 use cadabra::*;
+
 fn main() {
+    init_attack_tables();
+
     let args: Vec<String> = env::args().collect();
     if args.contains(&"bench".to_string()) {
         run_bench(args.contains(&"save".to_string()));

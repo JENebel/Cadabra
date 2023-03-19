@@ -1,4 +1,6 @@
-include!(concat!(env!("OUT_DIR"), "/consts.rs"));
+#![feature(const_eval_limit)]
+#![feature(const_trait_impl)]
+#![const_eval_limit = "128000000"]
 
 pub const PKG_NAME: &str = "Cadabra";
 pub const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -13,7 +15,6 @@ pub use crate::core::*;
 pub use interface::*;
 pub use bench::*;
 pub use search::*;
-
 
 pub struct Settings {
     pub threads: u8,
