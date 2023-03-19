@@ -71,9 +71,9 @@ dependencies = [
 
 [[package]]
 name = "const_for"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6042364363e3e86930504e1c88df65c5bcb01011c2d8e0fe844b9b60775ee31a"
+checksum = "278c867661f2162a6ea9e7c467aedf5501ad89d87a39987ae61f914fa8e9ed8e"
 
 [[package]]
 name = "crunchy"

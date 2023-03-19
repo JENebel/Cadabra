@@ -5,7 +5,8 @@ authors = ["Joachim Enggård Nebel"]
 edition = "2021"
 license = "BSD-2-Clause"
 description = "UCI compatible chess engine"
-repository = "https://github.com/JENebel/Cadabra/"  
+repository = "https://github.com/JENebel/Cadabra/"
+build = "generate_sliding_attacks.rs"
 default-run = "cadabra"
 
 [[bin]]
@@ -24,4 +25,4 @@ const_for = "0.1.0"
 lazy_static = "1.4.0"
 
 [build-dependencies]
-const_for = "0.1.0"
+const_for = "0.1.1"
