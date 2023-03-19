@@ -10,13 +10,11 @@ pub const SLIDER_D12_CHECK_MASK: [u64; 4096] = generate_d12_slider_check_mask();
 /// Use (king_sq * 2048) + (slider_sq * 256) + (pexed occupancies along the axis wanted)
 pub const PIN_MASKS: [u64; 16384] = generate_pin_masks();
 
+/// A const implementation of pext, used to access sliding attacks on compile time
 const fn const_pext(value: u64, mut mask: u64) -> u64 {
     let mut res = 0;
     let mut bb: u64 = 1;
-    loop {
-        if mask == 0 {
-            break;
-        }
+    while mask != 0 {
         if value & mask & (mask.wrapping_neg()) != 0 {
             res |= bb;
         }

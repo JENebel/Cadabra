@@ -7,6 +7,11 @@ pub const BLACK_PAWN_ATTACKS: [u64; 64] = generate_pawn_attacks(false);
 pub const KNIGHT_ATTACKS: [u64; 64] = generate_knight_attacks();
 pub const KING_ATTACKS: [u64; 64] = generate_king_attacks();
 
+#[test]
+fn brian() {
+    println!("{}", Bitboard(HV_ATTACK_TABLE_MASKS[12]))
+}
+
 #[inline(always)]
 pub fn get_attacks(square: u8, color: Color, piece_type: PieceType, occupancies: Bitboard) -> u64 {
     match piece_type {

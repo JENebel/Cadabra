@@ -27,7 +27,6 @@ dependencies = [
  "colored",
  "const-random",
  "const_for",
- "lazy_static",
 ]
 
 [[package]]
@@ -71,9 +70,9 @@ dependencies = [
 
 [[package]]
 name = "const_for"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "278c867661f2162a6ea9e7c467aedf5501ad89d87a39987ae61f914fa8e9ed8e"
+checksum = "20e43dd2195037d926511d451064f089f9ed260f7a4f40f41e37b10562d87273"
 
 [[package]]
 name = "crunchy"
@@ -109,9 +108,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.139"
+version = "0.2.140"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
+checksum = "99227334921fae1a979cf0bfdfcc6b3e5ce376ef57e16fb6fb3ea2ed6095f80c"
 
 [[package]]
 name = "once_cell"

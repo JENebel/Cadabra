@@ -11,8 +11,8 @@ const  BENCH_POSITIONS: [(&'static str, &'static str, u8); 5] = [
     ("Karpov v Kasparov",   "r1bq1rk1/3n1pbp/2pQ2p1/4n3/1p2PP2/1P2B3/P3N1PP/1N1RKB1R b K - 1 15", 5),
 ];
 
-const WARMUPS: u16 = 0;
-const ITERATIONS: u16 = 5;
+const WARMUPS: u16 = 1;
+const ITERATIONS: u16 = 10;
 
 pub fn run_bench(save: bool) {
     let positions = BENCH_POSITIONS.iter().map(|(_, fen, depth)| (Position::from_fen(fen).unwrap(), *depth)).collect::<Vec<(Position, u8)>>();

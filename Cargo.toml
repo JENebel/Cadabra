@@ -22,7 +22,6 @@ bitintr = "0.3.0"
 colored = "2.0.0"
 const-random = "0.1.15"
 const_for = "0.1.0"
-lazy_static = "1.4.0"
 
 [build-dependencies]
-const_for = "0.1.1"
+const_for = "0.1.2"
