@@ -121,7 +121,7 @@ fn hv_mask_from(square: u8) -> u64 {
 
 /// Generates d12 rays from square, excluding it self and the last square in a ray
 fn bishop_mask_from(square: u8) -> u64 {
-    let base: u64 = 1 << (square);
+    let src: u64 = 1 << (square);
     let mut result: u64 = 0;
     let rank = square / 8;
     let file = square % 8;
@@ -132,7 +132,7 @@ fn bishop_mask_from(square: u8) -> u64 {
     let mut offs = 0;
     while t_rank < 6 && t_file < 6 {
         offs += 9;
-        result |= base << offs;
+        result |= src << offs;
         t_rank += 1;
         t_file += 1;
     }
@@ -143,7 +143,7 @@ fn bishop_mask_from(square: u8) -> u64 {
     let mut offs = 0;
     while t_rank < 6 && t_file > 1 {
         offs += 7;
-        result |= base << offs;
+        result |= src << offs;
         t_rank += 1;
         t_file -= 1;
     }
@@ -154,7 +154,7 @@ fn bishop_mask_from(square: u8) -> u64 {
     let mut offs = 0;
     while t_rank > 1 && t_file > 1 {
         offs += 9;
-        result |= base >> offs;
+        result |= src >> offs;
         t_rank -= 1;
         t_file -= 1;
     }
@@ -165,7 +165,7 @@ fn bishop_mask_from(square: u8) -> u64 {
     let mut offs = 0;
     while t_rank > 1 && t_file < 6 {
         offs += 7;
-        result |= base >> offs;
+        result |= src >> offs;
         t_rank -= 1;
         t_file += 1;
     }
@@ -174,7 +174,7 @@ fn bishop_mask_from(square: u8) -> u64 {
 }
 
 fn hv_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
-    let base: u64 = 1 << (square);
+    let src: u64 = 1 << (square);
     let mut result: u64 = 0;
 
     // Left
@@ -182,8 +182,8 @@ fn hv_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     let mut offs = 0;
     while file > 0 {
         offs += 1;
-        result |= base >> offs;
-        if occ & base >> offs != 0 { break }
+        result |= src >> offs;
+        if occ & src >> offs != 0 { break }
         file -= 1;
     }
 
@@ -192,8 +192,8 @@ fn hv_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     let mut offs = 0;
     while file < 7 {
         offs += 1;
-        result |= base << offs;
-        if occ & base << offs != 0 { break }
+        result |= src << offs;
+        if occ & src << offs != 0 { break }
         file += 1;
     }
 
@@ -202,8 +202,8 @@ fn hv_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     let mut offs = 0;
     while rank > 0 {
         offs += 8;
-        result |= base >> offs;
-        if occ & base >> offs != 0 { break }
+        result |= src >> offs;
+        if occ & src >> offs != 0 { break }
         rank -= 1;
     }
 
@@ -212,8 +212,8 @@ fn hv_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     let mut offs = 0;
     while rank < 7 {
         offs += 8;
-        result |= base << offs;
-        if occ & base << offs != 0 { break }
+        result |= src << offs;
+        if occ & src << offs != 0 { break }
         rank += 1;
     }
 
@@ -221,31 +221,35 @@ fn hv_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
 }
 
 fn d12_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
-    let base: u64 = 1 << (square);
+    let src: u64 = 1 << (square);
     let mut result: u64 = 0;
     let rank = square / 8;
     let file = square % 8;
 
-    //Down-Right
+    // Down-Right
+    /*for i in 1..7-rank.max(file) {
+        if occ & src << i * 9 != 0 { break; }
+        result |= src << i * 9;
+    }*/
     let mut t_rank = rank;
     let mut t_file = file;
     let mut offs = 0;
     while t_rank < 7 && t_file < 7 {
         offs += 9;
-        result |= base << offs;
-        if occ & base << offs != 0 { break; }
+        result |= src << offs;
+        if occ & src << offs != 0 { break; }
         t_rank += 1;
         t_file += 1;
     }
 
-    //Down-Left
+    // Down-Left
     let mut t_rank = rank;
     let mut t_file = file;
     let mut offs = 0;
     while t_rank < 7 && t_file > 0 {
         offs += 7;
-        result |= base << offs;
-        if occ & base << offs != 0 { break; }
+        result |= src << offs;
+        if occ & src << offs != 0 { break; }
         t_rank += 1;
         t_file -= 1;
     }
@@ -256,8 +260,8 @@ fn d12_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     let mut offs = 0;
     while t_rank > 0 && t_file > 0 {
         offs += 9;
-        result |= base >> offs;
-        if occ & base >> offs != 0 { break; }
+        result |= src >> offs;
+        if occ & src >> offs != 0 { break; }
         t_rank -= 1;
         t_file -= 1;
     }
@@ -268,8 +272,8 @@ fn d12_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     offs = 0;
     while t_rank > 0 && t_file < 7 {
         offs += 7;
-        result |= base >> offs;
-        if occ & base >> offs != 0 { break; }
+        result |= src >> offs;
+        if occ & src >> offs != 0 { break; }
         t_rank -= 1;
         t_file += 1;
     }

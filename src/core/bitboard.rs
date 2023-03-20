@@ -105,7 +105,6 @@ impl Default for Bitboard {
     }
 }
 
-
 impl Display for Bitboard {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut str = "".to_string();
@@ -149,6 +148,7 @@ impl Bitboard {
     }
 
     /// Extract the least significant set bit. Modifies the bitboard and returns the position of the extracted bit
+    #[inline(always)]
     pub fn extract_bit(&mut self) -> Option<u8> {
         if self.is_empty() { return None }
 
@@ -159,6 +159,7 @@ impl Bitboard {
         Some(bit as u8)
     }
 
+    #[inline(always)]
     pub fn count_bits(&self) -> u32 {
         self.0.count_ones()
     }
