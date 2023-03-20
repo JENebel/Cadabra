@@ -53,6 +53,7 @@ impl CastlingAbility {
         self.byte & (side as u8) != 0
     }
 
+    #[inline(always)]
     pub fn update(&mut self, src: u8, dst: u8) {
         self.byte &= CASTLING_RIGHTS[src as usize] & CASTLING_RIGHTS[dst as usize];
     }

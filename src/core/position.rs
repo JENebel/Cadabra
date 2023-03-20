@@ -105,6 +105,7 @@ impl Position {
         Ok(pos)
     }
 
+    #[inline(always)]
     pub fn piece_at(&self, square: u8) -> Option<(Color, PieceType)> {
         for p in 0..12 {
             if self.bitboards[p].get_bit(square) {

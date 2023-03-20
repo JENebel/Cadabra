@@ -16,6 +16,7 @@ pub enum PieceType {
 }
 
 impl Default for PieceType {
+    #[inline(always)]
     fn default() -> Self {
         Pawn
     }
@@ -42,6 +43,7 @@ impl Display for PieceType {
     }
 }
 
+#[inline(always)]
 pub fn index_to_piece(index: usize) -> (Color, PieceType) {
     debug_assert!(index < 12);
     let color = unsafe { mem::transmute::<u8, Color>((index / 6) as u8) };

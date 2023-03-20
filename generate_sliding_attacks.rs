@@ -227,10 +227,6 @@ fn d12_attacks_on_the_fly(square: u8, occ: u64) -> u64 {
     let file = square % 8;
 
     // Down-Right
-    /*for i in 1..7-rank.max(file) {
-        if occ & src << i * 9 != 0 { break; }
-        result |= src << i * 9;
-    }*/
     let mut t_rank = rank;
     let mut t_file = file;
     let mut offs = 0;

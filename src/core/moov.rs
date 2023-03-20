@@ -45,6 +45,7 @@ impl MoveType {
 }
 
 impl Default for MoveType {
+    #[inline(always)]
     fn default() -> Self {
         Quiet
     }
