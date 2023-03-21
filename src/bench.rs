@@ -27,7 +27,7 @@ pub fn run_bench(save: bool) {
         print!(" Warm up ite. {i}/{WARMUPS} ...\t");
         stdout().flush().unwrap();
         for (pos, depth) in &positions {
-            pos.perft::<false>(black_box(*depth));
+            black_box(pos).perft::<false>(black_box(*depth));
         }
         println!("Done");
         stdout().flush().unwrap();
@@ -46,7 +46,7 @@ pub fn run_bench(save: bool) {
         print!(" Bench ite. {i}/{ITERATIONS} ...\t");
         stdout().flush().unwrap();
         for (pos, depth) in &positions {
-            nodes += pos.perft::<false>(black_box(*depth));
+            nodes += black_box(pos).perft::<false>(black_box(*depth));
         }
         println!("Done");
         stdout().flush().unwrap();
