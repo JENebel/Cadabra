@@ -1,5 +1,6 @@
 use std::{time::Instant, io::{stdout, Write, self, BufRead}, fs::File, path::PathBuf};
 use colored::Colorize;
+use std::hint::black_box;
 
 use super::Position;
 
@@ -26,7 +27,7 @@ pub fn run_bench(save: bool) {
         print!(" Warm up ite. {i}/{WARMUPS} ...\t");
         stdout().flush().unwrap();
         for (pos, depth) in &positions {
-            pos.perft::<false>(*depth);
+            pos.perft::<false>(black_box(*depth));
         }
         println!("Done");
         stdout().flush().unwrap();
@@ -45,7 +46,7 @@ pub fn run_bench(save: bool) {
         print!(" Bench ite. {i}/{ITERATIONS} ...\t");
         stdout().flush().unwrap();
         for (pos, depth) in &positions {
-            nodes += pos.perft::<false>(*depth);
+            nodes += pos.perft::<false>(black_box(*depth));
         }
         println!("Done");
         stdout().flush().unwrap();

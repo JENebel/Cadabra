@@ -8,16 +8,19 @@ pub fn interface_loop() {
     let ui_receiver = spawn_ui_listener_thread();
 
     loop {
-        let line = ui_receiver.recv().expect("Error reading command!");
-        let command = &mut line.as_str();
+        let line = ui_receiver.recv().expect("Error receiving ui command!");
+        let mut command = line.as_str();
 
-        let cmd_name = match take_next(command) {
+        let cmd_name = match take_next(&mut command) {
             Some(name) => name,
             None => continue, // Empty command
         };
 
         match cmd_name {
-            // Cadabra commands
+            // Cadabra specific commands
+            "help" => {
+                todo!()
+            },
             "d" => {
                 println!("{}", pos);
             },
@@ -28,7 +31,7 @@ pub fn interface_loop() {
                 quit()
             },
             "move" => {
-                let moov = match take_next(command) {
+                let moov = match take_next(&mut command) {
                     Some(m) => m,
                     None => {
                         println!("Provide a move to make");
@@ -42,15 +45,20 @@ pub fn interface_loop() {
             },
             "eval" => {
                 println!("Heuristic value: {}", pos.evaluate())
+            },
+            "zobrist" => {
+                println!("Zobrist hash:: {:x}", pos.zobrist_hash)
             }
-            "perft" => parse_perft(command, &pos),
+            "perft" => {
+                parse_perft(&mut command, &pos)
+            },
             "bench" => {
-                match take_next(command) {
+                match take_next(&mut command) {
                     Some("save") => run_bench(true),
                     None => run_bench(false),
-                    Some(arg) => println!("Illegal parameter for benhc '{arg}'"),
+                    Some(arg) => println!("Illegal parameter for bench '{arg}'. Only 'save' is supported"),
                 }
-            },
+            }
 
 
             // UCI commands
@@ -61,20 +69,25 @@ pub fn interface_loop() {
                 // Advertise options
 
                 println!("uciok")
-            },
+            }
             "setoption" => {
                 todo!()
-            },
+            }
             "isready" => {
                 println!("readyok")
-            },
+            }
             "ucinewgame" => {
                 todo!()
+            }
+            "position" => {
+                match parse_position(&mut command) {
+                    Ok(res) => pos = res,
+                    Err(err) => println!("{err}"),
+                }
+            }
+            "go" => {
+                parse_go(&mut command, &pos)
             },
-            "position " => {
-                todo!()
-            },
-            "go" => parse_go(command, &pos),
             "stop" => {
                 todo!()
             },
@@ -84,6 +97,13 @@ pub fn interface_loop() {
             "quit" => {
                 quit()
             },
+            "debug" => {
+                match take_next(&mut command) {
+                    Some("on") => run_bench(true),
+                    Some("off") => run_bench(false),
+                    _ => println!("Debug can be 'on' or 'off'"),
+                }
+            }
 
             _ => println!("Unknown command '{cmd_name}', use 'help' command for all commands")
         }
@@ -141,17 +161,19 @@ fn quit() {
     process::exit(0)
 }
 
-fn parse_go(command: &mut &str, _pos: &Position) {
-    let arg = match take_next(command) {
-        Some(arg) => arg,
-        None => {
-            println!("Provide arguments for go command");
-            return
+fn parse_position(command: &mut &str) -> Result<Position, String> {
+    match take_next(command) {
+        Some("startpos") => Ok(Position::start_pos()),
+        Some("fen") => {
+            todo!()
         },
-    };
-    
-    match arg {
-        "depth" => {
+        _ => Err(format!("Illegal position command"))
+    }
+}
+
+fn parse_go(command: &mut &str, _pos: &Position) {
+    match take_next(command) {
+        Some("depth") => {
             let _depth = match take_next_u8(command) {
                 Some(d) => d,
                 None => {

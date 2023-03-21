@@ -97,7 +97,6 @@ impl Position {
             };
 
             self.enpassant_square = Bitboard(1 << enp_sq);
-
             self.apply_enpassant_zobrist(enp_sq)
         }
         else {

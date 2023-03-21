@@ -1,6 +1,6 @@
 [package]
 name = "cadabra"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Joachim Enggård Nebel"]
 edition = "2021"
 license = "BSD-2-Clause"
