@@ -10,7 +10,7 @@ codegen-units = 1
 incremental = true
 
 [alias]
-validate = "run --release --bin validator stockfish short"
+validate = "run --release --bin validator stockfish"
 benchmark = "run --release bench"
 
 [env]

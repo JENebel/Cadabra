@@ -5,7 +5,8 @@ mod test_positions;
 use test_positions::*;
 
 // Run with something like this, if 'stockfish.exe' is in executing directory
-// "cargo validate" is alias for "cargo run --release --bin validator stockfish short"
+// "cargo validate" is alias for "cargo run --release --bin validator stockfish"
+// Use "cargo validate short" for a reduced validation
 
 fn main() {
     run_perft_tests()
