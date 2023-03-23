@@ -1,13 +1,13 @@
 use super::*;
-use stackvector::StackVec;
 
-pub type MoveList = StackVec<[Move; 128]>;
+pub type MoveList = heapless::Vec<Move, 128>;
 
-pub trait LazySortedMoveList {
+pub trait MoveListFunc {
     fn pop_best(&mut self) -> Option<Move>;
+    fn push_move(&mut self, moov: Move);
 }
 
-impl LazySortedMoveList for MoveList {
+impl MoveListFunc for MoveList {
     fn pop_best(&mut self) -> Option<Move> {
         let mut best_index = 0;
 
@@ -20,8 +20,15 @@ impl LazySortedMoveList for MoveList {
             }
         }
 
-        let length = self.length;
+        let length = self.len();
         self.swap(length - 1, best_index);
         self.pop()
+    }
+
+    /// Unsafely inserts. This is not optimal, but increases performance by ~3%
+    fn push_move(&mut self, moov: Move) {
+        debug_assert!(self.len() + 1 < self.capacity());
+        
+        unsafe { self.push_unchecked(moov) }
     }
 }

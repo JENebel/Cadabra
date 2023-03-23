@@ -3,11 +3,13 @@ use super::*;
 impl Position {
     #[inline(always)]
     pub fn perft<const ROOT: bool>(&self, depth: u8) -> u64 {
-        let moves = self.generate_moves();
+        let mut moves = self.generate_moves();
     
         let is_next_leaf = depth == 2;
     
-        moves.into_iter().fold(0, |acc, moov| {
+        let mut result = 0;
+
+        while let Some(moov) = moves.pop() {
             let mut copy = *self;
             copy.make_move(moov);
     
@@ -19,8 +21,10 @@ impl Position {
             if ROOT {
                 println!("{moov}: {sub_nodes}");
             }
-    
-            acc + sub_nodes
-        })
+
+            result += sub_nodes;
+        }
+
+        result
     }
 }

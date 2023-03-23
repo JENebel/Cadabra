@@ -115,7 +115,7 @@ impl Position {
         let color = self.active_color;
         while let Some(dst) = legal_targets.extract_bit() {
             let is_capture = self.color_bb(color.opposite()).get_bit(dst);
-            move_list.push(Move::new_normal(src, dst, piece, is_capture))
+            move_list.push_move(Move::new_normal(src, dst, piece, is_capture));
         }
     }
 
@@ -140,16 +140,16 @@ impl Position {
             // Determine if promotion
             if last_rank.get_bit(dst) {
                 if valid_mask.get_bit(dst) {
-                    move_list.push(Move::new_promotion(src, dst, Queen,  false));
-                    move_list.push(Move::new_promotion(src, dst, Rook,   false));
-                    move_list.push(Move::new_promotion(src, dst, Bishop, false));
-                    move_list.push(Move::new_promotion(src, dst, Knight, false));
+                    move_list.push_move(Move::new_promotion(src, dst, Queen,  false));
+                    move_list.push_move(Move::new_promotion(src, dst, Rook,   false));
+                    move_list.push_move(Move::new_promotion(src, dst, Bishop, false));
+                    move_list.push_move(Move::new_promotion(src, dst, Knight, false));
                 }
             }
             else {
                 // Normal move
                 if valid_mask.get_bit(dst) {
-                    move_list.push(Move::new_normal(src, dst, Pawn, false))
+                    move_list.push_move(Move::new_normal(src, dst, Pawn, false));
                 }
 
                 // Check for double push ability
@@ -160,7 +160,7 @@ impl Position {
                 };
 
                 if init_rank.get_bit(src) && ((!self.all_occupancies) & valid_mask).get_bit(double_push_sq) {
-                    move_list.push(Move::new(src, double_push_sq, Pawn, DoublePush))
+                    move_list.push_move(Move::new(src, double_push_sq, Pawn, DoublePush));
                 }
             }
         }
@@ -184,12 +184,12 @@ impl Position {
         let mut captures = attacks & valid_mask & self.color_bb(color.opposite());
         while let Some(dst) = captures.extract_bit() {
             if !promoting {
-                move_list.push(Move::new_normal(src, dst, Pawn, true))
+                move_list.push_move(Move::new_normal(src, dst, Pawn, true));
             } else {
-                move_list.push(Move::new_promotion(src, dst, Queen,  true));
-                move_list.push(Move::new_promotion(src, dst, Rook,   true));
-                move_list.push(Move::new_promotion(src, dst, Bishop, true));
-                move_list.push(Move::new_promotion(src, dst, Knight, true));
+                move_list.push_move(Move::new_promotion(src, dst, Queen,  true));
+                move_list.push_move(Move::new_promotion(src, dst, Rook,   true));
+                move_list.push_move(Move::new_promotion(src, dst, Bishop, true));
+                move_list.push_move(Move::new_promotion(src, dst, Knight, true));
             }
         }
 
@@ -214,7 +214,7 @@ impl Position {
             let pin_mask = self.generate_enpassant_pin_mask(color, src);
             if !pin_mask.get_bit(captured) {
                 // Not opening up after enpassant capture
-                move_list.push(Move::new(src, enp_sq, Pawn, EnpassantCapture))
+                move_list.push_move(Move::new(src, enp_sq, Pawn, EnpassantCapture));
             }
         }
     }
@@ -271,14 +271,14 @@ impl Position {
                     let none_attacked = (WhiteKingSide.attacked_mask() & attacked).is_empty();
                     let between_open =  (WhiteKingSide.open_mask() & self.all_occupancies).is_empty();
                     if none_attacked && between_open {
-                        move_list.push(Move::new(e1 as u8, g1 as u8, King, CastleKingSide))
+                        move_list.push_move(Move::new(e1 as u8, g1 as u8, King, CastleKingSide));
                     }
                 }
                 if self.castling_ability.is_side_available(WhiteQueenSide) {
                     let none_attacked = (WhiteQueenSide.attacked_mask() & attacked).is_empty();
                     let between_open =  (WhiteQueenSide.open_mask() & self.all_occupancies).is_empty();
                     if none_attacked && between_open {
-                        move_list.push(Move::new(e1 as u8, c1 as u8, King, CastleQueenSide))
+                        move_list.push_move(Move::new(e1 as u8, c1 as u8, King, CastleQueenSide));
                     }
                 }
             },
@@ -287,14 +287,14 @@ impl Position {
                     let none_attacked = (BlackKingSide.attacked_mask() & attacked).is_empty();
                     let between_open =  (BlackKingSide.open_mask() & self.all_occupancies).is_empty();
                     if none_attacked && between_open {
-                        move_list.push(Move::new(e8 as u8, g8 as u8, King, CastleKingSide))
+                        move_list.push_move(Move::new(e8 as u8, g8 as u8, King, CastleKingSide));
                     }
                 }
                 if self.castling_ability.is_side_available(BlackQueenSide) {
                     let none_attacked = (BlackQueenSide.attacked_mask() & attacked).is_empty();
                     let between_open =  (BlackQueenSide.open_mask() &self.all_occupancies).is_empty();
                     if none_attacked && between_open {
-                        move_list.push(Move::new(e8 as u8, c8 as u8, King, CastleQueenSide))
+                        move_list.push_move(Move::new(e8 as u8, c8 as u8, King, CastleQueenSide));
                     }
                 }
             }
