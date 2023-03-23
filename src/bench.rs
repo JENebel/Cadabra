@@ -12,29 +12,21 @@ const  BENCH_POSITIONS: [(&'static str, &'static str, u8); 5] = [
     ("Karpov v Kasparov",   "r1bq1rk1/3n1pbp/2pQ2p1/4n3/1p2PP2/1P2B3/P3N1PP/1N1RKB1R b K - 1 15", 5),
 ];
 
-const WARMUPS: u16 = 1;
-const ITERATIONS: u16 = 10;
+const ITERATIONS: u16 = 2;
 
 pub fn run_bench(save: bool) {
     let positions = BENCH_POSITIONS.iter().map(|(_, fen, depth)| (Position::from_fen(fen).unwrap(), *depth)).collect::<Vec<(Position, u8)>>();
 
-    if WARMUPS > 0 {
-        println!("Warming up...");
-    }
-    
+    print!("Warming up...\t");
+
     let before_wu = Instant::now();
-    for i in 1..=WARMUPS {
-        print!(" Warm up ite. {i}/{WARMUPS} ...\t");
-        stdout().flush().unwrap();
-        for (pos, depth) in &positions {
-            black_box(pos).perft::<false>(black_box(*depth));
-        }
-        println!("Done");
-        stdout().flush().unwrap();
-        if i == 1 {
-            println!("  Estimated bench time: {:.2}s", (before_wu.elapsed().as_millis() as f64 / 1000.) * (WARMUPS + ITERATIONS) as f64);
-        }
+    
+    stdout().flush().unwrap();
+    for (pos, depth) in &positions {
+        black_box(pos).perft::<false>(black_box(*depth));
     }
+    println!("Done");
+    println!("Estimated bench time: {:.2}s", (before_wu.elapsed().as_millis() as f64 / 1000.) * ITERATIONS as f64);
 
     let mut nodes = 0;
 
@@ -42,13 +34,10 @@ pub fn run_bench(save: bool) {
 
     let before = Instant::now();
 
-    for i in 1..=ITERATIONS {
-        print!(" Bench ite. {i}/{ITERATIONS} ...\t");
-        stdout().flush().unwrap();
+    for _ in 1..=ITERATIONS {
         for (pos, depth) in &positions {
             nodes += black_box(pos).perft::<false>(black_box(*depth));
         }
-        println!("Done");
         stdout().flush().unwrap();
     }
 

@@ -7,7 +7,7 @@ impl Position {
     
         let is_next_leaf = depth == 2;
     
-        moves.fold(0, |acc, moov| {
+        moves.into_iter().fold(0, |acc, moov| {
             let mut copy = *self;
             copy.make_move(moov);
     

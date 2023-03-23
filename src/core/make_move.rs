@@ -6,7 +6,7 @@ use Square::*;
 
 impl Position {
     pub fn make_uci_move(&mut self, moov: &str) -> Result<(), String> {
-        let m = self.generate_moves().find(|m| format!("{m}") == moov);
+        let m = self.generate_moves().into_iter().find(|m| format!("{m}") == moov);
         if let Some(m) = m {
             self.make_move(m);
             Ok(())

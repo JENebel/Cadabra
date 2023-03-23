@@ -7,7 +7,7 @@ opt-level = 1
 [profile.release]
 lto = true
 codegen-units = 1
-incremental = false
+incremental = true
 
 [alias]
 validate = "run --release --bin validator stockfish"
