@@ -52,7 +52,6 @@ impl Square {
 }
 
 impl From<u8> for Square {
-    #[inline(always)]
     fn from(square: u8) -> Self {
         debug_assert!(square < 64);
         unsafe { mem::transmute::<u8, Square>(square) }

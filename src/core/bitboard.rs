@@ -64,34 +64,28 @@ implement_bitboard_assign_operation!(BitOrAssign, bitor_assign, |=);
 implement_bitboard_assign_operation!(BitXorAssign, bitxor_assign, ^=);
 
 impl BitUtils for u64 {
-    #[inline(always)]
     fn get_bit(&self, square: u8) -> bool {
         self & (1 << square) != 0
     }
 
-    #[inline(always)]
     fn set_bit(&mut self, square: u8) {
         *self |= 1 << square
     }
 
-    #[inline(always)]
     fn unset_bit(&mut self, square: u8) {
         *self &= !(1 << square)
     }
 }
 
 impl BitUtils for Bitboard {
-    #[inline(always)]
     fn get_bit(&self, square: u8) -> bool {
         self.0 & (1 << square) != 0
     }
 
-    #[inline(always)]
     fn set_bit(&mut self, square: u8) {
         self.0 |= 1 << square
     }
 
-    #[inline(always)]
     fn unset_bit(&mut self, square: u8) {
         self.0 &= !(1 << square)
     }
@@ -100,14 +94,12 @@ impl BitUtils for Bitboard {
 impl Not for Bitboard {
     type Output = Bitboard;
 
-    #[inline(always)]
     fn not(self) -> Self::Output {
         Bitboard(!self.0)
     }
 }
 
 impl Default for Bitboard {
-    #[inline(always)]
     fn default() -> Self {
         Bitboard::EMPTY
     }
@@ -135,28 +127,19 @@ impl Bitboard {
     pub const EMPTY: Bitboard = Bitboard(0);
     pub const FULL: Bitboard = Bitboard(u64::MAX);
 
-    #[inline(always)]
     pub fn as_u64(&self) -> u64 {
         self.0
     }
 
-    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.0 == 0
     }
 
-    #[inline(always)]
-    pub fn is_not_empty(&self) -> bool {
-        self.0 != 0
-    }
-
-    #[inline(always)]
     pub fn least_significant(&self) -> u8 {
         self.0.trailing_zeros() as u8
     }
 
     /// Extract the least significant set bit. Modifies the bitboard and returns the position of the extracted bit
-    #[inline(always)]
     pub fn extract_bit(&mut self) -> Option<u8> {
         if self.is_empty() { return None }
 
@@ -167,7 +150,6 @@ impl Bitboard {
         Some(bit as u8)
     }
 
-    #[inline(always)]
     pub fn count_bits(&self) -> u32 {
         self.0.count_ones()
     }

@@ -17,7 +17,7 @@ const ITERATIONS: u16 = 2;
 pub fn run_bench(save: bool) {
     let positions = BENCH_POSITIONS.iter().map(|(_, fen, depth)| (Position::from_fen(fen).unwrap(), *depth)).collect::<Vec<(Position, u8)>>();
 
-    print!("Warming up...\t");
+    print!(" Warming up...\t");
 
     let before_wu = Instant::now();
     
@@ -26,11 +26,11 @@ pub fn run_bench(save: bool) {
         black_box(pos).perft::<false>(black_box(*depth));
     }
     println!("Done");
-    println!("Estimated bench time: {:.2}s", (before_wu.elapsed().as_millis() as f64 / 1000.) * ITERATIONS as f64);
+    println!(" Estimated bench time: {:.2}s", (before_wu.elapsed().as_millis() as f64 / 1000.) * ITERATIONS as f64);
 
     let mut nodes = 0;
 
-    println!("Running perft benchmark...");
+    println!(" Running perft benchmark...");
 
     let before = Instant::now();
 
@@ -52,14 +52,14 @@ pub fn run_bench(save: bool) {
         return
     }
 
-    let mut file = File::create(baseline_path()).expect("Could not create baseline file");
-    writeln!(file, "perft:{}", perft_mnps).expect("Could not write benchmark");
-    println!("Baseline saved");
+    let mut file = File::create(baseline_path()).expect(" Could not create baseline file");
+    writeln!(file, "perft:{}", perft_mnps).expect(" Could not write benchmark");
+    println!("  Baseline saved");
 }
 
 fn show_results(perft_time: u128, perft_mnps: f64) {
-    println!("Finished perft bench in {:.2}s", perft_time as f64 / 1000.);
-    println!("Speed was: {perft_mnps:.2} MNodes/s");
+    println!(" Finished perft bench in {:.2}s", perft_time as f64 / 1000.);
+    println!(" Speed was: {perft_mnps:.2} MNodes/s");
 
     // Load baseline
     // TODO handle errors here
@@ -91,7 +91,7 @@ fn show_results(perft_time: u128, perft_mnps: f64) {
         }
     };
 
-    println!("MNodes/s changed by {}%", result_str);
+    println!(" MNodes/s changed by {}%", result_str);
 }
 
 fn baseline_path() -> PathBuf {

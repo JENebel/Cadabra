@@ -26,17 +26,14 @@ impl Color {
         }
     }
 
-    #[inline(always)]
     pub fn is_white(&self) -> bool {
         *self == White
     }
 
-    #[inline(always)]
     pub fn is_black(&self) -> bool {
         *self == Black
     }
 
-    #[inline(always)]
     pub fn piece_offset(&self) -> usize {
         match self {
             White => 0,
@@ -44,7 +41,6 @@ impl Color {
         }
     }
 
-    #[inline(always)]
     pub fn opposite(&self) -> Color {
         if self.is_white() { Color::Black } else { Color::White }
     }

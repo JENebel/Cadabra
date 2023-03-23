@@ -12,22 +12,18 @@ pub struct Zobrist {
 }
 
 impl Position {
-    #[inline(always)]
     pub fn apply_side_zobrist(&mut self) {
         self.zobrist_hash ^= SIDE_KEY
     }
 
-    #[inline(always)]
     pub fn apply_piece_zobrist(&mut self, color: Color, piece_type: PieceType, square: u8) {
         self.zobrist_hash ^= PIECE_KEYS[piece_type.index(color) * 12 + square as usize]
     }
     
-    #[inline(always)]
     pub fn apply_enpassant_zobrist(&mut self, square: u8) {
         self.zobrist_hash ^= ENPASSANT_KEYS[square as usize]
     }
 
-    #[inline(always)]
     pub fn apply_castling_zobrist(&mut self) {
         self.zobrist_hash ^= CASTLING_KEYS[self.castling_ability.byte as usize];
     }
@@ -49,7 +45,7 @@ impl Position {
             self.apply_side_zobrist()
         }
 
-        if self.enpassant_square.is_not_empty() {
+        if !self.enpassant_square.is_empty() {
             self.apply_enpassant_zobrist(self.enpassant_square.least_significant());
         }
     }

@@ -16,7 +16,6 @@ pub enum PieceType {
 }
 
 impl Default for PieceType {
-    #[inline(always)]
     fn default() -> Self {
         Pawn
     }
@@ -24,7 +23,6 @@ impl Default for PieceType {
 
 impl PieceType {
     /// Calculates the bitboard index of the piece, given its offset
-    #[inline(always)]
     pub fn index(&self, color: Color) -> usize {
         *self as usize + color.piece_offset()
     }
@@ -43,7 +41,6 @@ impl Display for PieceType {
     }
 }
 
-#[inline(always)]
 pub fn index_to_piece(index: usize) -> (Color, PieceType) {
     debug_assert!(index < 12);
     let color = unsafe { mem::transmute::<u8, Color>((index / 6) as u8) };

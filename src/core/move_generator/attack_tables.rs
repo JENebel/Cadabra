@@ -8,7 +8,6 @@ pub const BLACK_PAWN_ATTACKS: [u64; 64] = generate_pawn_attacks(false);
 pub const KNIGHT_ATTACKS: [u64; 64] = generate_knight_attacks();
 pub const KING_ATTACKS: [u64; 64] = generate_king_attacks();
 
-#[inline(always)]
 pub fn get_attacks(square: u8, color: Color, piece_type: PieceType, occupancies: Bitboard) -> u64 {
     match piece_type {
         PieceType::Pawn =>   pawn_attacks(square, color),
@@ -21,7 +20,6 @@ pub fn get_attacks(square: u8, color: Color, piece_type: PieceType, occupancies:
 }
 
 /// Gets the possible pawn attacks from the current position
-#[inline(always)]
 pub fn pawn_attacks(square: u8, color: Color) -> u64 {
     if color.is_white() {
         WHITE_PAWN_ATTACKS[square as usize]
@@ -31,17 +29,14 @@ pub fn pawn_attacks(square: u8, color: Color) -> u64 {
     }
 }
 
-#[inline(always)]
 pub fn knight_attacks(square: u8) -> u64 {
     KNIGHT_ATTACKS[square as usize]
 }
 
-#[inline(always)]
 pub fn king_attacks(square: u8) -> u64 {
     KING_ATTACKS[square as usize]
 }
 
-#[inline(always)]
 pub fn hv_attacks(square: u8, occ: Bitboard) -> u64 {
     let offset = HV_ATTACK_OFFSETS[square as usize] as u64;
     let mask = HV_ATTACK_TABLE_MASKS[square as usize];
@@ -50,7 +45,6 @@ pub fn hv_attacks(square: u8, occ: Bitboard) -> u64 {
     HV_SLIDING_ATTACKS[(offset + index) as usize]
 }
 
-#[inline(always)]
 pub fn d12_attacks(square: u8, occ: Bitboard) -> u64 {
     let offset = D12_ATTACK_OFFSETS[square as usize] as u64;
     let mask = D12_ATTACK_TABLE_MASKS[square as usize];

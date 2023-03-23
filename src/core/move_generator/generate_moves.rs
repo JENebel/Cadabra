@@ -26,7 +26,7 @@ impl Position {
         let check_mask = self.generate_check_mask(color);
 
         // If in double check, only king can move
-        let in_check = (!check_mask).is_not_empty();
+        let in_check = !(!check_mask).is_empty();
         let checkers = (check_mask & self.color_bb(color.opposite())).count_bits();
         if in_check && checkers > 1 {
             self.generate_king_moves::<false>(&mut move_list);
@@ -223,7 +223,7 @@ impl Position {
     fn generate_pawn_moves(&self, move_list: &mut MoveList, check_mask: Bitboard, hv_pin: Bitboard, d12_pin: Bitboard) {
         let color = self.active_color;
         let pawns = self.bb(color, Pawn);
-        let has_enpassant = self.enpassant_square.is_not_empty();
+        let has_enpassant = !self.enpassant_square.is_empty();
 
         let mut hv_pinned_pawns = pawns & hv_pin;
         while let Some(src) = hv_pinned_pawns.extract_bit() {
@@ -260,7 +260,7 @@ impl Position {
 
         self.add_normal_moves(move_list, king_pos, legal, King);
 
-        if !GEN_CASTLING || (attacked & self.bb(color, King)).is_not_empty() {
+        if !GEN_CASTLING || !(attacked & self.bb(color, King)).is_empty() {
             return
         }
 
@@ -348,7 +348,7 @@ impl Position {
         mask |= pawn_attacks(king_pos, color) & self.bb(opp_color, Pawn);
         mask |= knight_attacks(king_pos) & self.bb(opp_color, Knight);
 
-        if mask.is_not_empty() {
+        if !mask.is_empty() {
             mask
         } else {
             Bitboard::FULL

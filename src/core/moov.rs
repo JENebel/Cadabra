@@ -1,4 +1,4 @@
-use std::{fmt::Display};
+use std::fmt::Display;
 
 use super::*;
 use MoveType::*;
@@ -19,7 +19,6 @@ pub enum MoveType {
 
 impl MoveType {
     /// Note that EnpassantCapture(sq) is handled seperately, and is not considered a 'capture' here.
-    #[inline(always)]
     pub fn is_capture(&self) -> bool {
         match self {
             Capture | CapturePromotion(_) => true,
@@ -27,7 +26,6 @@ impl MoveType {
         }
     }
 
-    #[inline(always)]
     pub fn is_promotion(&self) -> bool {
         match self {
             Promotion(_) | CapturePromotion(_) => true,
@@ -35,19 +33,11 @@ impl MoveType {
         }
     }
 
-    #[inline(always)]
     pub fn is_castling(&self) -> bool {
         match self {
             CastleKingSide | CastleQueenSide => true,
             _ => false
         }
-    }
-}
-
-impl Default for MoveType {
-    #[inline(always)]
-    fn default() -> Self {
-        Quiet
     }
 }
 
@@ -66,7 +56,7 @@ impl Display for MoveType {
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct Move {
     pub src: u8,
     pub dst: u8,
@@ -77,7 +67,6 @@ pub struct Move {
 }
 
 impl Move {
-    #[inline(always)]
     pub fn new(src: u8, dst: u8, piece: PieceType, move_type: MoveType) -> Self {
         Self {
             src,
@@ -88,17 +77,15 @@ impl Move {
         }
     }
 
-    #[inline(always)]
     pub fn new_normal(src: u8, dst: u8, piece: PieceType, is_capture: bool) -> Self {
         let move_type = match is_capture {
             true => Capture,
             false => Quiet,
         };
 
-        Self { src: src, dst: dst, piece, move_type, score: 0 }
+        Self { src, dst, piece, move_type, score: 0 }
     }
 
-    #[inline(always)]
     pub fn new_promotion(src: u8, dst: u8, promotion: PieceType, is_capture: bool) -> Self {
         let move_type = match is_capture {
             true => CapturePromotion(promotion),
@@ -109,17 +96,14 @@ impl Move {
     }
 
     /// Note that EnpassantCapture(sq) is handled seperately, and is not considered a 'capture' here.
-    #[inline(always)]
     pub fn is_capture(&self) -> bool {
         self.move_type.is_capture()
     }
 
-    #[inline(always)]
     pub fn is_promotion(&self) -> bool {
         self.move_type.is_promotion()
     }
 
-    #[inline(always)]
     pub fn is_castling(&self) -> bool {
         self.move_type.is_castling()
     }

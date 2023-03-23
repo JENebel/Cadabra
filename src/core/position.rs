@@ -105,7 +105,6 @@ impl Position {
         Ok(pos)
     }
 
-    #[inline(always)]
     pub fn piece_at(&self, square: u8) -> Option<(Color, PieceType)> {
         for p in 0..12 {
             if self.bitboards[p].get_bit(square) {
@@ -144,7 +143,7 @@ impl Position {
 
         write!(result, " {}", self.castling_ability).unwrap();
 
-        if self.enpassant_square.is_not_empty() {
+        if !self.enpassant_square.is_empty() {
             write!(result, " {}", Square::from(self.enpassant_square.least_significant())).unwrap()
         } else {
             write!(result, " -").unwrap()
@@ -156,24 +155,20 @@ impl Position {
         result
     }
 
-    #[inline(always)]
     pub fn bb(&self, color: Color, piece_type: PieceType) -> Bitboard {
         self.bitboards[piece_type.index(color)]
     }
 
-    #[inline(always)]
     pub fn color_bb(&self, color: Color) -> Bitboard {
         self.color_occupancies[color as usize]
     }
 
-    #[inline(always)]
     pub fn place_piece(&mut self, color: Color, piece_type: PieceType, square: u8) {
         self.bitboards[piece_type.index(color)].set_bit(square);
         self.color_occupancies[color as usize].set_bit(square);
         self.all_occupancies.set_bit(square);
     }
 
-    #[inline(always)]
     pub fn remove_piece(&mut self, color: Color, piece_type: PieceType, square: u8) {
         self.bitboards[piece_type.index(color)].unset_bit(square);
         self.color_occupancies[color as usize].unset_bit(square);
@@ -181,7 +176,6 @@ impl Position {
     }
 
     /// Gets the position of the king of the given color
-    #[inline(always)]
     pub fn king_position(&self, color: Color) -> u8 {
         self.bb(color, King).least_significant()
     }

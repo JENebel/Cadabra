@@ -53,7 +53,6 @@ impl CastlingAbility {
         self.byte & (side as u8) != 0
     }
 
-    #[inline(always)]
     pub fn update(&mut self, src: u8, dst: u8) {
         self.byte &= CASTLING_RIGHTS[src as usize] & CASTLING_RIGHTS[dst as usize];
     }
@@ -85,7 +84,6 @@ pub enum CastlingSide {
 
 impl CastlingSide {
     /// Gets the castling mask. This consists of the squares between the king and the rook, including both
-    #[inline(always)]
     pub fn attacked_mask(&self) -> u64 {
         match self {
             CastlingSide::WhiteKingSide =>  ATTACKED_CASTLING_MASKS[0],
@@ -96,7 +94,6 @@ impl CastlingSide {
     }
 
     /// Gets the castling mask. This consists of the squares between the king and the rook, including both
-    #[inline(always)]
     pub fn open_mask(&self) -> u64 {
         match self {
             CastlingSide::WhiteKingSide =>  OPEN_CASTLING_MASKS[0],

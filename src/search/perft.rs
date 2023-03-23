@@ -1,7 +1,6 @@
 use super::*;
 
 impl Position {
-    #[inline(always)]
     pub fn perft<const ROOT: bool>(&self, depth: u8) -> u64 {
         let mut moves = self.generate_moves();
     
