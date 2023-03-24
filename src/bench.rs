@@ -72,26 +72,20 @@ fn show_results(perft_time: u128, perft_mnps: f64) {
     let prev_perft_line = lines.iter().find(|l| l.starts_with("perft")).unwrap();
     let prev_perft_mnps = prev_perft_line.split_once(':').unwrap().1.parse::<f64>().unwrap();
 
-    let perft_diff_pc = f64::abs(perft_mnps - prev_perft_mnps)/((perft_mnps + prev_perft_mnps) / 2.) * 100.;
-    let perft_diff_pc_str = format!("{:.3}", perft_diff_pc);
-
-    // Set color
-    let result_str = if perft_diff_pc > 0.5 {
-        if perft_mnps < prev_perft_mnps {
-            format!("-{}", perft_diff_pc_str).red()
-        } else {
-            format!("+{}", perft_diff_pc_str).green()
-        }
-    } 
-    else {
-        if perft_mnps < prev_perft_mnps {
-            format!("-{}", perft_diff_pc_str).normal()
-        } else {
-            format!("+{}", perft_diff_pc_str).normal()
-        }
-    };
-
-    println!(" MNodes/s changed by {}%", result_str);
+    let perft_diff_pc = ((perft_mnps - prev_perft_mnps) / prev_perft_mnps) * 100.;
+    let mut diff_str = format!("{:.3} MNodes/s", perft_mnps - prev_perft_mnps).normal();
+    let mut diff_perc_str = format!("{:.3}%", perft_diff_pc).normal();
+    
+    if perft_diff_pc < -0.5 {
+        diff_str = diff_str.red();
+        diff_perc_str = diff_perc_str.red();
+    }
+    else if perft_diff_pc > 0.5 {
+        diff_str = diff_str.green();
+        diff_perc_str = diff_perc_str.green();
+    }
+    
+    print!("Performance changed by {} ≈ {}", diff_str, diff_perc_str);
 }
 
 fn baseline_path() -> PathBuf {

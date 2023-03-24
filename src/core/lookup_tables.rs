@@ -7,6 +7,7 @@ pub const D2_MASKS: [u64; 64] = generate_d2_masks();
 
 pub const TOP_RANK: u64 = RANK_MASKS[0];
 pub const BOTTOM_RANK: u64 = RANK_MASKS[63];
+pub const END_RANKS: u64 = TOP_RANK | BOTTOM_RANK;
 
 pub const PAWN_INIT_WHITE_RANK: u64 = RANK_MASKS[55];
 pub const PAWN_INIT_BLACK_RANK: u64 = RANK_MASKS[8];

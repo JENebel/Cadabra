@@ -131,14 +131,8 @@ impl Position {
 
         // If square in front free
         if !self.all_occupancies.get_bit(dst) {
-            let last_rank = if color.is_white() {
-                TOP_RANK
-            } else {
-                BOTTOM_RANK
-            };
-
             // Determine if promotion
-            if last_rank.get_bit(dst) {
+            if END_RANKS.get_bit(dst) {
                 if valid_mask.get_bit(dst) {
                     move_list.push_move(Move::new_promotion(src, dst, Queen,  false));
                     move_list.push_move(Move::new_promotion(src, dst, Rook,   false));

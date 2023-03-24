@@ -2,12 +2,12 @@ use super::*;
 
 pub type MoveList = heapless::Vec<Move, 128>;
 
-pub trait MoveListFunc {
+pub trait MoveListFuncs {
     fn pop_best(&mut self) -> Option<Move>;
     fn push_move(&mut self, moov: Move);
 }
 
-impl MoveListFunc for MoveList {
+impl MoveListFuncs for MoveList {
     fn pop_best(&mut self) -> Option<Move> {
         let mut best_index = 0;
 
