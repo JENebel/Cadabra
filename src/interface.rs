@@ -9,7 +9,7 @@ pub fn interface_loop() {
 
     loop {
         let line = ui_receiver.recv().expect("Error receiving ui command!");
-        let mut command = line.as_str();
+        let mut command = line.as_str().trim();
 
         let cmd_name = match take_next(&mut command) {
             Some(name) => name,
@@ -162,13 +162,26 @@ fn quit() {
 }
 
 fn parse_position(command: &mut &str) -> Result<Position, String> {
-    match take_next(command) {
-        Some("startpos") => Ok(Position::start_pos()),
-        Some("fen") => {
-            todo!()
-        },
-        _ => Err(format!("Illegal position command"))
+    let mut split = command.split("moves");
+    let mut pos_str = match split.next() {
+        Some(pos_str) => pos_str.trim(),
+        None => return Err(format!("No argument provided for position command")),
+    };
+
+    let mut pos = match take_next(&mut pos_str) {
+        Some("startpos") => Position::start_pos(),
+        Some("fen") => Position::from_fen(pos_str)?,
+        _ => return Err(format!("Illegal position argument"))
+    };
+
+    if let Some(mut move_args) = split.next() {
+        move_args = move_args.trim();
+        while let Some(moov) = take_next(&mut move_args) {
+            pos.make_uci_move(moov)?;
+        }
     }
+
+    Ok(pos)
 }
 
 fn parse_go(command: &mut &str, _pos: &Position) {
