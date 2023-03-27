@@ -12,6 +12,7 @@ pub use interface::*;
 pub use bench::*;
 pub use search::*;
 
+#[derive(Copy, Clone)]
 pub struct Settings {
     pub threads: u8,
     pub transposition_table_mb: u16,

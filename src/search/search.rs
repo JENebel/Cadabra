@@ -1,65 +1,48 @@
-/*use std::sync::{Mutex, Arc, atomic::{AtomicU8, AtomicI32, AtomicBool}, mpsc::{channel, Sender, Receiver}};
+use std::sync::mpsc::Receiver;
 
-use crate::{Position/*, MoveList*/};
+use super::*;
 
-enum ThreadMsg {
-
+/// The arguments provided in go command
+pub struct SearchInfo {
+    depth: u8,
 }
 
-struct Worker {
-    is_running: AtomicBool,
-    last_split_node: Node,
+impl SearchInfo {
+    pub fn new(depth: u8) -> Self {
+        Self { depth }
+    }
 }
 
-struct WorkerPool {
-    workers: Vec<Worker>,
+/// Messages sent between main and search thread
+pub enum SearchMessage {
+    Done(Move),
+    Stop,
+    PonderHit,
 }
 
-struct Node {
-    move_list: Arc<Mutex<MoveList>>,
-    ply: AtomicU8,
-    alpha: AtomicI32,
-    threads_here: AtomicU8,
+pub struct SearchContext {
+    search_info: SearchInfo, 
+    pos: Position, 
+    settings: Settings, 
+    receiver: Receiver<SearchMessage>,
+    is_stopping: bool,
 }
 
-pub fn search(pos: &Position, depth: u8) {
-    let score = negamax(pos, -50000, 50000, depth, 0);
-
-    println!("Estimated CP score: {score}");
-
-    let (rx, tx) = channel::<ThreadMsg>();
-
-    spawn_worker(tx);
-}
-
-fn spawn_worker(tx: Receiver<ThreadMsg>) -> Sender<ThreadMsg> {
-    let (rx, _) = channel::<ThreadMsg>();
-    
-    rx
-}
-
-fn negamax(pos: &Position, mut alpha: i32, beta: i32, depth: u8, thread_id: u16) -> i32 {
-    if depth == 0 {
-        return pos.evaluate()
-    };
-
-    let move_list = pos.generate_moves();
-
-    for m in move_list {
-        let mut new_pos = pos.clone();
-
-        new_pos.make_move(m);
-
-        let score = -negamax(&new_pos, -beta, -alpha, depth - 1, thread_id);
-
-        if score > alpha {
-            if score >= beta {
-                return beta;
-            }
-
-            alpha = score;
+impl SearchContext {
+    pub fn new(search_info: SearchInfo, pos: Position, settings: Settings, receiver: Receiver<SearchMessage>) -> Self {
+        Self {
+            search_info,
+            pos,
+            settings,
+            receiver,
+            is_stopping: false
         }
     }
+}
 
-    alpha
-}*/
+pub fn search(context: SearchContext) {
+    match context.receiver.try_recv() {
+        Ok(_) => println!("Done!"),
+        Err(_) => println!("Done ERR!"),
+    }
+}

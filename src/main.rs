@@ -11,5 +11,7 @@ fn main() {
 
     // Normal engine run
     println!("{} {} by {}", PKG_NAME, PKG_VERSION, PKG_AUTHORS);
+
+    // Begin accepting commands
     interface_loop();
 }
