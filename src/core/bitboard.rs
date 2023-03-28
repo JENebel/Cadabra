@@ -1,5 +1,7 @@
 use std::{fmt::Display, ops::{BitAnd, BitOr, BitXor, BitAndAssign, BitOrAssign, BitXorAssign, Not}};
 
+use bitintr::Popcnt;
+
 pub trait BitUtils {
     fn get_bit(&self, square: u8) -> bool;
     fn set_bit(&mut self, square: u8);
@@ -139,18 +141,20 @@ impl Bitboard {
         self.0.trailing_zeros() as u8
     }
 
-    /// Extract the least significant set bit. Modifies the bitboard and returns the position of the extracted bit
-    pub fn extract_bit(&mut self) -> Option<u8> {
-        if self.is_empty() { return None }
-
-        let bit = self.least_significant();
-
-        self.0 = bitintr::Blsr::blsr(self.0);
-
-        Some(bit as u8)
+    pub fn count_bits(&self) -> u64 {
+        self.0.popcnt()
     }
+}
 
-    pub fn count_bits(&self) -> u32 {
-        self.0.count_ones()
+/// Iterate over the set bits on the bitboard. TODO: maybe add ExactIterator impl for performance?
+impl Iterator for Bitboard {
+    type Item = u8;
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.is_empty() { return None }
+        let bit = self.least_significant();
+        self.0 = bitintr::Blsr::blsr(self.0);
+        Some(bit)
     }
 }

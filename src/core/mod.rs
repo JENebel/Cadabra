@@ -15,7 +15,7 @@ pub use lookup_tables::*;
 pub use piece::*;
 pub use color::*;
 pub use make_move::*;
-pub use bitboard::*;
+use bitboard::*;
 pub use moov::*;
 pub use position::*;
 pub use move_generator::*;

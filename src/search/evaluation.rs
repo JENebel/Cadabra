@@ -94,8 +94,8 @@ impl Position {
         let mut score: i32 = 0;
 
         for bb in 0..12 {
-            let mut board = self.bitboards[bb];
-            while let Some(square) = board.extract_bit() {
+            let board = self.bitboards[bb];
+            for square in board {
                 score += MATERIAL_WEIGHTS[bb];
                 match bb {
                     // White pawns
