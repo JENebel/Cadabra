@@ -1,5 +1,8 @@
-use std::{io::stdin, process, thread, sync::mpsc::{channel, Receiver}, time::Instant};
+use std::{io::stdin, process, thread, sync::{mpsc::{channel, Receiver, Sender}, Mutex, Arc}, time::Instant};
+
 use super::*;
+
+type Search = Arc<Mutex<Option<Sender<SearchMessage>>>>;
 
 pub fn interface_loop() {
     let mut pos = Position::start_pos();
@@ -7,9 +10,13 @@ pub fn interface_loop() {
     // Spawn listening thread that reads input without blocking main thread
     let ui_receiver = spawn_ui_listener_thread();
 
+    let current_search: Search = Arc::new(Mutex::new(None));
+
+    let settings = Settings::default();
+
     loop {
-        let line = ui_receiver.recv().expect("Error receiving ui command!");
-        let mut command = line.as_str();
+        let line = wait_for_input(&ui_receiver);
+        let mut command = line.as_str().trim();
 
         let cmd_name = match take_next(&mut command) {
             Some(name) => name,
@@ -50,7 +57,7 @@ pub fn interface_loop() {
                 println!("Zobrist hash:: {:x}", pos.zobrist_hash)
             }
             "perft" => {
-                parse_perft(&mut command, &pos)
+                parse_perft(&mut command, &pos);
             },
             "bench" => {
                 match take_next(&mut command) {
@@ -86,10 +93,34 @@ pub fn interface_loop() {
                 }
             }
             "go" => {
-                parse_go(&mut command, &pos)
+                if let Some(_) = *current_search.lock().unwrap() {
+                    println!("A search is already running");
+                    continue
+                }
+
+                let context = match parse_go(&mut command) {
+                    Ok(c) => c,
+                    Err(err) => {
+                        println!("{err}");
+                        continue
+                    },
+                };
+
+                let (sender, receiver) = channel();
+
+                let curr_search_clone = current_search.clone();
+                thread::spawn(move || {
+                    search(SearchContext::new(context, pos, settings, receiver));
+                    *curr_search_clone.lock().unwrap() = None;
+                });
+
+                *current_search.lock().unwrap() = Some(sender);
             },
             "stop" => {
-                todo!()
+                match current_search.lock().unwrap().take() {
+                    Some(search) => search.send(SearchMessage::Stop).unwrap(),
+                    None => println!("No task is running"),
+                }
             },
             "ponderhit" => {
                 todo!()
@@ -99,8 +130,8 @@ pub fn interface_loop() {
             },
             "debug" => {
                 match take_next(&mut command) {
-                    Some("on") => run_bench(true),
-                    Some("off") => run_bench(false),
+                    Some("on") => println!("Debug setting does nothing"),
+                    Some("off") => println!("Debug setting does nothing"),
                     _ => println!("Debug can be 'on' or 'off'"),
                 }
             }
@@ -161,30 +192,46 @@ fn quit() {
     process::exit(0)
 }
 
-fn parse_position(command: &mut &str) -> Result<Position, String> {
-    match take_next(command) {
-        Some("startpos") => Ok(Position::start_pos()),
-        Some("fen") => {
-            todo!()
-        },
-        _ => Err(format!("Illegal position command"))
-    }
+fn wait_for_input(ui_receiver: &Receiver<String>) -> String {
+    ui_receiver.recv().expect("Error receiving ui command!")
 }
 
-fn parse_go(command: &mut &str, _pos: &Position) {
+fn parse_position(command: &mut &str) -> Result<Position, String> {
+    let mut split = command.split("moves");
+    let mut pos_str = match split.next() {
+        Some(pos_str) => pos_str.trim(),
+        None => return Err(format!("No argument provided for position command")),
+    };
+
+    let mut pos = match take_next(&mut pos_str) {
+        Some("startpos") => Position::start_pos(),
+        Some("fen") => Position::from_fen(pos_str)?,
+        _ => return Err(format!("Illegal position argument"))
+    };
+
+    if let Some(mut move_args) = split.next() {
+        move_args = move_args.trim();
+        while let Some(moov) = take_next(&mut move_args) {
+            pos.make_uci_move(moov)?;
+        }
+    }
+
+    Ok(pos)
+}
+
+fn parse_go(command: &mut &str) -> Result<SearchInfo, String> {
     match take_next(command) {
         Some("depth") => {
-            let _depth = match take_next_u8(command) {
+            let depth = match take_next_u8(command) {
                 Some(d) => d,
                 None => {
-                    println!("Illegal go command");
-                    return
+                    return Err(format!("Illegal go depth"));
                 },
             };
 
-            //search(pos, depth)
+            Ok(SearchInfo::new(depth))
         },
-        _ => println!("Illegal go command")
+        _ => Err(format!("Illegal go argument"))
     }
 }
 
@@ -198,6 +245,5 @@ fn parse_perft(command: &mut &str, pos: &Position) {
     };
 
     let before = Instant::now();
-
     println!("\n Found: {} moves at depth {depth} in {}ms\n", pos.perft::<true>(depth), before.elapsed().as_millis())
 }

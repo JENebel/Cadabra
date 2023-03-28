@@ -33,8 +33,8 @@ impl Position {
         self.zobrist_hash = 0;
 
         for piece in 0..12 {
-            let mut bb = self.bitboards[piece];
-            while let Some(square) = bb.extract_bit() {
+            let bb = self.bitboards[piece];
+            for square in bb {
                 self.zobrist_hash ^= PIECE_KEYS[piece * 12 + square as usize];
             }
         }

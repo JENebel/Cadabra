@@ -51,8 +51,8 @@ impl Position {
         self.generate_pawn_moves(&mut move_list, check_mask, hv_pin, d12_pin);
 
         // Knight moves. Only unpinned can move
-        let mut unpinned_knights = self.bb(color, Knight) & !(hv_pin | d12_pin);
-        while let Some(src) = unpinned_knights.extract_bit() {
+        let  unpinned_knights = self.bb(color, Knight) & !(hv_pin | d12_pin);
+        for src in unpinned_knights {
             let seen = knight_attacks(src);
             let legal = seen & opp_or_empty & check_mask;
             self.add_normal_moves(&mut move_list, src, legal, Knight)
@@ -60,15 +60,15 @@ impl Position {
 
         // Rook moves
         let rooks = self.bb(color, Rook);
-        let mut pinned_rooks = rooks & hv_pin;
-        while let Some(src) = pinned_rooks.extract_bit() {
+        let  pinned_rooks = rooks & hv_pin;
+        for src in pinned_rooks {
             let seen = hv_attacks(src, self.all_occupancies);
             let legal = seen & opp_or_empty & check_mask & hv_pin;
             self.add_normal_moves(&mut move_list, src, legal, Rook)
         }
 
-        let mut unpinned_rooks = rooks & !(hv_pin | d12_pin);
-        while let Some(src) = unpinned_rooks.extract_bit() {
+        let unpinned_rooks = rooks & !(hv_pin | d12_pin);
+        for src in unpinned_rooks {
             let seen = hv_attacks(src, self.all_occupancies);
             let legal = seen & opp_or_empty & check_mask;
             self.add_normal_moves(&mut move_list, src, legal, Rook)
@@ -76,15 +76,15 @@ impl Position {
 
         // Bishop moves
         let bishops = self.bb(color, Bishop);
-        let mut pinned_bishops = bishops & d12_pin;
-        while let Some(src) = pinned_bishops.extract_bit() {
+        let pinned_bishops = bishops & d12_pin;
+        for src in pinned_bishops {
             let seen = d12_attacks(src, self.all_occupancies);
             let legal = seen & opp_or_empty & check_mask & d12_pin;
             self.add_normal_moves(&mut move_list, src, legal, Bishop)
         }
 
-        let mut unpinned_bishops = bishops & !(hv_pin | d12_pin);
-        while let Some(src) = unpinned_bishops.extract_bit() {
+        let unpinned_bishops = bishops & !(hv_pin | d12_pin);
+        for src in unpinned_bishops {
             let seen = d12_attacks(src, self.all_occupancies);
             let legal = seen & opp_or_empty & check_mask;
             self.add_normal_moves(&mut move_list, src, legal, Bishop)
@@ -92,22 +92,22 @@ impl Position {
 
         // Queen moves
         let queens = self.bb(color, Queen);
-        let mut hv_pinned_queens = queens & hv_pin;
-        while let Some(src) = hv_pinned_queens.extract_bit() {
+        let hv_pinned_queens = queens & hv_pin;
+        for src in hv_pinned_queens {
             let seen = hv_attacks(src, self.all_occupancies);
             let legal = seen & opp_or_empty & check_mask & hv_pin;
             self.add_normal_moves(&mut move_list, src, legal, Queen)
         }
 
-        let mut d12_pinned_queens = queens & d12_pin;
-        while let Some(src) = d12_pinned_queens.extract_bit() {
+        let d12_pinned_queens = queens & d12_pin;
+        for src in d12_pinned_queens {
             let seen = d12_attacks(src, self.all_occupancies);
             let legal = seen & opp_or_empty & check_mask & d12_pin;
             self.add_normal_moves(&mut move_list, src, legal, Queen)
         }
 
-        let mut unpinned_queens = queens & !(hv_pin | d12_pin);
-        while let Some(src) = unpinned_queens.extract_bit() {
+        let unpinned_queens = queens & !(hv_pin | d12_pin);
+        for src in unpinned_queens {
             let seen = d12_attacks(src, self.all_occupancies) | hv_attacks(src, self.all_occupancies);
             let legal = seen & opp_or_empty & check_mask;
             self.add_normal_moves(&mut move_list, src, legal, Queen)
@@ -120,9 +120,9 @@ impl Position {
     }
 
     #[inline(always)]
-    fn add_normal_moves(&self, move_list: &mut MoveList, src: u8, mut legal_targets: Bitboard, piece: PieceType) {
+    fn add_normal_moves(&self, move_list: &mut MoveList, src: u8, legal_targets: Bitboard, piece: PieceType) {
         let color = self.active_color;
-        while let Some(dst) = legal_targets.extract_bit() {
+        for dst in legal_targets {
             let is_capture = self.color_bb(color.opposite()).get_bit(dst);
             move_list.push_move(Move::new_normal(src, dst, piece, is_capture));
         }
@@ -184,8 +184,8 @@ impl Position {
 
         let attacks = pawn_attacks(src, color);
 
-        let mut captures = attacks & valid_mask & self.color_bb(color.opposite());
-        while let Some(dst) = captures.extract_bit() {
+        let captures = attacks & valid_mask & self.color_bb(color.opposite());
+        for dst in captures {
             if !promoting {
                 move_list.push_move(Move::new_normal(src, dst, Pawn, true));
             } else {
@@ -201,9 +201,9 @@ impl Position {
             return
         }
 
-        let mut captures = attacks & pin_mask & self.enpassant_square;
+        let captures = attacks & pin_mask & self.enpassant_square;
 
-        if let Some(enp_sq) = captures.extract_bit() {
+        for enp_sq in captures {
             let captured = match color {
                 White => enp_sq + 8,
                 Black => enp_sq - 8,
@@ -228,18 +228,18 @@ impl Position {
         let pawns = self.bb(color, Pawn);
         let has_enpassant = !self.enpassant_square.is_empty();
 
-        let mut hv_pinned_pawns = pawns & hv_pin;
-        while let Some(src) = hv_pinned_pawns.extract_bit() {
+        let hv_pinned_pawns = pawns & hv_pin;
+        for src in hv_pinned_pawns {
             self.generate_quiet_pawn_moves(move_list, src, check_mask & hv_pin)
         }
 
-        let mut d12_pinned_pawns = pawns & d12_pin;
-        while let Some(src) = d12_pinned_pawns.extract_bit() {
+        let d12_pinned_pawns = pawns & d12_pin;
+        for src in d12_pinned_pawns {
             generate_pawn_captures!(self, move_list, has_enpassant, src, check_mask, d12_pin);
         }
 
-        let mut unpinned_pawns = pawns & !(hv_pin | d12_pin);
-        while let Some(src) = unpinned_pawns.extract_bit() {
+        let unpinned_pawns = pawns & !(hv_pin | d12_pin);
+        for src in unpinned_pawns {
             self.generate_quiet_pawn_moves(move_list, src, check_mask);
             generate_pawn_captures!(self, move_list, has_enpassant, src, check_mask, Bitboard::FULL);
         }
@@ -309,9 +309,9 @@ impl Position {
         let occ_wo_king = self.all_occupancies ^ self.bb(color, King);
         let opp_color = color.opposite();
 
-        let mut bb = self.bb(opp_color, piece_type);
+        let bb = self.bb(opp_color, piece_type);
         let mut mask = Bitboard::EMPTY;
-        while let Some(piece) = bb.extract_bit() {
+        for piece in bb {
             mask |= get_attacks(piece, opp_color, piece_type, occ_wo_king)
         };
 
@@ -327,8 +327,8 @@ impl Position {
         let king_rays = hv_attacks(king_pos, self.all_occupancies) | d12_attacks(king_pos, self.all_occupancies);
 
         // Maybe move to pregenerated to optimize? TODO
-        let mut hv_sliders = self.bb(opp_color, Rook) | self.bb(opp_color, Queen);
-        while let Some(slider) = hv_sliders.extract_bit() {
+        let hv_sliders = self.bb(opp_color, Rook) | self.bb(opp_color, Queen);
+        for slider in hv_sliders {
             let slider_check_mask = SLIDER_HV_CHECK_MASK[king_pos as usize * 64 + slider as usize];
 
             if (slider_check_mask & king_rays) == slider_check_mask {
@@ -338,8 +338,8 @@ impl Position {
         }
 
         // Maybe move to pregenerated to optimize? TODO
-        let mut d12_sliders = self.bb(opp_color, Bishop) | self.bb(opp_color, Queen);
-        while let Some(slider) = d12_sliders.extract_bit() {
+        let d12_sliders = self.bb(opp_color, Bishop) | self.bb(opp_color, Queen);
+        for slider in d12_sliders {
             let slider_check_mask = SLIDER_D12_CHECK_MASK[king_pos as usize * 64 + slider as usize];
 
             if (slider_check_mask & king_rays) == slider_check_mask {
@@ -364,13 +364,13 @@ impl Position {
 
         let opp_color = color.opposite();
 
-        let mut h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
-        while let Some(slider) = h_sliders.extract_bit() {
+        let h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
+        for slider in h_sliders {
             mask |= self.pin_mask_h(self.all_occupancies, slider);
         }
 
-        let mut v_sliders = FILE_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
-        while let Some(slider) = v_sliders.extract_bit() {
+        let v_sliders = FILE_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
+        for slider in v_sliders {
             mask |= self.pin_mask_v(self.all_occupancies, slider);
         }
 
@@ -383,13 +383,13 @@ impl Position {
 
         let opp_color = color.opposite();
 
-        let mut d1_sliders = D1_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
-        while let Some(slider) = d1_sliders.extract_bit() {
+        let d1_sliders = D1_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
+        for slider in d1_sliders {
             mask |= self.pin_mask_d1(self.all_occupancies, slider)
         }
 
-        let mut d2_sliders = D2_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
-        while let Some(slider) = d2_sliders.extract_bit() {
+        let d2_sliders = D2_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
+        for slider in d2_sliders {
             mask |= self.pin_mask_d2(self.all_occupancies, slider)
         }
         
@@ -404,18 +404,18 @@ impl Position {
 
         let occ = self.all_occupancies ^ 1 << src;
 
-        let mut h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
-        while let Some(slider) = h_sliders.extract_bit() {
+        let h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
+        for slider in h_sliders {
             mask |= self.pin_mask_h(occ, slider)
         }
 
-        let mut d1_sliders = D1_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
-        while let Some(slider) = d1_sliders.extract_bit() {
+        let d1_sliders = D1_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
+        for slider in d1_sliders {
             mask |= self.pin_mask_d1(occ, slider)
         }
 
-        let mut d2_sliders = D2_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
-        while let Some(slider) = d2_sliders.extract_bit() {
+        let d2_sliders = D2_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
+        for slider in d2_sliders {
             mask |= self.pin_mask_d2(occ, slider)
         }
 
