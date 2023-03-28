@@ -20,8 +20,17 @@ impl Position {
     /// Generate all legal moves for the position
     #[inline(always)]
     pub fn generate_moves(&self) -> MoveList {
+        if self.active_color.is_white() {
+            self.generate_moves_internal::<true>()
+        } else {
+            self.generate_moves_internal::<false>()
+        }
+    }
+
+    #[inline(always)]
+    fn generate_moves_internal<const IS_WHITE: bool>(&self) -> MoveList {
         let mut move_list = MoveList::new();
-        let color = self.active_color;
+        let color = if IS_WHITE { White } else { Black };
 
         let check_mask = self.generate_check_mask(color);
 
