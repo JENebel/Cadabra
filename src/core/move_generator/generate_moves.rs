@@ -29,8 +29,9 @@ impl Position {
 
     #[inline(always)]
     fn generate_moves_internal<const IS_WHITE: bool>(&self) -> MoveList {
-        let mut move_list = MoveList::new();
         let color = if IS_WHITE { White } else { Black };
+
+        let mut move_list = MoveList::new();
 
         let check_mask = self.generate_check_mask(color);
 
@@ -121,18 +122,15 @@ impl Position {
 
     #[inline(always)]
     fn add_normal_moves(&self, move_list: &mut MoveList, src: u8, legal_targets: Bitboard, piece: PieceType) {
-        let color = self.active_color;
         for dst in legal_targets {
-            let is_capture = self.color_bb(color.opposite()).get_bit(dst);
+            let is_capture = self.color_bb(self.active_color.opposite()).get_bit(dst);
             move_list.push_move(Move::new_normal(src, dst, piece, is_capture));
         }
     }
 
     #[inline(always)]
     fn generate_quiet_pawn_moves(&self, move_list: &mut MoveList, src: u8, valid_mask: Bitboard) {
-        let color = self.active_color;
-
-        let dst = if color.is_white() {
+        let dst = if self.active_color.is_white() {
             src - 8
         } else {
             src + 8
@@ -156,7 +154,7 @@ impl Position {
                 }
 
                 // Check for double push ability
-                let (double_push_sq, init_rank) = if color.is_white() {
+                let (double_push_sq, init_rank) = if self.active_color.is_white() {
                     (src - 16, PAWN_INIT_WHITE_RANK)
                 } else {
                     (src + 16, PAWN_INIT_BLACK_RANK)
@@ -172,6 +170,7 @@ impl Position {
     #[inline(always)]
     fn generate_pawn_captures<const HAS_ENPASSANT: bool>(&self, move_list: &mut MoveList, src: u8, check_mask: Bitboard, pin_mask: Bitboard) {
         let color = self.active_color;
+
         let valid_mask = check_mask & pin_mask;
 
         let promotion_rank = if color.is_white() {
@@ -224,8 +223,7 @@ impl Position {
 
     #[inline(always)]
     fn generate_pawn_moves(&self, move_list: &mut MoveList, check_mask: Bitboard, hv_pin: Bitboard, d12_pin: Bitboard) {
-        let color = self.active_color;
-        let pawns = self.bb(color, Pawn);
+        let pawns = self.bb(self.active_color, Pawn);
         let has_enpassant = !self.enpassant_square.is_empty();
 
         let hv_pinned_pawns = pawns & hv_pin;
@@ -248,6 +246,7 @@ impl Position {
     #[inline(always)]
     fn generate_king_moves<const GEN_CASTLING: bool>(&self, move_list: &mut MoveList) {
         let color = self.active_color;
+
         let attacked = 
             self.get_attacked_wo_king(color, Pawn)   |
             self.get_attacked_wo_king(color, Knight) |
@@ -307,12 +306,11 @@ impl Position {
     #[inline(always)]
     fn get_attacked_wo_king(&self, color: Color, piece_type: PieceType) -> Bitboard {
         let occ_wo_king = self.all_occupancies ^ self.bb(color, King);
-        let opp_color = color.opposite();
 
-        let bb = self.bb(opp_color, piece_type);
+        let bb = self.bb(color.opposite(), piece_type);
         let mut mask = Bitboard::EMPTY;
         for piece in bb {
-            mask |= get_attacks(piece, opp_color, piece_type, occ_wo_king)
+            mask |= get_attacks(piece, color.opposite(), piece_type, occ_wo_king)
         };
 
         mask
@@ -320,9 +318,9 @@ impl Position {
 
     #[inline(always)]
     fn generate_check_mask(&self, color: Color) -> Bitboard {
-        let mut mask = Bitboard::EMPTY;
-        let king_pos = self.king_position(color);
         let opp_color = color.opposite();
+        let king_pos = self.king_position(color);
+        let mut mask = Bitboard::EMPTY;
 
         let king_rays = hv_attacks(king_pos, self.all_occupancies) | d12_attacks(king_pos, self.all_occupancies);
 
@@ -360,9 +358,8 @@ impl Position {
 
     #[inline(always)]
     fn generate_hv_pin_mask(&self, color: Color) -> Bitboard {
-        let mut mask = 0;
-
         let opp_color = color.opposite();
+        let mut mask = 0;
 
         let h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
         for slider in h_sliders {
@@ -379,9 +376,8 @@ impl Position {
 
     #[inline(always)]
     fn generate_d12_pin_mask(&self, color: Color) -> Bitboard {
-        let mut mask = 0;
-
         let opp_color = color.opposite();
+        let mut mask = 0;
 
         let d1_sliders = D1_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen));
         for slider in d1_sliders {
@@ -398,11 +394,10 @@ impl Position {
 
     #[inline(always)]
     fn generate_enpassant_pin_mask(&self, color: Color, src: u8) -> Bitboard {
-        let mut mask = 0;
-
         let opp_color = color.opposite();
 
         let occ = self.all_occupancies ^ 1 << src;
+        let mut mask = 0;
 
         let h_sliders = RANK_MASKS[self.king_position(color) as usize] & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen));
         for slider in h_sliders {
@@ -423,7 +418,7 @@ impl Position {
 
         Bitboard(mask)
     }
-
+    
     #[inline(always)]
     fn pin_mask_h(&self, occ: Bitboard, slider_pos: u8) -> u64 {
         let king_pos = self.king_position(self.active_color) as usize;
