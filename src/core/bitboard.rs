@@ -133,16 +133,22 @@ impl Bitboard {
         self.0
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.0 == 0
-    }
-
     pub fn least_significant(&self) -> u8 {
         self.0.trailing_zeros() as u8
     }
 
     pub fn count_bits(&self) -> u64 {
         self.0.popcnt()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0 == 0
+    }
+
+    pub fn extract_bit_unchecked(&mut self) -> u8 {
+        let bit = self.least_significant();
+        self.0 = bitintr::Blsr::blsr(self.0);
+        bit
     }
 }
 
@@ -156,5 +162,9 @@ impl Iterator for Bitboard {
         let bit = self.least_significant();
         self.0 = bitintr::Blsr::blsr(self.0);
         Some(bit)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.count_bits() as usize))
     }
 }

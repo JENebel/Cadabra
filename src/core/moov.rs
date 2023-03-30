@@ -13,7 +13,6 @@ pub enum MoveType {
     CastleKingSide,
     CastleQueenSide,
     DoublePush,
-    
     EnpassantCapture,
 }
 

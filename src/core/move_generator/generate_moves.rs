@@ -52,7 +52,7 @@ impl Position {
         self.generate_pawn_moves(&mut move_list, check_mask, hv_pin, d12_pin);
 
         // Knight moves. Only unpinned can move
-        let  unpinned_knights = self.bb(color, Knight) & !(hv_pin | d12_pin);
+        let unpinned_knights = self.bb(color, Knight) & !(hv_pin | d12_pin);
         for src in unpinned_knights {
             let seen = knight_attacks(src);
             let legal = seen & opp_or_empty & check_mask;
@@ -61,7 +61,7 @@ impl Position {
 
         // Rook moves
         let rooks = self.bb(color, Rook);
-        let  pinned_rooks = rooks & hv_pin;
+        let pinned_rooks = rooks & hv_pin;
         for src in pinned_rooks {
             let seen = hv_attacks(src, self.all_occupancies);
             let legal = seen & opp_or_empty & check_mask & hv_pin;
