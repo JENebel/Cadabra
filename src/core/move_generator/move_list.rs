@@ -1,6 +1,6 @@
 use super::*;
 
-pub type MoveList = heapless::Vec<Move, 128>;
+pub type MoveList = heapless::Vec<Move, 256>;
 
 pub trait MoveListFuncs {
     //fn pop_best(&mut self) -> Option<Move>;

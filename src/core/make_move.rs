@@ -18,7 +18,7 @@ impl Position {
 
     #[inline(always)]
     pub fn make_move(&mut self, moov: Move) {
-        //let move_type = moov.move_type;
+        // Let move_type = moov.move_type;
         let color = self.active_color;
         let opp_color = color.opposite();
 
@@ -29,10 +29,8 @@ impl Position {
         // Unapply current castling ability zobrist (reapplied after castling)
         self.apply_castling_zobrist();
 
-        
-
         if moov.is_capture() {
-            // Find the taken piece and remove it
+            // Find the taken piece and remove it. TODO make better
             if self.bb(opp_color, Pawn).get_bit(dst) {
                 self.remove_piece(opp_color, Pawn, dst);
                 self.apply_piece_zobrist(opp_color, Pawn, dst);
