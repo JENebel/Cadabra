@@ -1,4 +1,6 @@
 - Change move representation to fit in a u16
-    16 bit move layout
-    000 000  0       0      0       0            000         0000
-    src dst  is_cap  is_dp  is_enp  is_castling  piece/prom  EXTRA
+    000 000  000        0       0      0       0            0        00
+    src dst  piece/prom is_cap  is_dp  is_enp  is_castling  is_prom  extra
+
+
+0000 0000 0000 0000

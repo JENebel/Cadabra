@@ -216,7 +216,7 @@ impl Position {
             let pin_mask = self.generate_enpassant_pin_mask(color, src);
             if !pin_mask.get_bit(captured) {
                 // Not opening up after enpassant capture
-                move_list.push_move(Move::new(src, enp_sq, Pawn, EnpassantCapture));
+                move_list.push_move(Move::new(src, enp_sq, Pawn, Enpassant));
             }
         }
     }

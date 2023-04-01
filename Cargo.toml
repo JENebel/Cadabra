@@ -23,4 +23,5 @@ colored = "2.0.0"
 const-random = "0.1.15"
 const_for = "0.1.2"
 heapless = "0.7.16"
+atomic = "0.5.1"
 #kanal = { git = "https://github.com/fereidani/kanal"}

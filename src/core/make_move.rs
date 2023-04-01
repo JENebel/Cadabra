@@ -1,5 +1,6 @@
+use std::mem;
+
 use super::*;
-use MoveType::*;
 use PieceType::*;
 use Color::*;
 use Square::*;
@@ -21,37 +22,43 @@ impl Position {
         let color = self.active_color;
         let opp_color = color.opposite();
 
+        let src = moov.src();
+        let dst = moov.dst();
+        let piece = moov.piece();
+
         // Unapply current castling ability zobrist (reapplied after castling)
         self.apply_castling_zobrist();
 
+        
+
         if moov.is_capture() {
             // Find the taken piece and remove it
-            if self.bb(opp_color, Pawn).get_bit(moov.dst) {
-                self.remove_piece(opp_color, Pawn, moov.dst);
-                self.apply_piece_zobrist(opp_color, Pawn, moov.dst);
+            if self.bb(opp_color, Pawn).get_bit(dst) {
+                self.remove_piece(opp_color, Pawn, dst);
+                self.apply_piece_zobrist(opp_color, Pawn, dst);
             }
-            else if self.bb(opp_color, Knight).get_bit(moov.dst) {
-                self.remove_piece(opp_color, Knight, moov.dst);
-                self.apply_piece_zobrist(opp_color, Knight, moov.dst);
+            else if self.bb(opp_color, Knight).get_bit(dst) {
+                self.remove_piece(opp_color, Knight, dst);
+                self.apply_piece_zobrist(opp_color, Knight, dst);
             }
-            else if self.bb(opp_color, Bishop).get_bit(moov.dst) {
-                self.remove_piece(opp_color, Bishop, moov.dst);
-                self.apply_piece_zobrist(opp_color, Bishop, moov.dst);
+            else if self.bb(opp_color, Bishop).get_bit(dst) {
+                self.remove_piece(opp_color, Bishop, dst);
+                self.apply_piece_zobrist(opp_color, Bishop, dst);
             }
-            else if self.bb(opp_color, Rook).get_bit(moov.dst) {
-                self.remove_piece(opp_color, Rook, moov.dst);
-                self.apply_piece_zobrist(opp_color, Rook, moov.dst);
+            else if self.bb(opp_color, Rook).get_bit(dst) {
+                self.remove_piece(opp_color, Rook, dst);
+                self.apply_piece_zobrist(opp_color, Rook, dst);
             }
-            else if self.bb(opp_color, Queen).get_bit(moov.dst) {
-                self.remove_piece(opp_color, Queen, moov.dst);
-                self.apply_piece_zobrist(opp_color, Queen, moov.dst);
+            else if self.bb(opp_color, Queen).get_bit(dst) {
+                self.remove_piece(opp_color, Queen, dst);
+                self.apply_piece_zobrist(opp_color, Queen, dst);
             }
         }
 
-        if moov.move_type == EnpassantCapture {
+        if moov.is_enpassant() {
             let captured = match color {
-                White => moov.dst + 8,
-                Black => moov.dst - 8,
+                White => dst + 8,
+                Black => dst - 8,
             };
             
             self.remove_piece(opp_color, Pawn, captured);
@@ -59,41 +66,50 @@ impl Position {
             self.apply_enpassant_zobrist(self.enpassant_square.least_significant());
         }
 
-        if moov.is_castling() {
-            let rook_origin;
-            let rook_target;
+        // Castling KS
+        if moov.is_castle_ks() {
+            match color {
+                White => {
+                    self.remove_piece(color, Rook, h1 as u8);
+                    self.apply_piece_zobrist(color, Rook, h1 as u8);
 
-            match (color, moov.move_type) {
-                (White, CastleKingSide) => {
-                    rook_origin = h1 as u8;
-                    rook_target = f1 as u8;
+                    self.place_piece(color, Rook, f1 as u8);
+                    self.apply_piece_zobrist(color, Rook, f1 as u8);
                 },
-                (White, CastleQueenSide) => {
-                    rook_origin = a1 as u8;
-                    rook_target = d1 as u8;
+                Black => {
+                    self.remove_piece(color, Rook, h8 as u8);
+                    self.apply_piece_zobrist(color, Rook, h8 as u8);
+
+                    self.place_piece(color, Rook, f8 as u8);
+                    self.apply_piece_zobrist(color, Rook, f8 as u8);
                 },
-                (Black, CastleKingSide) => {
-                    rook_origin = h8 as u8;
-                    rook_target = f8 as u8;
-                },
-                (Black, CastleQueenSide) => {
-                    rook_origin = a8 as u8;
-                    rook_target = d8 as u8;
-                },
-                _ => unreachable!() // Only enters with castling move_types
             }
-
-            self.remove_piece(color, Rook, rook_origin);
-            self.apply_piece_zobrist(color, Rook, rook_origin);
-
-            self.place_piece(color, Rook, rook_target);
-            self.apply_piece_zobrist(color, Rook, rook_target);
         }
 
-        if moov.move_type == DoublePush {
+        // Castling QS
+        if moov.is_castle_qs() {
+            match color {
+                White => {
+                    self.remove_piece(color, Rook, a1 as u8);
+                    self.apply_piece_zobrist(color, Rook, a1 as u8);
+
+                    self.place_piece(color, Rook, d1 as u8);
+                    self.apply_piece_zobrist(color, Rook, d1 as u8);
+                },
+                Black => {
+                    self.remove_piece(color, Rook, a8 as u8);
+                    self.apply_piece_zobrist(color, Rook, a8 as u8);
+
+                    self.place_piece(color, Rook, d8 as u8);
+                    self.apply_piece_zobrist(color, Rook, d8 as u8);
+                },
+            }
+        }
+
+        if moov.is_double_push() {
             let enp_sq = match color {
-                White => moov.dst + 8,
-                Black => moov.dst - 8,
+                White => dst + 8,
+                Black => dst - 8,
             };
 
             self.enpassant_square = Bitboard(1 << enp_sq);
@@ -103,40 +119,38 @@ impl Position {
             self.enpassant_square = Bitboard::EMPTY
         }
 
-        // Remove piece from source
-        self.remove_piece(color, moov.piece, moov.src);
-        self.apply_piece_zobrist(color, moov.piece, moov.src);
-
         if moov.is_promotion() {
-            // Place upgraded
-            let promo = match moov.move_type {
-                Promotion(promo) | CapturePromotion(promo) => promo,
-                _ => unreachable!()
-            };
-            self.place_piece(color, promo, moov.dst);
-            self.apply_piece_zobrist(color, promo, moov.dst);
+            // Place promotion
+            self.place_piece(color, piece, dst);
+            self.apply_piece_zobrist(color, piece, dst);
+
+            // Remove pawn from source
+            self.remove_piece(color, Pawn, src);
+            self.apply_piece_zobrist(color, Pawn, src);
         } else {
             // Normally move piece to target square
-            self.place_piece(color, moov.piece, moov.dst);
-            self.apply_piece_zobrist(color, moov.piece, moov.dst);
+            self.place_piece(color, piece, dst);
+            self.apply_piece_zobrist(color, piece, dst);
+
+            self.remove_piece(color, piece, src);
+            self.apply_piece_zobrist(color, piece, src);
         }
 
-        //Update castling abililties
-        self.castling_ability.update(moov.src, moov.dst);
+        // Update castling abililties
+        self.castling_ability.update(src, dst);
         self.apply_castling_zobrist();
 
         // Update half moves counter
-        if moov.is_capture() || moov.piece == Pawn {
+        if moov.is_capture() || piece == Pawn || moov.is_promotion() {
             self.half_moves = 0;
         }
         else {
             self.half_moves += 1;
         }
 
-        //increment full moves
-        if color.is_black() {
-            self.full_moves += 1;
-        }
+        // Increment full moves
+
+        self.full_moves += unsafe { mem::transmute::<Color, u8>(color) } as u16;
 
         // Switch side
         self.active_color = opp_color;

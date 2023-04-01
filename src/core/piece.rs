@@ -7,12 +7,18 @@ pub const PIECE_STRINGS: [&str; 13] = ["P", "N", "B", "R", "Q", "K", "p", "n", "
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PieceType {
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King,
+    Pawn = 0,
+    Knight = 1,
+    Bishop = 2,
+    Rook = 3,
+    Queen = 4,
+    King = 5,
+}
+
+impl From<u32> for PieceType {
+    fn from(value: u32) -> Self {
+        unsafe { mem::transmute(value as u8) }
+    }
 }
 
 impl Default for PieceType {

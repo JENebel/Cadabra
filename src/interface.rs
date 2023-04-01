@@ -65,6 +65,11 @@ pub fn interface_loop() {
                     None => run_bench(false),
                     Some(arg) => println!("Illegal parameter for bench '{arg}'. Only 'save' is supported"),
                 }
+            },
+            "legal" => {
+                for m in pos.generate_moves() {
+                    println!(" {m}")
+                }
             }
 
 

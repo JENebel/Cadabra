@@ -104,7 +104,7 @@ fn ref_engine_loop(mut ref_engine: Child, (send_result, recv_task): (Sender<Hash
         let (fen, depth) = match recv_task.recv() {
             Ok((s, _)) if s == "close" => break,
             Ok(rec) => rec,
-            Err(_) => todo!(),
+            Err(err) => panic!("{err}"),
         };
 
         writeln!(writer, "{}", format!("position fen {}", fen)).unwrap();

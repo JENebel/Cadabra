@@ -3,12 +3,12 @@ use super::*;
 pub type MoveList = heapless::Vec<Move, 128>;
 
 pub trait MoveListFuncs {
-    fn pop_best(&mut self) -> Option<Move>;
+    //fn pop_best(&mut self) -> Option<Move>;
     fn push_move(&mut self, moov: Move);
 }
 
 impl MoveListFuncs for MoveList {
-    fn pop_best(&mut self) -> Option<Move> {
+    /*fn pop_best(&mut self) -> Option<Move> {
         let mut best_index = 0;
 
         for (i, m) in self.iter().enumerate() {
@@ -23,7 +23,7 @@ impl MoveListFuncs for MoveList {
         let length = self.len();
         self.swap(length - 1, best_index);
         self.pop()
-    }
+    }*/
 
     /// Unsafely inserts. This is not optimal, but increases performance by ~3%
     fn push_move(&mut self, moov: Move) {

@@ -158,10 +158,14 @@ impl Iterator for Bitboard {
 
     #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.is_empty() { return None }
-        let bit = self.least_significant();
-        self.0 = bitintr::Blsr::blsr(self.0);
-        Some(bit)
+        match self.is_empty() {
+            true => None,
+            false => {
+                let bit = self.least_significant();
+                self.0 = bitintr::Blsr::blsr(self.0);
+                Some(bit)
+            },
+        }        
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
