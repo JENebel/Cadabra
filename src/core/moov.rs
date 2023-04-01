@@ -21,9 +21,8 @@ impl From<u16> for MoveType {
 }
 
 /// 32 bit move representation:\
-/// 0             -  16x0  -  000000 - 000000 - 000        - 0      - 0     - 0      - 0            - 0            - 0     \ 
-/// extra/unused  -  score -  src    - dst    - piece/prom - is_cap - is_dp - is_enp - is_castle_ks - is_castle_qs - is_prom
-///
+/// 00000000000  -  000000 - 000000 - 000        - 0      - 0     - 0      - 0            - 0            - 0     \ 
+/// score        -  src    - dst    - piece/prom - is_cap - is_dp - is_enp - is_castle_ks - is_castle_qs - is_prom
 ///
 /// Note that the same bits are used for promotion and the moved piece.\
 /// This is ok as we know it is a pawn if we are promoting.
@@ -47,11 +46,11 @@ impl Move {
     }
 
     pub fn new_promotion(src: u8, dst: u8, promotion: PieceType, is_capture: bool) -> Self {
-        Self::new(src, dst, promotion, unsafe { mem::transmute(mem::transmute::<bool, u8>(is_capture) | Capture as u8) })
+        Self::new(src, dst, promotion, unsafe { mem::transmute(mem::transmute::<bool, u8>(is_capture) | Promotion as u8) })
     }
 
     pub fn piece(&self) -> PieceType {
-        PieceType::from((self.data >> 6) & 0b111111)
+        PieceType::from(((self.data >> 6) & 0b111111) as u8)
     }
 
     pub fn src(&self) -> u8 {

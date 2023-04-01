@@ -15,9 +15,9 @@ pub enum PieceType {
     King = 5,
 }
 
-impl From<u32> for PieceType {
-    fn from(value: u32) -> Self {
-        unsafe { mem::transmute(value as u8) }
+impl From<u8> for PieceType {
+    fn from(value: u8) -> Self {
+        unsafe { mem::transmute(value) }
     }
 }
 

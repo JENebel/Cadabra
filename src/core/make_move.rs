@@ -30,7 +30,7 @@ impl Position {
         self.apply_castling_zobrist();
 
         if moov.is_capture() {
-            // Find the taken piece and remove it. TODO make better
+            // Find the captured piece and remove it. TODO make better
             if self.bb(opp_color, Pawn).get_bit(dst) {
                 self.remove_piece(opp_color, Pawn, dst);
                 self.apply_piece_zobrist(opp_color, Pawn, dst);
@@ -47,7 +47,7 @@ impl Position {
                 self.remove_piece(opp_color, Rook, dst);
                 self.apply_piece_zobrist(opp_color, Rook, dst);
             }
-            else if self.bb(opp_color, Queen).get_bit(dst) {
+            else {
                 self.remove_piece(opp_color, Queen, dst);
                 self.apply_piece_zobrist(opp_color, Queen, dst);
             }

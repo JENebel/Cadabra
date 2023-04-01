@@ -104,7 +104,7 @@ fn ref_engine_loop(mut ref_engine: Child, (send_result, recv_task): (Sender<Hash
         let (fen, depth) = match recv_task.recv() {
             Ok((s, _)) if s == "close" => break,
             Ok(rec) => rec,
-            Err(err) => panic!("{err}"),
+            Err(_) => break,
         };
 
         writeln!(writer, "{}", format!("position fen {}", fen)).unwrap();
@@ -129,7 +129,6 @@ fn ref_engine_loop(mut ref_engine: Child, (send_result, recv_task): (Sender<Hash
 
 fn validate_position(fen: String, name: &str, depth: u8, tracing: bool, (send_task, recv_result): (&mut Sender<(String, u8)>, &mut Receiver<HashMap<String, u64>>)) -> Result<(), (String, Position)> {
     // Reference engine io
-
     send_task.send((fen.clone(), depth)).unwrap();
 
     let mut pos = Position::from_fen(fen.as_str()).unwrap();
