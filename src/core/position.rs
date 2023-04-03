@@ -177,8 +177,8 @@ impl Position {
         self.piece_squares[square as usize] = piece_type;
     }
 
-    pub fn remove_piece(&mut self, color: Color, piece_type: PieceType, square: u8) {
-        self.bitboards[piece_type.index(color)].unset_bit(square);
+    pub fn remove_piece(&mut self, color: Color, square: u8) {
+        self.bitboards[self.piece_type_at(square).index(color)].unset_bit(square);
         self.color_occupancies[color as usize].unset_bit(square);
         self.all_occupancies.unset_bit(square);
         self.piece_squares[square as usize] = Empty;
