@@ -13,6 +13,8 @@ pub struct Position {
     pub color_occupancies: [Bitboard; 2],
     pub all_occupancies:   Bitboard,
 
+    piece_squares: [PieceType; 64],
+
     pub active_color: Color,
     pub enpassant_square: Bitboard,
     pub castling_ability: CastlingAbility,
@@ -74,7 +76,8 @@ impl Position {
         let mut pos = Position { 
             bitboards: [Bitboard::EMPTY; 12],
             color_occupancies: [Bitboard::EMPTY; 2],
-            all_occupancies:   Bitboard::EMPTY,
+            all_occupancies: Bitboard::EMPTY,
+            piece_squares: [Empty; 64],
             active_color,
             enpassant_square,
             castling_ability,
@@ -103,6 +106,10 @@ impl Position {
         pos.generate_zobrist_hash();
 
         Ok(pos)
+    }
+
+    pub fn piece_type_at(&self, square: u8) -> PieceType {
+        self.piece_squares[square as usize]
     }
 
     pub fn piece_at(&self, square: u8) -> Option<(Color, PieceType)> {
@@ -167,12 +174,14 @@ impl Position {
         self.bitboards[piece_type.index(color)].set_bit(square);
         self.color_occupancies[color as usize].set_bit(square);
         self.all_occupancies.set_bit(square);
+        self.piece_squares[square as usize] = piece_type;
     }
 
     pub fn remove_piece(&mut self, color: Color, piece_type: PieceType, square: u8) {
         self.bitboards[piece_type.index(color)].unset_bit(square);
         self.color_occupancies[color as usize].unset_bit(square);
         self.all_occupancies.unset_bit(square);
+        self.piece_squares[square as usize] = Empty;
     }
 
     /// Gets the position of the king of the given color

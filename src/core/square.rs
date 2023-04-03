@@ -2,7 +2,7 @@ use std::{fmt::Display, mem};
 
 #[derive(Copy, Clone, PartialEq)]
 #[allow(non_camel_case_types)]
-#[allow(dead_code)]
+#[repr(u8)]
 pub enum Square {
     a8,  b8,  c8,  d8,  e8,  f8,  g8,  h8,
     a7,  b7,  c7,  d7,  e7,  f7,  g7,  h7,

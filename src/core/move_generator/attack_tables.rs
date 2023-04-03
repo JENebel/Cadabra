@@ -2,6 +2,7 @@ include!(concat!(env!("OUT_DIR"), "/sliding_attacks.rs"));
 use super::*;
 use bitintr::Pext;
 use const_for::*;
+use PieceType::*;
 
 pub const WHITE_PAWN_ATTACKS: [u64; 64] = generate_pawn_attacks(true);
 pub const BLACK_PAWN_ATTACKS: [u64; 64] = generate_pawn_attacks(false);
@@ -10,12 +11,13 @@ pub const KING_ATTACKS: [u64; 64] = generate_king_attacks();
 
 pub fn get_attacks(square: u8, color: Color, piece_type: PieceType, occupancies: Bitboard) -> u64 {
     match piece_type {
-        PieceType::Pawn =>   pawn_attacks(square, color),
-        PieceType::Knight => knight_attacks(square),
-        PieceType::Bishop => d12_attacks(square, occupancies),
-        PieceType::Rook =>   hv_attacks(square, occupancies),
-        PieceType::Queen =>  d12_attacks(square, occupancies) | hv_attacks(square, occupancies),
-        PieceType::King =>   king_attacks(square),
+        Pawn =>   pawn_attacks(square, color),
+        Knight => knight_attacks(square),
+        Bishop => d12_attacks(square, occupancies),
+        Rook =>   hv_attacks(square, occupancies),
+        Queen =>  d12_attacks(square, occupancies) | hv_attacks(square, occupancies),
+        King =>   king_attacks(square),
+        Empty =>  unreachable!("Cannot get attacks for empty piece!")
     }
 }
 

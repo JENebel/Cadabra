@@ -5,6 +5,7 @@ use crate::Color::{*, self};
 
 pub const PIECE_STRINGS: [&str; 13] = ["P", "N", "B", "R", "Q", "K", "p", "n", "b", "r", "q", "k", "None"];
 
+#[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PieceType {
     Pawn = 0,
@@ -13,6 +14,7 @@ pub enum PieceType {
     Rook = 3,
     Queen = 4,
     King = 5,
+    Empty = u8::MAX
 }
 
 impl From<u8> for PieceType {
@@ -30,6 +32,7 @@ impl Default for PieceType {
 impl PieceType {
     /// Calculates the bitboard index of the piece, given its offset
     pub fn index(&self, color: Color) -> usize {
+        debug_assert!(self != &Empty);
         *self as usize + color.piece_offset()
     }
 }
@@ -43,6 +46,7 @@ impl Display for PieceType {
             Rook =>   "Rook",
             Queen =>  "Queen",
             King =>   "King",
+            Empty =>  "Empty"
         })
     }
 }
@@ -77,6 +81,7 @@ pub fn piece_char(color: Color, piece_type: PieceType) -> char {
         Rook =>   'R',
         Queen =>  'Q',
         King =>   'K',
+        Empty =>  ' '
     };
 
     if color.is_black() {

@@ -24,33 +24,15 @@ impl Position {
 
         let src = moov.src();
         let dst = moov.dst();
-        let piece = moov.piece();
+        let piece = moov.piece();// self.piece_type_at(src);
 
         // Unapply current castling ability zobrist (reapplied after castling)
         self.apply_castling_zobrist();
 
         if moov.is_capture() {
-            // Find the captured piece and remove it. TODO make better
-            if self.bb(opp_color, Pawn).get_bit(dst) {
-                self.remove_piece(opp_color, Pawn, dst);
-                self.apply_piece_zobrist(opp_color, Pawn, dst);
-            }
-            else if self.bb(opp_color, Knight).get_bit(dst) {
-                self.remove_piece(opp_color, Knight, dst);
-                self.apply_piece_zobrist(opp_color, Knight, dst);
-            }
-            else if self.bb(opp_color, Bishop).get_bit(dst) {
-                self.remove_piece(opp_color, Bishop, dst);
-                self.apply_piece_zobrist(opp_color, Bishop, dst);
-            }
-            else if self.bb(opp_color, Rook).get_bit(dst) {
-                self.remove_piece(opp_color, Rook, dst);
-                self.apply_piece_zobrist(opp_color, Rook, dst);
-            }
-            else {
-                self.remove_piece(opp_color, Queen, dst);
-                self.apply_piece_zobrist(opp_color, Queen, dst);
-            }
+            let captured = self.piece_type_at(dst);
+            self.remove_piece(opp_color, captured, dst);
+            self.apply_piece_zobrist(opp_color, captured, dst);
         }
 
         if moov.is_enpassant() {

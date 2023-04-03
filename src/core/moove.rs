@@ -3,6 +3,7 @@ use std::{fmt::Display, mem};
 use super::*;
 use MoveType::*;
 
+#[repr(u8)]
 pub enum MoveType {
     Quiet = 0,
     Capture = 1 << 0,
@@ -11,7 +12,7 @@ pub enum MoveType {
     CastleKingSide = 1 << 3,
     CastleQueenSide = 1 << 4,
     Promotion = 1 << 5,
-    CapturePromotion = Capture as isize | Promotion as isize
+    CapturePromotion = Capture as u8 | Promotion as u8
 }
 
 impl From<u16> for MoveType {

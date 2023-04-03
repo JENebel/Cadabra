@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use Color::*;
 
+#[repr(u8)]
 #[derive(Clone, Copy, PartialEq)]
 pub enum Color {
     White = 0,

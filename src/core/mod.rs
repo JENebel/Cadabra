@@ -5,7 +5,7 @@ mod piece;
 mod color;
 mod bitboard;
 mod position;
-mod moov;
+mod moove;
 mod make_move;
 mod move_generator;
 
@@ -16,7 +16,7 @@ pub use piece::*;
 pub use color::*;
 pub use make_move::*;
 use bitboard::*;
-pub use moov::*;
+pub use moove::*;
 pub use position::*;
 pub use move_generator::*;
 
