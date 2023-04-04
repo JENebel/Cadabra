@@ -1,3 +1,5 @@
+use std::mem;
+
 use super::*;
 use PieceType::*;
 use Color::*;
@@ -16,15 +18,22 @@ impl Position {
 
     #[inline(always)]
     pub fn make_move(&mut self, moov: Move) {
+        // Let move_type = moov.move_type;
         let color = self.active_color;
         let opp_color = color.opposite();
 
         let src = moov.src();
         let dst = moov.dst();
-        let piece = self.piece_type_at(src);
+        let piece = moov.piece();// self.piece_type_at(src);
 
         // Unapply current castling ability zobrist (reapplied after castling)
         self.apply_castling_zobrist();
+
+        if moov.is_capture() {
+            let captured = self.piece_type_at(dst);
+            self.remove_piece(opp_color, captured, dst);
+            self.apply_piece_zobrist(opp_color, captured, dst);
+        }
 
         if moov.is_enpassant() {
             let captured = match color {
@@ -32,29 +41,23 @@ impl Position {
                 Black => dst - 8,
             };
             
+            self.remove_piece(opp_color, Pawn, captured);
             self.apply_piece_zobrist(opp_color, Pawn, captured);
-            self.remove_piece(opp_color, captured);
             self.apply_enpassant_zobrist(self.enpassant_square.least_significant());
-        }
-        else if moov.is_capture() {
-            let captured = self.piece_type_at(dst);
-            debug_assert!(captured != Empty, "{self}{}\n{moov}\n", Square::from(dst));
-            self.apply_piece_zobrist(opp_color, captured, dst);
-            self.remove_piece(opp_color, dst);
         }
 
         // Castling KS
         if moov.is_castle_ks() {
             match color {
                 White => {
-                    self.remove_piece(color, h1 as u8);
+                    self.remove_piece(color, Rook, h1 as u8);
                     self.apply_piece_zobrist(color, Rook, h1 as u8);
 
                     self.place_piece(color, Rook, f1 as u8);
                     self.apply_piece_zobrist(color, Rook, f1 as u8);
                 },
                 Black => {
-                    self.remove_piece(color, h8 as u8);
+                    self.remove_piece(color, Rook, h8 as u8);
                     self.apply_piece_zobrist(color, Rook, h8 as u8);
 
                     self.place_piece(color, Rook, f8 as u8);
@@ -67,14 +70,14 @@ impl Position {
         if moov.is_castle_qs() {
             match color {
                 White => {
-                    self.remove_piece(color, a1 as u8);
+                    self.remove_piece(color, Rook, a1 as u8);
                     self.apply_piece_zobrist(color, Rook, a1 as u8);
 
                     self.place_piece(color, Rook, d1 as u8);
                     self.apply_piece_zobrist(color, Rook, d1 as u8);
                 },
                 Black => {
-                    self.remove_piece(color, a8 as u8);
+                    self.remove_piece(color, Rook, a8 as u8);
                     self.apply_piece_zobrist(color, Rook, a8 as u8);
 
                     self.place_piece(color, Rook, d8 as u8);
@@ -98,17 +101,20 @@ impl Position {
 
         if moov.is_promotion() {
             // Place promotion
-            self.place_piece(color, moov.promotion(), dst);
-            self.apply_piece_zobrist(color, moov.promotion(), dst);
+            self.place_piece(color, piece, dst);
+            self.apply_piece_zobrist(color, piece, dst);
+
+            // Remove pawn from source
+            self.remove_piece(color, Pawn, src);
+            self.apply_piece_zobrist(color, Pawn, src);
         } else {
             // Normally move piece to target square
             self.place_piece(color, piece, dst);
             self.apply_piece_zobrist(color, piece, dst);
-        }
 
-        // Remove moved piece
-        self.remove_piece(color, src);
-        self.apply_piece_zobrist(color, piece, src);
+            self.remove_piece(color, piece, src);
+            self.apply_piece_zobrist(color, piece, src);
+        }
 
         // Update castling abililties
         self.castling_ability.update(src, dst);
@@ -124,7 +130,7 @@ impl Position {
 
         // Increment full moves
 
-        self.full_moves += color as u16;
+        self.full_moves += unsafe { mem::transmute::<Color, u8>(color) } as u16;
 
         // Switch side
         self.active_color = opp_color;

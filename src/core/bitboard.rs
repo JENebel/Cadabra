@@ -144,6 +144,12 @@ impl Bitboard {
     pub fn is_empty(&self) -> bool {
         self.0 == 0
     }
+
+    pub fn extract_bit_unchecked(&mut self) -> u8 {
+        let bit = self.least_significant();
+        self.0 = bitintr::Blsr::blsr(self.0);
+        bit
+    }
 }
 
 /// Iterate over the set bits on the bitboard. TODO: maybe add ExactIterator impl for performance?

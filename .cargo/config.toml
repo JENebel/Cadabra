@@ -9,7 +9,7 @@ lto = true
 codegen-units = 1
 
 [alias]
-validate = "run --bin validator stockfish"
+validate = "run --release --bin validator stockfish"
 benchmark = "run --release bench"
 
 [env]
