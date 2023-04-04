@@ -1,41 +1,39 @@
-use std::mem;
-
 use super::*;
 use PieceType::*;
 use Color::*;
 use Square::*;
 
 impl Position {
-    pub fn make_uci_move(&mut self, moov: &str) -> Result<(), String> {
-        let m = self.generate_moves().into_iter().find(|m| format!("{m}") == moov);
+    pub fn make_uci_move(&mut self, moove: &str) -> Result<(), String> {
+        let m = self.generate_moves().into_iter().find(|m| format!("{m}") == moove);
         if let Some(m) = m {
             self.make_move(m);
             Ok(())
         } else {
-            Err(format!("Illegal move: {moov}"))
+            Err(format!("Illegal move: {moove}"))
         }
     }
 
     #[inline(always)]
-    pub fn make_move(&mut self, moov: Move) {
+    pub fn make_move(&mut self, moove: Move) {
         // Let move_type = moov.move_type;
         let color = self.active_color;
         let opp_color = color.opposite();
 
-        let src = moov.src();
-        let dst = moov.dst();
-        let piece = moov.piece();// self.piece_type_at(src);
+        let src = moove.src();
+        let dst = moove.dst();
+        let piece = self.piece_type_at(src);
 
         // Unapply current castling ability zobrist (reapplied after castling)
         self.apply_castling_zobrist();
 
-        if moov.is_capture() {
+        if moove.is_capture() && !moove.is_enpassant() {
             let captured = self.piece_type_at(dst);
             self.remove_piece(opp_color, captured, dst);
             self.apply_piece_zobrist(opp_color, captured, dst);
         }
 
-        if moov.is_enpassant() {
+        if moove.is_enpassant() {
             let captured = match color {
                 White => dst + 8,
                 Black => dst - 8,
@@ -47,7 +45,7 @@ impl Position {
         }
 
         // Castling KS
-        if moov.is_castle_ks() {
+        if moove.is_castle_ks() {
             match color {
                 White => {
                     self.remove_piece(color, Rook, h1 as u8);
@@ -67,7 +65,7 @@ impl Position {
         }
 
         // Castling QS
-        if moov.is_castle_qs() {
+        if moove.is_castle_qs() {
             match color {
                 White => {
                     self.remove_piece(color, Rook, a1 as u8);
@@ -86,7 +84,7 @@ impl Position {
             }
         }
 
-        if moov.is_double_push() {
+        if moove.is_double_push() {
             let enp_sq = match color {
                 White => dst + 8,
                 Black => dst - 8,
@@ -99,10 +97,10 @@ impl Position {
             self.enpassant_square = Bitboard::EMPTY
         }
 
-        if moov.is_promotion() {
+        if moove.is_promotion() {
             // Place promotion
-            self.place_piece(color, piece, dst);
-            self.apply_piece_zobrist(color, piece, dst);
+            self.place_piece(color, moove.promotion(), dst);
+            self.apply_piece_zobrist(color, moove.promotion(), dst);
 
             // Remove pawn from source
             self.remove_piece(color, Pawn, src);
@@ -121,7 +119,7 @@ impl Position {
         self.apply_castling_zobrist();
 
         // Update half moves counter
-        if moov.is_capture() || piece == Pawn || moov.is_promotion() {
+        if moove.is_capture() || piece == Pawn || moove.is_promotion() {
             self.half_moves = 0;
         }
         else {
@@ -129,8 +127,7 @@ impl Position {
         }
 
         // Increment full moves
-
-        self.full_moves += unsafe { mem::transmute::<Color, u8>(color) } as u16;
+        self.full_moves += color as u16;
 
         // Switch side
         self.active_color = opp_color;
