@@ -17,17 +17,24 @@ fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
 
     let mut result: HashMap<String, u64> = HashMap::new();
 
-    for m in moves {
+    for moove in moves {
         let mut copy = *pos;
-        copy.make_move(m);
-        let sub_nodes = if depth >2 {
+        let hash = pos.zobrist_hash;
+
+        copy.make_move(moove);
+
+        copy.generate_zobrist_hash();
+        println!("{hash}");
+        assert!(hash == pos.zobrist_hash, "Wrong zobrist hash with move '{moove}' at depth {depth}{pos}");
+
+        let sub_nodes = if depth > 2 {
             copy.perft::<false>(depth - 1)
         } else if depth > 1 {
             debug_perft(&copy, depth - 1).iter().map(|m| m.1).sum()
         } else {
             1
         };
-        result.insert(format!("{m}"), sub_nodes);
+        result.insert(format!("{moove}"), sub_nodes);
     }
 
     result
@@ -72,10 +79,10 @@ fn run_perft_tests() {
 
         for depth in 1..=depth {
             if let Err((err, pos)) = validate_position(fen.to_string(), name, depth, false, (&mut send_task, &mut recv_result)) {
-                println!("Error at {name}:\n{err}\n");
+                println!("\nError at {name}:\n {err}\n");
                 println!("{}", pos);
                 
-                assert!(false)
+                assert!(false, "Validation failed")
             }
         }
 
@@ -123,7 +130,7 @@ fn ref_engine_loop(mut ref_engine: Child, (send_result, recv_task): (Sender<Hash
             }
             results.insert(split[0].trim().to_string(), split[1].trim().parse::<u64>().unwrap());
         }
-        send_result.send(results).unwrap();
+        let _ = send_result.send(results);
     }
 }
 
@@ -148,13 +155,13 @@ fn validate_position(fen: String, name: &str, depth: u8, tracing: bool, (send_ta
         }
 
         if tracing {
-            return Err((format!("This is weird, Probably an error in the move generator"), pos));
+            return Err((format!("Accumulative error"), pos));
         }
     } else {
         for (key, nodes) in ref_res {
             if nodes != *own_res.get(&key).unwrap() {
                 pos.make_uci_move(&key).unwrap();
-                println!("Wrong move count on {name} at depth {depth}! Tracing with {key}");
+                print!("\nWrong move count on {name} at depth {depth}! Tracing with {key}");
                 return validate_position(pos.fen_string(), name, depth - 1, true, (send_task, recv_result));
             };
         }

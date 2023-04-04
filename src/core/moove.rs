@@ -5,6 +5,7 @@ use MoveType::*;
 use PieceType::*;
 
 #[repr(u8)]
+#[derive(PartialEq, Eq)]
 pub enum MoveType {
     Quiet =             0b0000,
     Capture =           0b0001,
@@ -67,9 +68,20 @@ impl Move {
         (self.data >> 10) as u8 // & 0b111111
     }
 
-    /// Note that EnpassantCapture(sq) is handled seperately, and is not considered a 'capture' here.
     pub fn is_capture(&self) -> bool {
         (self.data & Capture as u16) != 0
+    }
+
+    pub fn move_type(&self) -> MoveType {
+        match self.data & 0b1111{
+            0b0000 => Quiet,
+            0b0001 => Capture,
+            0b0100 => DoublePush,
+            0b1000 => CastleKingSide,
+            0b1100 => CastleQueenSide,
+            0b0101 => Enpassant,
+            _ => Promotion
+        }
     }
 
     pub fn is_promotion(&self) -> bool {

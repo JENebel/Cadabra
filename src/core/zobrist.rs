@@ -1,9 +1,16 @@
+use std::mem;
+
 use super::{Color, PieceType, Position};
 use const_random::*;
 
-const PIECE_KEYS: [u64; 12 * 64] = [const_random!(u64); 12 * 64];
-const ENPASSANT_KEYS: [u64; 64] = [const_random!(u64); 64];
-const CASTLING_KEYS: [u64; 16] = [const_random!(u64); 16];
+/// Is 0 for index 0 so xor does nothing when there is no ep
+const ENPASSANT_KEYS: [u64; 64] = {
+    let mut keys: [u64; 64] = unsafe { mem::transmute(const_random!([u8; 512])) };
+    keys[0] = 0;
+    keys
+};
+const PIECE_KEYS: [u64; 12 * 64] = unsafe { mem::transmute(const_random!([u8; 6144])) };
+const CASTLING_KEYS: [u64; 16] = unsafe { mem::transmute(const_random!([u8; 128])) };
 const SIDE_KEY: u64 = const_random!(u64);
 
 #[derive(Copy, Clone, PartialEq)]
@@ -45,8 +52,6 @@ impl Position {
             self.apply_side_zobrist()
         }
 
-        if !self.enpassant_square.is_empty() {
-            self.apply_enpassant_zobrist(self.enpassant_square.least_significant());
-        }
+        self.apply_enpassant_zobrist(self.enpassant_square);
     }
 }
