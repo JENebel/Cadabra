@@ -200,7 +200,7 @@ impl Position {
             return
         }
 
-        let captures = attacks & pin_mask & (1 << self.enpassant_square);
+        let captures = attacks & pin_mask & self.enpassant_square;
 
         for enp_sq in captures {
             let captured = match color {
@@ -224,7 +224,7 @@ impl Position {
     #[inline(always)]
     fn generate_pawn_moves(&self, move_list: &mut MoveList, check_mask: Bitboard, hv_pin: Bitboard, d12_pin: Bitboard) {
         let pawns = self.bb(self.active_color, Pawn);
-        let has_enpassant = self.enpassant_square != 0;
+        let has_enpassant = !self.enpassant_square.is_empty();
 
         let hv_pinned_pawns = pawns & hv_pin;
         for src in hv_pinned_pawns {
@@ -271,14 +271,14 @@ impl Position {
             Color::White => {
                 if self.castling_ability.is_side_available(WhiteKingSide) {
                     let none_attacked = (WhiteKingSide.attacked_mask() & attacked).is_empty();
-                    let between_open = (WhiteKingSide.open_mask() & self.all_occupancies).is_empty();
+                    let between_open =  (WhiteKingSide.open_mask() & self.all_occupancies).is_empty();
                     if none_attacked && between_open {
                         move_list.push_move(Move::new(e1 as u8, g1 as u8, CastleKingSide));
                     }
                 }
                 if self.castling_ability.is_side_available(WhiteQueenSide) {
                     let none_attacked = (WhiteQueenSide.attacked_mask() & attacked).is_empty();
-                    let between_open = (WhiteQueenSide.open_mask() & self.all_occupancies).is_empty();
+                    let between_open =  (WhiteQueenSide.open_mask() & self.all_occupancies).is_empty();
                     if none_attacked && between_open {
                         move_list.push_move(Move::new(e1 as u8, c1 as u8, CastleQueenSide));
                     }
@@ -287,14 +287,14 @@ impl Position {
             Color::Black => {
                 if self.castling_ability.is_side_available(BlackKingSide) {
                     let none_attacked = (BlackKingSide.attacked_mask() & attacked).is_empty();
-                    let between_open = (BlackKingSide.open_mask() & self.all_occupancies).is_empty();
+                    let between_open =  (BlackKingSide.open_mask() & self.all_occupancies).is_empty();
                     if none_attacked && between_open {
                         move_list.push_move(Move::new(e8 as u8, g8 as u8, CastleKingSide));
                     }
                 }
                 if self.castling_ability.is_side_available(BlackQueenSide) {
                     let none_attacked = (BlackQueenSide.attacked_mask() & attacked).is_empty();
-                    let between_open = (BlackQueenSide.open_mask() &self.all_occupancies).is_empty();
+                    let between_open =  (BlackQueenSide.open_mask() &self.all_occupancies).is_empty();
                     if none_attacked && between_open {
                         move_list.push_move(Move::new(e8 as u8, c8 as u8, CastleQueenSide));
                     }

@@ -16,7 +16,7 @@ pub struct Position {
     piece_squares: [PieceType; 64],
 
     pub active_color: Color,
-    pub enpassant_square: u8,
+    pub enpassant_square: Bitboard,
     pub castling_ability: CastlingAbility,
 
     pub full_moves: u16,
@@ -49,14 +49,11 @@ impl Position {
         let castling_ability = CastlingAbility::from_str(split.next().unwrap_or("-"))?;
 
         // Enpassant square
-        let enpassant_square = if let Some(enp_str) = split.next() {
+        let mut enpassant_square = Bitboard::EMPTY;
+        if let Some(enp_str) = split.next() {
             if enp_str != "-" {
-                Square::from_str(enp_str)? as u8
-            } else {
-                0
+                enpassant_square.set_bit(Square::from_str(enp_str)? as u8)
             }
-        } else {
-            0
         };
 
         // 50 move rule count
@@ -153,8 +150,8 @@ impl Position {
 
         write!(result, " {}", self.castling_ability).unwrap();
 
-        if self.enpassant_square != 0 {
-            write!(result, " {}", Square::from(self.enpassant_square)).unwrap()
+        if !self.enpassant_square.is_empty() {
+            write!(result, " {}", Square::from(self.enpassant_square.least_significant())).unwrap()
         } else {
             write!(result, " -").unwrap()
         }
@@ -173,85 +170,18 @@ impl Position {
         self.color_occupancies[color as usize]
     }
 
-    #[inline(always)]
     pub fn place_piece(&mut self, color: Color, piece_type: PieceType, square: u8) {
         self.bitboards[piece_type.index(color)].set_bit(square);
-
         self.color_occupancies[color as usize].set_bit(square);
-
         self.all_occupancies.set_bit(square);
-
         self.piece_squares[square as usize] = piece_type;
-
-        self.apply_piece_zobrist(color, piece_type, square);
     }
 
     pub fn remove_piece(&mut self, color: Color, square: u8) {
-        let piece_type = self.piece_type_at(square);
-
-        self.bitboards[piece_type.index(color)].unset_bit(square);
-
+        self.bitboards[self.piece_type_at(square).index(color)].unset_bit(square);
         self.color_occupancies[color as usize].unset_bit(square);
-
         self.all_occupancies.unset_bit(square);
-
         self.piece_squares[square as usize] = Empty;
-
-        self.apply_piece_zobrist(color, piece_type, square);
-    }
-
-    #[inline]
-    pub fn move_piece(&mut self, color: Color, src: u8, dst: u8) {
-        let piece_type = self.piece_type_at(src);
-        let piece_index = piece_type.index(color);
-
-        self.bitboards[piece_index].unset_bit(src);
-        self.bitboards[piece_index].set_bit(dst);
-
-        self.all_occupancies.unset_bit(src);
-        self.all_occupancies.set_bit(dst);
-
-        self.color_occupancies[color as usize].unset_bit(src);
-        self.color_occupancies[color as usize].set_bit(dst);
-
-        self.piece_squares[dst as usize] = piece_type;
-
-        self.apply_piece_zobrist(color, piece_type, src);
-        self.apply_piece_zobrist(color, piece_type, dst);
-    }
-
-    #[inline]
-    pub fn capture_move(&mut self, color: Color, src: u8, dst: u8) {
-        let piece_type = self.piece_type_at(src);
-        let piece_index = piece_type.index(color);
-        let captured_type = self.piece_type_at(dst);
-        let captured_index = captured_type.index(color.opposite());
-
-        self.bitboards[piece_index].unset_bit(src);
-        self.bitboards[captured_index].unset_bit(dst);
-        self.bitboards[piece_index].set_bit(dst);
-
-        self.all_occupancies.unset_bit(src);
-
-        self.color_occupancies[color as usize].unset_bit(src);
-        self.color_occupancies[color.opposite() as usize].unset_bit(dst);
-        self.color_occupancies[color as usize].set_bit(dst);
-
-        self.piece_squares[dst as usize] = piece_type;
-
-        self.apply_piece_zobrist(color, piece_type, src);
-        self.apply_piece_zobrist(color, piece_type, dst);
-        self.apply_piece_zobrist(color.opposite(), captured_type, dst);
-    }
-
-    pub fn promote_piece(&mut self, color: Color, square: u8, promotion: PieceType) {
-        self.bitboards[Pawn.index(color)].unset_bit(square);
-        self.bitboards[promotion.index(color)].set_bit(square);
-        
-        self.piece_squares[square as usize] = promotion;
-
-        self.apply_piece_zobrist(color, Pawn, square);
-        self.apply_piece_zobrist(color, promotion, square);
     }
 
     /// Gets the position of the king of the given color
