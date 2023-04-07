@@ -2,7 +2,7 @@ use std::{time::Instant, io::{stdout, Write, self, BufRead}, fs::File, path::Pat
 use colored::Colorize;
 use std::hint::black_box;
 
-use super::Position;
+use crate::engine::*;
 
 const  BENCH_POSITIONS: [(&'static str, &'static str, u8); 5] = [
 	("Startpos",            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",           6),
@@ -85,7 +85,7 @@ fn show_results(perft_time: u128, perft_mnps: f64) {
         diff_perc_str = diff_perc_str.green();
     }
     
-    print!("Performance changed by {} ≈ {}", diff_str, diff_perc_str);
+    println!(" Performance changed by {} ≈ {}", diff_str, diff_perc_str);
 }
 
 fn baseline_path() -> PathBuf {
