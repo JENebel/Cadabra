@@ -2,15 +2,13 @@ use std::{io::stdin, process, thread, sync::{mpsc::{channel, Receiver, Sender}, 
 
 use super::*;
 
-type Search = Arc<Mutex<Option<Sender<SearchMessage>>>>;
-
 pub fn interface_loop() {
     let mut pos = Position::start_pos();
     
     // Spawn listening thread that reads input without blocking main thread
     let ui_receiver = spawn_ui_listener_thread();
 
-    let current_search: Search = Arc::new(Mutex::new(None));
+    let current_search: Search = Search::new();
 
     let settings = Settings::default();
 
@@ -98,7 +96,7 @@ pub fn interface_loop() {
                 }
             }
             "go" => {
-                if let Some(_) = *current_search.lock().unwrap() {
+                if current_search.is_running() {
                     println!("A search is already running");
                     continue
                 }
@@ -111,15 +109,7 @@ pub fn interface_loop() {
                     },
                 };
 
-                let (sender, receiver) = channel();
-
-                let curr_search_clone = current_search.clone();
-                thread::spawn(move || {
-                    search(SearchContext::new(context, pos, settings, receiver));
-                    *curr_search_clone.lock().unwrap() = None;
-                });
-
-                *current_search.lock().unwrap() = Some(sender);
+                current_search.start(context);
             },
             "stop" => {
                 match current_search.lock().unwrap().take() {
