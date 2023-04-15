@@ -8,9 +8,9 @@ pub fn interface_loop() {
     // Spawn listening thread that reads input without blocking main thread
     let ui_receiver = spawn_ui_listener_thread();
 
-    let current_search: Search = Search::new();
-
     let settings = Settings::default();
+
+    let current_search: Search = Search::new(settings);
 
     loop {
         let line = wait_for_input(&ui_receiver);
@@ -109,13 +109,10 @@ pub fn interface_loop() {
                     },
                 };
 
-                current_search.start(context);
+                current_search.start(pos, context);
             },
             "stop" => {
-                match current_search.lock().unwrap().take() {
-                    Some(search) => search.send(SearchMessage::Stop).unwrap(),
-                    None => println!("No task is running"),
-                }
+                current_search.notify_stop()
             },
             "ponderhit" => {
                 todo!()
@@ -214,7 +211,7 @@ fn parse_position(command: &mut &str) -> Result<Position, String> {
     Ok(pos)
 }
 
-fn parse_go(command: &mut &str) -> Result<SearchInfo, String> {
+fn parse_go(command: &mut &str) -> Result<SearchMeta, String> {
     match take_next(command) {
         Some("depth") => {
             let depth = match take_next_u8(command) {
@@ -224,7 +221,7 @@ fn parse_go(command: &mut &str) -> Result<SearchInfo, String> {
                 },
             };
 
-            Ok(SearchInfo::new(depth))
+            Ok(SearchMeta::new(depth))
         },
         _ => Err(format!("Illegal go argument"))
     }

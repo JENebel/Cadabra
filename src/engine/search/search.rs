@@ -1,4 +1,4 @@
-use std::{sync::{mpsc::{Receiver, Sender, channel}, RwLock, Arc, atomic::AtomicBool, Mutex}, thread};
+use std::{sync::{mpsc::{Receiver, Sender, channel}, Arc, atomic::AtomicBool, Mutex}, thread};
 use super::*;
 use std::sync::atomic::Ordering::*;
 
@@ -18,8 +18,8 @@ impl Search {
         }
     }
 
-    pub fn start(&self, info: SearchInfo) {
-        let senders: Vec<Sender<SearchMessage>> = Vec::new();
+    pub fn start(&self, pos: Position, info: SearchMeta) {
+        let mut senders: Vec<Sender<SearchMessage>> = Vec::new();
 
         // Spawn worker threads
         for t in 0..self.settings.lock().unwrap().threads {
@@ -29,8 +29,8 @@ impl Search {
             thread::spawn(move || {
                 loop {
                     match receiver.recv().unwrap() {
-                        SearchMessage::Stop => todo!(),
-                        SearchMessage::PonderHit => todo!(),
+                        SearchMessage::Stop => break,
+                        SearchMessage::PonderHit => break,
                     }
                 }
             });
@@ -44,7 +44,8 @@ impl Search {
     }
 
     pub fn notify_stop(&self) {
-        self.send(SearchMessage::Stop)
+        self.send(SearchMessage::Stop);
+        self.is_running.store(false, Relaxed);
     }
 
     pub fn notify_ponder_hit(&self) {
@@ -54,7 +55,7 @@ impl Search {
     /// Send to search if it is running
     fn send(&self, msg: SearchMessage) {
         if self.is_running.load(Relaxed) {
-            self.sender.lock().unwrap().unwrap().send(msg);
+            self.sender.lock().unwrap().as_ref().unwrap().send(msg).unwrap();
         } else {
             println!("Can't stop search, as there is no search running")
         }
@@ -62,10 +63,6 @@ impl Search {
 
     pub fn is_running(&self) -> bool {
         self.is_running.load(Relaxed)
-    }
-
-    fn mark_as_done(&self) {
-        self.is_running.store(false, Relaxed)
     }
 
     /// Resets the transposition table etc.
@@ -76,19 +73,18 @@ impl Search {
 
 /// The arguments provided in go command
 #[derive(Clone)]
-pub struct SearchInfo {
-    pos: Position,
+pub struct SearchMeta {
     depth: u8,
 }
 
-impl SearchInfo {
-    pub fn new(pos: Position, depth: u8) -> Self {
-        Self { pos, depth }
+impl SearchMeta {
+    pub fn new(depth: u8) -> Self {
+        Self { depth }
     }
 }
 
 /// Messages sent from main to search thread
-enum SearchMessage {
+pub enum SearchMessage {
     Stop,
     PonderHit,
 }
@@ -96,18 +92,20 @@ enum SearchMessage {
 #[allow(dead_code)]
 pub struct SearchContext {
     search: Search,
-    search_info: SearchInfo,
+    search_info: SearchMeta,
     pos: Position,
     receiver: Receiver<SearchMessage>,
+    pv_table: PVTable,
 }
 
 impl SearchContext {
-    pub fn new(search: Search, search_info: SearchInfo, pos: Position, receiver: Receiver<SearchMessage>) -> Self {
+    pub fn new(search: Search, search_info: SearchMeta, pos: Position, receiver: Receiver<SearchMessage>) -> Self {
         Self {
             search,
             search_info,
             pos,
             receiver,
+            pv_table: PVTable::new()
         }
     }
 }

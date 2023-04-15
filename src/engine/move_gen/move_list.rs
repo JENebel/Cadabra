@@ -1,34 +1,58 @@
 use super::*;
 
-pub type MoveList = heapless::Vec<Move, 256>;
-
-pub trait MoveListFuncs {
-    //fn pop_best(&mut self) -> Option<Move>;
-    fn push_move(&mut self, moov: Move);
+pub struct MoveList {
+    moves: heapless::Vec<(Move, i16), 256>
 }
 
-impl MoveListFuncs for MoveList {
-    /*fn pop_best(&mut self) -> Option<Move> {
-        let mut best_index = 0;
+impl MoveList {
+    pub fn new() -> Self {
+        Self {
+            moves: heapless::Vec::new()
+        }
+    }
 
-        for (i, m) in self.iter().enumerate() {
-            let best_score = self[best_index].score;
-            let score = m.score;
+    pub fn push(&mut self, moov: Move) {
+        unsafe { self.moves.push_unchecked((moov, 0)) }
+    }
+
+    pub fn pop(&mut self) -> Option<Move> {
+        self.moves.pop().map(|e| e.0)
+    }
+
+    /// This will only make sense if the list has been sorted!
+    pub fn pop_best(&mut self) -> Option<Move> {
+        if self.moves.len() == 0 {
+            return None
+        }
+
+        let mut best_index = 0;
+        let mut best_score = self.moves[0].1;
+
+        for i in 0..self.len() {
+            let score = self.moves[i].1;
 
             if score > best_score {
-                best_index = i
+                best_index = i;
+                best_score = self.moves[best_index].1;
             }
         }
 
-        let length = self.len();
-        self.swap(length - 1, best_index);
-        self.pop()
-    }*/
+        Some(self.moves.swap_remove(best_index).0)
+    }
 
-    /// Unsafely inserts. This is not optimal, but increases performance by ~3%
-    fn push_move(&mut self, moov: Move) {
-        debug_assert!(self.len() + 1 < self.capacity());
+    pub fn len(&self) -> usize {
+        self.moves.len()
+    }
+
+    pub fn sort(&mut self) {
         
-        unsafe { self.push_unchecked(moov) }
+    }
+}
+
+impl Iterator for MoveList {
+    type Item = Move;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.pop()
     }
 }
