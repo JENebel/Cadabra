@@ -14,6 +14,10 @@ impl PVTable {
         }
     }
 
+    pub fn init_ply(&mut self, ply: u8) {
+        self.pv_lengths[ply as usize] = ply as usize
+    }
+
     pub fn best_move(&self) -> Option<Move> {
         self.pv_table[0][0]
     }

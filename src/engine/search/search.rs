@@ -88,12 +88,6 @@ impl SearchMeta {
     }
 }
 
-/// Messages sent from main to search thread
-pub enum SearchMessage {
-    Stop,
-    PonderHit,
-}
-
 #[derive(Clone)]
 pub struct SearchContext {
     search: Search,
@@ -123,8 +117,12 @@ fn run_search<const IS_MASTER: bool>(context: &mut SearchContext) {
     }
 
     // Stop helper threads
-    if IS_MASTER && !context.search.is_stopping() {
-        context.search.stop(true);
+    if IS_MASTER {
+        if !context.search.is_stopping() {
+            context.search.stop(true);
+        }
+
+        println!("bestmove {}", context.pv_table.best_move().unwrap());
 
         // If ponder enabled, start pondering
     }
@@ -135,7 +133,7 @@ fn negamax(pos: Position, mut alpha: i32, beta: i32, depth: u8, ply: u8, context
         return pos.evaluate()
     };
 
-    context.pv_table.pv_lengths[ply as usize] = ply as usize;
+    context.pv_table.init_ply(ply);
 
     let move_list = pos.generate_moves();
 
