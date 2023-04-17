@@ -1,12 +1,13 @@
-use std::{sync::{mpsc::{Receiver, Sender, channel}, Arc, atomic::{AtomicBool, Ordering}, Mutex}, thread::{self, JoinHandle}};
 use super::*;
-use std::sync::atomic::Ordering::*;
+use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread::{JoinHandle, self}};
 
 #[derive(Clone)]
 pub struct Search {
     is_running: Arc<AtomicBool>,
     is_stopping: Arc<AtomicBool>,
-    settings: Arc<Mutex<Settings>>
+    settings: Arc<Mutex<Settings>>,
+    worker_handles: Arc<Mutex<Option<Vec<JoinHandle<()>>>>>,
+    // TT here
 }
 
 impl Search {
@@ -15,6 +16,7 @@ impl Search {
             is_running: Arc::new(AtomicBool::new(false)),
             is_stopping: Arc::new(AtomicBool::new(false)),
             settings: Arc::new(Mutex::new(settings)),
+            worker_handles: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -25,35 +27,47 @@ impl Search {
             let search = self.clone();
             let meta = meta.clone();
             let pos = pos.clone();
-            
+
             let h = thread::spawn(move || {
                 let mut context = SearchContext::new(search, meta, pos);
-                start_search(&mut context);
-                context.pv_table.best_move()
+                if t == 0 {       
+                    run_search::<true>(&mut context);
+                } else {       
+                    run_search::<false>(&mut context);
+                }
             });
 
             workers.push(h);
         }
 
-        // Wait for workers to terminate
-        for (i, w) in workers.into_iter().enumerate() {
-            w.join().unwrap();
-            if i == 0 {
-                self.is_running.store(false, Relaxed)
-            }
-        }
+        *self.worker_handles.lock().unwrap() = Some(workers)
     }
 
-    pub fn stop(&self) {
+    pub fn stop(&self, skip_master: bool) {
         if self.is_running.load(Relaxed) {
-            self.is_running.store(false, Relaxed)
+            self.is_stopping.store(true, Relaxed);
+
+            // Wait for all threads to terminate
+            let handles = self.worker_handles.lock().unwrap().take().unwrap();
+            for w in handles.into_iter().skip(if skip_master {1} else {0}) {
+                w.join().unwrap();
+            }
+
+            self.is_stopping.store(false, Relaxed);
+            self.is_running.store(false, Relaxed);
         } else {
             println!("Can't stop search, as there is no search running")
         }
+
+        *self.worker_handles.lock().unwrap() = None;
     }
 
     pub fn is_running(&self) -> bool {
         self.is_running.load(Relaxed)
+    }
+
+    pub fn is_stopping(&self) -> bool {
+        self.is_stopping.load(Relaxed)
     }
 
     /// Resets the transposition table etc.
@@ -65,12 +79,12 @@ impl Search {
 /// The arguments provided in go command
 #[derive(Clone)]
 pub struct SearchMeta {
-    depth: u8,
+    max_depth: u8,
 }
 
 impl SearchMeta {
-    pub fn new(depth: u8) -> Self {
-        Self { depth }
+    pub fn new(max_depth: u8) -> Self {
+        Self { max_depth }
     }
 }
 
@@ -99,16 +113,29 @@ impl SearchContext {
     }
 }
 
-fn start_search(context: &mut SearchContext) {
+fn run_search<const IS_MASTER: bool>(context: &mut SearchContext) {
+    //negamax(pos, alpha, beta, depth, ply, pv_table);
+    for ply in 1..(context.search_meta.max_depth.min(MAX_PLY as u8)) {
+        negamax(context.pos, i32::MIN, i32::MAX, ply, 0, context);
+        if context.search.is_stopping() {
+            break;
+        }
+    }
 
+    // Stop helper threads
+    if IS_MASTER && !context.search.is_stopping() {
+        context.search.stop(true);
+
+        // If ponder enabled, start pondering
+    }
 }
 
-fn negamax(pos: &Position, mut alpha: i32, beta: i32, depth: u8, ply: u8, pv_table: &mut PVTable) -> i32 {
+fn negamax(pos: Position, mut alpha: i32, beta: i32, depth: u8, ply: u8, context: &mut SearchContext) -> i32 {
     if depth == 0 {
         return pos.evaluate()
     };
 
-    pv_table.pv_lengths[ply as usize] = ply as usize;
+    context.pv_table.pv_lengths[ply as usize] = ply as usize;
 
     let move_list = pos.generate_moves();
 
@@ -117,10 +144,10 @@ fn negamax(pos: &Position, mut alpha: i32, beta: i32, depth: u8, ply: u8, pv_tab
 
         new_pos.make_move(m);
 
-        let score = -negamax(&new_pos, -beta, -alpha, depth - 1, ply + 1, pv_table);
+        let score = -negamax(new_pos, -beta, -alpha, depth - 1, ply + 1, context);
 
         if score > alpha {
-            pv_table.insert_pv_node(m, ply);
+            context.pv_table.insert_pv_node(m, ply);
 
             if score >= beta {
                 return beta;
