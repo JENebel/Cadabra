@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Clone)]
 pub struct PVTable {
     pub pv_table: [[Option<Move>; MAX_PLY]; MAX_PLY],
     pub pv_lengths: [usize; MAX_PLY],

@@ -1,4 +1,4 @@
-use std::{io::stdin, process, thread, sync::{mpsc::{channel, Receiver, Sender}, Mutex, Arc}, time::Instant};
+use std::{io::stdin, process, thread, sync::{mpsc::{channel, Receiver}}, time::Instant};
 
 use super::*;
 
@@ -87,7 +87,7 @@ pub fn interface_loop() {
                 println!("readyok")
             }
             "ucinewgame" => {
-                todo!()
+                current_search.new_game()
             }
             "position" => {
                 match parse_position(&mut command) {
@@ -112,7 +112,7 @@ pub fn interface_loop() {
                 current_search.start(pos, context);
             },
             "stop" => {
-                current_search.notify_stop()
+                current_search.stop()
             },
             "ponderhit" => {
                 todo!()
