@@ -12,6 +12,8 @@ fn main() {
     // Normal engine run
     println!("{} {} by {}", PKG_NAME, PKG_VERSION, PKG_AUTHORS);
 
+    //println!("Actual: {}, Ideal: 8388608", TranspositionTable::new(128).entry_count());
+
     // Begin accepting commands
     interface_loop();
 }

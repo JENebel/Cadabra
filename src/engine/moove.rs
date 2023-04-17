@@ -24,7 +24,7 @@ pub enum MoveType {
 /// This is ok as we know it is a pawn if we are promoting.
 #[derive(Copy, Clone)]
 pub struct Move {
-    data: u16
+    pub data: u16
 }
 
 impl Move {

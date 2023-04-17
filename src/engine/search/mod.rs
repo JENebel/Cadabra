@@ -8,6 +8,7 @@ mod tri_pv_table;
 pub use evaluation::*;
 pub use search::*;
 pub use perft::*;
+pub use transposition_table::*;
 use tri_pv_table::*;
 
 use crate::engine::*;

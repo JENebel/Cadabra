@@ -110,7 +110,7 @@ impl SearchContext {
 fn run_search<const IS_MASTER: bool>(context: &mut SearchContext) {
     //negamax(pos, alpha, beta, depth, ply, pv_table);
     for ply in 1..(context.search_meta.max_depth.min(MAX_PLY as u8)) {
-        negamax(context.pos, i32::MIN, i32::MAX, ply, 0, context);
+        negamax(context.pos, i16::MIN, i16::MAX, ply, 0, context);
         if context.search.is_stopping() {
             break;
         }
@@ -128,7 +128,7 @@ fn run_search<const IS_MASTER: bool>(context: &mut SearchContext) {
     }
 }
 
-fn negamax(pos: Position, mut alpha: i32, beta: i32, depth: u8, ply: u8, context: &mut SearchContext) -> i32 {
+fn negamax(pos: Position, mut alpha: i16, beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
     if depth == 0 {
         return pos.evaluate()
     };
