@@ -1,51 +1,38 @@
 use std::{time::Instant, io::{stdout, Write, self, BufRead}, fs::File, path::PathBuf};
 use colored::Colorize;
 use std::hint::black_box;
+use lazy_static::lazy_static;
 
 use crate::engine::*;
 
-const  BENCH_POSITIONS: [(&'static str, &'static str, u8); 5] = [
-	("Startpos",            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",           6),
-    ("Kiwipete",            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",   5),
-    ("JENCE",               "r2q1rk1/5pp1/1ppp3p/2n1nbN1/4p1PP/P1P1P3/Q2PBP2/R1B2RK1 b - - 1 17", 5),
-    ("Kasparov v Georgiev", "1r1q1rk1/5pp1/1NRpb2p/p3p3/8/P2P2P1/1P2PPBP/3Q1RK1 b - - 0 19",      5),
-    ("Karpov v Kasparov",   "r1bq1rk1/3n1pbp/2pQ2p1/4n3/1p2PP2/1P2B3/P3N1PP/1N1RKB1R b K - 1 15", 5),
-];
+lazy_static!(
+    pub static ref POSITIONS: Vec<Position> = vec![
+        Position::start_pos(),
+        Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -").unwrap(),    // Kiwipete
+        Position::from_fen("r2q1rk1/5pp1/1ppp3p/2n1nbN1/4p1PP/P1P1P3/Q2PBP2/R1B2RK1 b - - 1 17").unwrap(),  // JENCE
+        Position::from_fen("1r1q1rk1/5pp1/1NRpb2p/p3p3/8/P2P2P1/1P2PPBP/3Q1RK1 b - - 0 19").unwrap(),       // Kasparov v Georgiev
+        Position::from_fen("r1bq1rk1/3n1pbp/2pQ2p1/4n3/1p2PP2/1P2B3/P3N1PP/1N1RKB1R b K - 1 15").unwrap()   // Karpov v Kasparov
+    ];
+);
 
 const ITERATIONS: u16 = 2;
 
 pub fn run_bench(save: bool) {
-    let positions = BENCH_POSITIONS.iter().map(|(_, fen, depth)| (Position::from_fen(fen).unwrap(), *depth)).collect::<Vec<(Position, u8)>>();
+    // PERFT BENCH
 
-    print!(" Warming up...\t");
+    let perft_mnps = perft_bench();
 
-    let before_wu = Instant::now();
-    
-    stdout().flush().unwrap();
-    for (pos, depth) in &positions {
-        black_box(pos).perft::<false>(black_box(*depth));
-    }
-    println!("Done");
-    println!(" Estimated bench time: {:.2}s", (before_wu.elapsed().as_millis() as f64 / 1000.) * ITERATIONS as f64);
+    // SEARCH TIME TO DEPTH (ttd)
 
-    let mut nodes = 0;
 
-    println!(" Running perft benchmark...");
+    // SEARCH MNPS
 
-    let before = Instant::now();
+    // Multithreading ttd
 
-    for _ in 1..=ITERATIONS {
-        for (pos, depth) in &positions {
-            nodes += black_box(pos).perft::<false>(black_box(*depth));
-        }
-        stdout().flush().unwrap();
-    }
+    // Multithreading mnps
 
-    let perft_time = before.elapsed().as_millis();
-    
-    let perft_mnps = (nodes as f64 / perft_time as f64) / 1000.;
 
-    show_results(before_wu.elapsed().as_millis(), perft_mnps);
+    show_results(perft_mnps);
 
     // Save results as baseline if relevant
     if !save {
@@ -57,10 +44,41 @@ pub fn run_bench(save: bool) {
     println!("  Baseline saved");
 }
 
-fn show_results(perft_time: u128, perft_mnps: f64) {
+fn perft_bench() -> f64{
+    println!(" Running perft benchmark...");
+    print!(" Warming up...\t");
+
+    let before_wu = Instant::now();
+    
+    stdout().flush().unwrap();
+    for pos in POSITIONS.iter() {
+        black_box(pos).perft::<false>(black_box(6));
+    }
+    println!("Done");
+    println!(" Estimated bench time: {:.2}s", (before_wu.elapsed().as_millis() as f64 / 1000.) * ITERATIONS as f64);
+
+    let mut nodes = 0;
+
+    let before = Instant::now();
+
+    for _ in 1..=ITERATIONS {
+        for pos in POSITIONS.iter() {
+            nodes += black_box(pos).perft::<false>(black_box(6));
+        }
+        stdout().flush().unwrap();
+    }
+
+    let perft_time = before.elapsed().as_millis();
+    
+    let perft_mnps = (nodes as f64 / perft_time as f64) / 1000.;
+
     println!(" Finished perft bench in {:.2}s", perft_time as f64 / 1000.);
     println!(" Speed was: {perft_mnps:.2} MNodes/s");
 
+    perft_mnps
+}
+
+fn show_results(perft_mnps: f64) {
     // Load baseline
     // TODO handle errors here
     let file = match File::open(baseline_path()) {

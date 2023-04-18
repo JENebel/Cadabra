@@ -49,6 +49,7 @@ dependencies = [
  "const-random",
  "const_for",
  "heapless",
+ "lazy_static",
 ]
 
 [[package]]
