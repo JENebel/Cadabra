@@ -1,5 +1,5 @@
 use std::{time::Instant, io::{stdout, Write, self, BufRead}, fs::File, path::PathBuf};
-use colored::Colorize;
+use colored::{Colorize, ColoredString};
 use std::hint::black_box;
 use lazy_static::lazy_static;
 
@@ -15,33 +15,78 @@ lazy_static!(
     ];
 );
 
-const ITERATIONS: u16 = 2;
+const ITERATIONS: u16 = 1;
 
 pub fn run_bench(save: bool) {
     // PERFT BENCH
-
     let perft_mnps = perft_bench();
 
+    println!();
+
     // SEARCH TIME TO DEPTH (ttd)
+    let search_ttd = search_bench();
+
+    println!();
+
+    // TODO
+    // Total nodes
+    // Nodes/Sec
+    // Stats for multithreaded
+    // TT fill% + hits
 
 
-    // SEARCH MNPS
+    // Load baseline
+    if let Ok(file) = File::open(baseline_path()) {
+        let lines = io::BufReader::new(file).lines().map(|l| l.unwrap()).collect::<Vec<String>>();
 
-    // Multithreading ttd
+        println!("  Changes:");
+        // Perft percentage
+        {
+            let prev = lines.iter().find(|l| l.starts_with("perft")).unwrap().split_once(':').unwrap().1.parse::<f64>().unwrap();
+            let diff_perc = ((perft_mnps - prev) / prev) * 100.;
+            let diff_str = color_string_percent(format!("{:.3} MNodes/s", perft_mnps - prev).normal(), diff_perc, true);
+            let diff_perc_str = color_string_percent(format!("{:.3}%", diff_perc).normal(), diff_perc, true);
+            println!(" Perft performance changed by {} ≈ {}", diff_str, diff_perc_str);
+        }
 
-    // Multithreading mnps
+        // Search TTD percentage
+        {
+            let prev = lines.iter().find(|l| l.starts_with("s_ttd")).unwrap().split_once(':').unwrap().1.parse::<u128>().unwrap();
+            let diff_perc = ((search_ttd as f64 - prev as f64) / prev as f64) * 100.;
+            let diff_str = color_string_percent(format!("{} ms", search_ttd as i128 - prev  as i128).normal(), diff_perc, false);
+            let diff_perc_str = color_string_percent(format!("{:.3}%", diff_perc).normal(), diff_perc, false);
+            println!(" Search time to depth changed by {} ≈ {}", diff_str, diff_perc_str);
+        }
 
-
-    show_results(perft_mnps);
-
-    // Save results as baseline if relevant
-    if !save {
-        return
+        println!()
     }
 
-    let mut file = File::create(baseline_path()).expect(" Could not create baseline file");
-    writeln!(file, "perft:{}", perft_mnps).expect(" Could not write benchmark");
-    println!("  Baseline saved");
+    // Save results as baseline if relevant
+    if save {
+        let mut file = File::create(baseline_path()).expect(" Could not create baseline file");
+        writeln!(file, "perft:{}", perft_mnps).unwrap();
+        writeln!(file, "s_ttd:{}", search_ttd).unwrap();
+        println!("  Baseline saved");
+    }
+}
+
+fn color_string_percent(str: ColoredString, percent: f64, increase_is_desired: bool) -> ColoredString {
+    if percent < -0.5 {
+        if increase_is_desired {
+            str.red()
+        } else {
+            str.green()
+        }
+    }
+    else if percent > 0.5 {
+        if increase_is_desired {
+            str.green()
+        } else {
+            str.red()
+        }
+    } else {
+        str
+    }
 }
 
 fn perft_bench() -> f64{
@@ -52,7 +97,7 @@ fn perft_bench() -> f64{
     
     stdout().flush().unwrap();
     for pos in POSITIONS.iter() {
-        black_box(pos).perft::<false>(black_box(6));
+        black_box(pos).perft::<false>(black_box(5));
     }
     println!("Done");
     println!(" Estimated bench time: {:.2}s", (before_wu.elapsed().as_millis() as f64 / 1000.) * ITERATIONS as f64);
@@ -63,7 +108,7 @@ fn perft_bench() -> f64{
 
     for _ in 1..=ITERATIONS {
         for pos in POSITIONS.iter() {
-            nodes += black_box(pos).perft::<false>(black_box(6));
+            nodes += black_box(pos).perft::<false>(black_box(5));
         }
         stdout().flush().unwrap();
     }
@@ -78,32 +123,35 @@ fn perft_bench() -> f64{
     perft_mnps
 }
 
-fn show_results(perft_mnps: f64) {
-    // Load baseline
-    // TODO handle errors here
-    let file = match File::open(baseline_path()) {
-        Ok(file) => file,
-        Err(_) => return,
-    };
-    
-    let lines = io::BufReader::new(file).lines().map(|l| l.unwrap()).collect::<Vec<String>>();
-    let prev_perft_line = lines.iter().find(|l| l.starts_with("perft")).unwrap();
-    let prev_perft_mnps = prev_perft_line.split_once(':').unwrap().1.parse::<f64>().unwrap();
+fn search_bench() -> u128 {
+    println!(" Running search time to depth benchmark...");
+    print!(" Warming up...\t");
 
-    let perft_diff_pc = ((perft_mnps - prev_perft_mnps) / prev_perft_mnps) * 100.;
-    let mut diff_str = format!("{:.3} MNodes/s", perft_mnps - prev_perft_mnps).normal();
-    let mut diff_perc_str = format!("{:.3}%", perft_diff_pc).normal();
+    let before_wu = Instant::now();
+
+    let search = Search::new(Settings::default());
+    let meta = SearchMeta::new(8);
     
-    if perft_diff_pc < -0.5 {
-        diff_str = diff_str.red();
-        diff_perc_str = diff_perc_str.red();
+    stdout().flush().unwrap();
+    for pos in POSITIONS.iter() {
+        let s = search.clone();
+        black_box(s).start(*pos, meta, false);
     }
-    else if perft_diff_pc > 0.5 {
-        diff_str = diff_str.green();
-        diff_perc_str = diff_perc_str.green();
+    println!("Done");
+    println!(" Estimated bench time: {:.2} s", (before_wu.elapsed().as_millis() as f64 / 1000.) * ITERATIONS as f64);
+
+    let before = Instant::now();
+
+    for pos in POSITIONS.iter() {
+        let s = search.clone();
+        black_box(s).start(*pos, meta, false);
     }
-    
-    println!(" Performance changed by {} ≈ {}", diff_str, diff_perc_str);
+
+    let search_time = before.elapsed().as_millis();
+
+    println!(" Finished search bench in {} ms", search_time);
+
+    search_time
 }
 
 fn baseline_path() -> PathBuf {

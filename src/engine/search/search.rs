@@ -1,12 +1,11 @@
 use super::*;
-use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread::{JoinHandle, self}};
+use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread, time::Instant};
 
 #[derive(Clone)]
 pub struct Search {
     is_running: Arc<AtomicBool>,
     is_stopping: Arc<AtomicBool>,
     settings: Arc<Mutex<Settings>>,
-    worker_handles: Arc<Mutex<Option<Vec<JoinHandle<()>>>>>,
     // TT here
 }
 
@@ -16,11 +15,15 @@ impl Search {
             is_running: Arc::new(AtomicBool::new(false)),
             is_stopping: Arc::new(AtomicBool::new(false)),
             settings: Arc::new(Mutex::new(settings)),
-            worker_handles: Arc::new(Mutex::new(None)),
         }
     }
 
-    pub fn start(&self, pos: Position, meta: SearchMeta) {
+    /// Returns the running time
+    pub fn start(&self, pos: Position, meta: SearchMeta, print: bool) -> u128 {
+        self.is_running.store(true, Relaxed);
+
+        let before = Instant::now();
+
         // Spawn worker threads
         let mut workers = Vec::new();
         for t in 0..self.settings.lock().unwrap().threads {
@@ -31,35 +34,28 @@ impl Search {
             let h = thread::spawn(move || {
                 let mut context = SearchContext::new(search, meta, pos);
                 if t == 0 {       
-                    run_search::<true>(&mut context);
+                    run_search::<true>(&mut context, print);
                 } else {       
-                    run_search::<false>(&mut context);
+                    run_search::<false>(&mut context, print);
                 }
             });
 
             workers.push(h);
         }
 
-        *self.worker_handles.lock().unwrap() = Some(workers)
-    }
-
-    pub fn stop(&self, skip_master: bool) {
-        if self.is_running.load(Relaxed) {
-            self.is_stopping.store(true, Relaxed);
-
-            // Wait for all threads to terminate
-            let handles = self.worker_handles.lock().unwrap().take().unwrap();
-            for w in handles.into_iter().skip(if skip_master {1} else {0}) {
-                w.join().unwrap();
-            }
-
-            self.is_stopping.store(false, Relaxed);
-            self.is_running.store(false, Relaxed);
-        } else {
-            println!("Can't stop search, as there is no search running")
+        // Wait for all threads to terminate
+        for w in workers {
+            w.join().unwrap();
         }
 
-        *self.worker_handles.lock().unwrap() = None;
+        self.is_stopping.store(false, Relaxed);
+        self.is_running.store(false, Relaxed);
+
+        before.elapsed().as_millis()
+    }
+
+    pub fn stop(&self) {
+        self.is_stopping.store(true, Relaxed);
     }
 
     pub fn is_running(&self) -> bool {
@@ -77,7 +73,7 @@ impl Search {
 }
 
 /// The arguments provided in go command
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct SearchMeta {
     max_depth: u8,
 }
@@ -94,6 +90,8 @@ pub struct SearchContext {
     search_meta: SearchMeta,
     pos: Position,
     pv_table: PVTable,
+
+    nodes: u64,
 }
 
 impl SearchContext {
@@ -102,14 +100,23 @@ impl SearchContext {
             search,
             search_meta,
             pos,
-            pv_table: PVTable::new()
+            pv_table: PVTable::new(),
+            nodes: 0
         }
     }
 }
 
-fn run_search<const IS_MASTER: bool>(context: &mut SearchContext) {
-    //negamax(pos, alpha, beta, depth, ply, pv_table);
-    for ply in 1..(context.search_meta.max_depth.min(MAX_PLY as u8)) {
+fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: bool) {
+    macro_rules! info {
+        ($($msg: tt)*) => {
+            if is_printing {
+                println!($($msg)*)
+            }
+        };
+    }
+
+    // Iterative deepening loop
+    for ply in 1..=(context.search_meta.max_depth.min(MAX_PLY as u8 - 1)) {
         negamax(context.pos, i16::MIN, i16::MAX, ply, 0, context);
         if context.search.is_stopping() {
             break;
@@ -119,16 +126,18 @@ fn run_search<const IS_MASTER: bool>(context: &mut SearchContext) {
     // Stop helper threads
     if IS_MASTER {
         if !context.search.is_stopping() {
-            context.search.stop(true);
+            context.search.stop();
         }
 
-        println!("bestmove {}", context.pv_table.best_move().unwrap());
+        info!("bestmove {}", context.pv_table.best_move().unwrap());
 
         // If ponder enabled, start pondering
     }
 }
 
 fn negamax(pos: Position, mut alpha: i16, beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
+    context.nodes += 1;
+
     if depth == 0 {
         return pos.evaluate()
     };
@@ -139,7 +148,6 @@ fn negamax(pos: Position, mut alpha: i16, beta: i16, depth: u8, ply: u8, context
 
     for m in move_list {
         let mut new_pos = pos.clone();
-
         new_pos.make_move(m);
 
         let score = -negamax(new_pos, -beta, -alpha, depth - 1, ply + 1, context);

@@ -109,10 +109,10 @@ pub fn interface_loop() {
                     },
                 };
 
-                current_search.start(pos, context);
+                current_search.start(pos, context, true);
             },
             "stop" => {
-                current_search.stop(false)
+                current_search.stop()
             },
             "ponderhit" => {
                 todo!()
