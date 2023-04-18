@@ -1,5 +1,5 @@
 use super::*;
-use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread, time::Instant};
+use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread::{self, JoinHandle}, time::Instant, ops::Add, iter::Sum};
 
 #[derive(Clone)]
 pub struct Search {
@@ -19,10 +19,8 @@ impl Search {
     }
 
     /// Returns the running time
-    pub fn start(&self, pos: Position, meta: SearchMeta, print: bool) -> u128 {
+    pub fn start(&self, pos: Position, meta: SearchMeta, print: bool) -> SearchResult {
         self.is_running.store(true, Relaxed);
-
-        let before = Instant::now();
 
         // Spawn worker threads
         let mut workers = Vec::new();
@@ -31,27 +29,25 @@ impl Search {
             let meta = meta.clone();
             let pos = pos.clone();
 
-            let h = thread::spawn(move || {
+            let h: JoinHandle<SearchResult> = thread::spawn(move || {
                 let mut context = SearchContext::new(search, meta, pos);
                 if t == 0 {       
-                    run_search::<true>(&mut context, print);
+                    run_search::<true>(&mut context, print)
                 } else {       
-                    run_search::<false>(&mut context, print);
+                    run_search::<false>(&mut context, print)
                 }
             });
 
             workers.push(h);
         }
 
-        // Wait for all threads to terminate
-        for w in workers {
-            w.join().unwrap();
-        }
+        // Wait for all threads to terminate and combine results
+        let result: SearchResult = workers.into_iter().map(|w| w.join().unwrap()).sum();
 
         self.is_stopping.store(false, Relaxed);
         self.is_running.store(false, Relaxed);
 
-        before.elapsed().as_millis()
+        result
     }
 
     pub fn stop(&self) {
@@ -91,7 +87,7 @@ pub struct SearchContext {
     pos: Position,
     pv_table: PVTable,
 
-    nodes: u64,
+    nodes: u128,
 }
 
 impl SearchContext {
@@ -106,7 +102,29 @@ impl SearchContext {
     }
 }
 
-fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: bool) {
+pub struct SearchResult {
+    pub nodes: u128,
+    pub time: u128, // millis
+}
+
+impl Add<Self> for SearchResult {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            nodes: self.nodes + rhs.nodes,
+            time: self.time
+        }
+    }
+}
+
+impl Sum for SearchResult {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.into_iter().reduce(|acc, res| acc + res).unwrap()
+    }
+}
+
+fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: bool) -> SearchResult {
     macro_rules! info {
         ($($msg: tt)*) => {
             if is_printing {
@@ -114,6 +132,8 @@ fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: b
             }
         };
     }
+
+    let before = Instant::now();
 
     // Iterative deepening loop
     for ply in 1..=(context.search_meta.max_depth.min(MAX_PLY as u8 - 1)) {
@@ -132,6 +152,13 @@ fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: b
         info!("bestmove {}", context.pv_table.best_move().unwrap());
 
         // If ponder enabled, start pondering
+    };
+
+    let time = before.elapsed().as_millis();
+
+    SearchResult {
+        nodes: context.nodes,
+        time
     }
 }
 
