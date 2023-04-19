@@ -84,7 +84,7 @@ pub fn run_bench(save: bool) {
         writeln!(file, "s_ttd:{}", search_time).unwrap();
         writeln!(file, "nodes:{}", nodes).unwrap();
         writeln!(file, "search_mnps:{}", search_mnps).unwrap();
-        println!("  Baseline saved");
+        println!("Baseline saved");
     }
 
     println!()
@@ -155,7 +155,7 @@ fn search_bench() -> (u128, u128, f64) {
 
     let search = Search::new(Settings::default());
 
-    let depth = 8;
+    let depth = 4;
     let meta = SearchMeta::new(depth);
     
     stdout().flush().unwrap();

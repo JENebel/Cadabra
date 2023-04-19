@@ -3,6 +3,7 @@ mod perft;
 mod search;
 mod transposition_table;
 mod tri_pv_table;
+mod score_move;
 
 //use transposition_table::*;
 pub use evaluation::*;

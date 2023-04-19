@@ -1,6 +1,8 @@
 use super::*;
 use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread::{self, JoinHandle}, time::Instant, ops::Add, iter::Sum};
 
+//const INFINITY : i16 = 15000;
+
 #[derive(Clone)]
 pub struct Search {
     is_running: Arc<AtomicBool>,
@@ -64,7 +66,7 @@ impl Search {
 
     /// Resets the transposition table etc.
     pub fn new_game(&self) {
-        todo!()
+        
     }
 }
 
@@ -133,28 +135,33 @@ fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: b
         };
     }
 
+    let pos = context.pos;
+
     let before = Instant::now();
 
     // Iterative deepening loop
-    for ply in 1..=(context.search_meta.max_depth.min(MAX_PLY as u8 - 1)) {
-        negamax(context.pos, i16::MIN, i16::MAX, ply, 0, context);
+    /*for ply in 1..=(context.search_meta.max_depth.min(MAX_PLY as u8 - 1)) {
+        negamax(&pos, -15000, 15000, ply, 0, context);
+
         if context.search.is_stopping() {
             break;
         }
-    }
+    }*/
+
+    negamax(&pos, -15000, 15000, context.search_meta.max_depth, 0, context);
+
+    let time = before.elapsed().as_millis();
 
     // Stop helper threads
     if IS_MASTER {
-        if !context.search.is_stopping() {
-            context.search.stop();
-        }
+        context.search.stop();
 
         info!("bestmove {}", context.pv_table.best_move().unwrap());
+        info!("time {time} ms");
+        info!("nodes {}", context.nodes);
 
         // If ponder enabled, start pondering
     };
-
-    let time = before.elapsed().as_millis();
 
     SearchResult {
         nodes: context.nodes,
@@ -162,22 +169,26 @@ fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: b
     }
 }
 
-fn negamax(pos: Position, mut alpha: i16, beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
+fn negamax(pos: &Position, mut alpha: i16, beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
+    if context.search.is_stopping() { // Cancel search
+        return beta
+    }
+
     context.nodes += 1;
 
-    if depth == 0 {
+    if ply > depth {
         return pos.evaluate()
     };
 
     context.pv_table.init_ply(ply);
 
-    let move_list = pos.generate_moves();
+    let mut move_list = pos.generate_moves().sort(pos, context);
 
-    for m in move_list {
+    while let Some(m) = move_list.pop_best() {
         let mut new_pos = pos.clone();
         new_pos.make_move(m);
 
-        let score = -negamax(new_pos, -beta, -alpha, depth - 1, ply + 1, context);
+        let score = -negamax(&new_pos, -beta, -alpha, depth, ply + 1, context);
 
         if score > alpha {
             context.pv_table.insert_pv_node(m, ply);

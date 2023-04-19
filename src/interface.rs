@@ -101,7 +101,7 @@ pub fn interface_loop() {
                     continue
                 }
 
-                let context = match parse_go(&mut command) {
+                let meta = match parse_go(&mut command) {
                     Ok(c) => c,
                     Err(err) => {
                         println!("{err}");
@@ -109,7 +109,10 @@ pub fn interface_loop() {
                     },
                 };
 
-                current_search.start(pos, context, true);
+                let search = current_search.clone();
+                thread::spawn(move || {
+                    search.start(pos, meta, true);
+                });
             },
             "stop" => {
                 current_search.stop()
@@ -212,6 +215,7 @@ fn parse_position(command: &mut &str) -> Result<Position, String> {
 }
 
 fn parse_go(command: &mut &str) -> Result<SearchMeta, String> {
+    //return Ok(SearchMeta::new(5));
     match take_next(command) {
         Some("depth") => {
             let depth = match take_next_u8(command) {
