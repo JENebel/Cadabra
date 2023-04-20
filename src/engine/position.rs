@@ -11,7 +11,7 @@ pub struct Position {
 
     //3 occupancy bitboards
     pub color_occupancies: [Bitboard; 2],
-    pub all_occupancies:   Bitboard,
+    pub all_occupancies: Bitboard,
 
     pub piece_squares: [PieceType; 64],
 
@@ -112,13 +112,10 @@ impl Position {
         self.piece_squares[square as usize]
     }
 
-    pub fn piece_at(&self, square: u8) -> Option<(Color, PieceType)> {
-        for p in 0..12 {
-            if self.bitboards[p].get_bit(square) {
-                return Some(index_to_piece(p))
-            }
-        }
-        None
+    pub fn piece_at(&self, square: u8) -> (Color, PieceType) {
+        let cl = Color::from(self.color_bb(Black).get_bit(square));
+        let pt = self.piece_type_at(square);
+        (cl, pt)
     }
 
     pub fn fen_string(&self) -> String {
@@ -127,7 +124,8 @@ impl Position {
             let mut since = 0;
 
             for f in 0..8 {
-                if let Some(p) = self.piece_at(r * 8 + f) {
+                let p = self.piece_at(r * 8 + f);
+                if p.1 != Empty { 
                     if since > 0 {
                         write!(result, "{since}").unwrap();
                         since = 0;

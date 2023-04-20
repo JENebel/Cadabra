@@ -78,6 +78,7 @@ pub struct SearchMeta {
 
 impl SearchMeta {
     pub fn new(max_depth: u8) -> Self {
+        assert!(max_depth < MAX_PLY as u8, "Depth must be less than {MAX_PLY}. Was {max_depth}");
         Self { max_depth }
     }
 }

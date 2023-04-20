@@ -44,8 +44,8 @@ pub fn run_bench(save: bool) {
         {
             let prev = lines.iter().find(|l| l.starts_with("perft")).unwrap().split_once(':').unwrap().1.parse::<f64>().unwrap();
             let diff_perc = ((perft_mnps - prev) / prev) * 100.;
-            let diff_str = color_string_percent(format!("{:.3} MNodes/s", perft_mnps - prev).normal(), diff_perc, true);
-            let diff_perc_str = color_string_percent(format!("{:.3}%", diff_perc).normal(), diff_perc, true);
+            let diff_str = color_string_percent(format!("{:>+.3} MNodes/s", perft_mnps - prev).normal(), diff_perc, true);
+            let diff_perc_str = color_string_percent(format!("{:>+.3}%", diff_perc).normal(), diff_perc, true);
             println!(" Perft performance changed by {} ≈ {}", diff_str, diff_perc_str);
         }
 
@@ -53,8 +53,8 @@ pub fn run_bench(save: bool) {
         {
             let prev = lines.iter().find(|l| l.starts_with("nodes")).unwrap().split_once(':').unwrap().1.parse::<u128>().unwrap();
             let diff_perc = ((nodes as f64 - prev as f64) / prev as f64) * 100.;
-            let diff_str = color_string_percent(format!("{} nodes", nodes as i128 - prev  as i128).normal(), diff_perc, false);
-            let diff_perc_str = color_string_percent(format!("{:.3}%", diff_perc).normal(), diff_perc, false);
+            let diff_str = color_string_percent(format!("{:>+} nodes", nodes as i128 - prev  as i128).normal(), diff_perc, false);
+            let diff_perc_str = color_string_percent(format!("{:>+.3}%", diff_perc).normal(), diff_perc, false);
             println!(" Search node count changed by {} ≈ {}", diff_str, diff_perc_str);
         }
 
@@ -62,8 +62,8 @@ pub fn run_bench(save: bool) {
         {
             let prev = lines.iter().find(|l| l.starts_with("s_ttd")).unwrap().split_once(':').unwrap().1.parse::<u128>().unwrap();
             let diff_perc = ((search_time as f64 - prev as f64) / prev as f64) * 100.;
-            let diff_str = color_string_percent(format!("{} ms", search_time as i128 - prev  as i128).normal(), diff_perc, false);
-            let diff_perc_str = color_string_percent(format!("{:.3}%", diff_perc).normal(), diff_perc, false);
+            let diff_str = color_string_percent(format!("{:>+} ms", search_time as i128 - prev  as i128).normal(), diff_perc, false);
+            let diff_perc_str = color_string_percent(format!("{:>+.3}%", diff_perc).normal(), diff_perc, false);
             println!(" Search time to depth changed by {} ≈ {}", diff_str, diff_perc_str);
         }
 
@@ -71,8 +71,8 @@ pub fn run_bench(save: bool) {
         {
             let prev = lines.iter().find(|l| l.starts_with("search_mnps")).unwrap().split_once(':').unwrap().1.parse::<f64>().unwrap();
             let diff_perc = ((search_mnps - prev) / prev) * 100.;
-            let diff_str = color_string_percent(format!("{:.4} MNodes/s", search_mnps - prev).normal(), diff_perc, true);
-            let diff_perc_str = color_string_percent(format!("{:.3}%", diff_perc).normal(), diff_perc, true);
+            let diff_str = color_string_percent(format!("{:>+.4} MNodes/s", search_mnps - prev).normal(), diff_perc, true);
+            let diff_perc_str = color_string_percent(format!("{:>+.3}%", diff_perc).normal(), diff_perc, true);
             println!(" Search MNodes/s changed by {} ≈ {}", diff_str, diff_perc_str);
         }
     }

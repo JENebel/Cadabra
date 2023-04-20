@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, mem};
 
 use Color::*;
 
@@ -15,6 +15,12 @@ impl Display for Color {
             Color::White => "White",
             Color::Black => "Black",
         })
+    }
+}
+
+impl From<bool> for Color {
+    fn from(value: bool) -> Self {
+        unsafe { mem::transmute(value) }
     }
 }
 

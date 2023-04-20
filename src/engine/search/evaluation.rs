@@ -89,61 +89,29 @@ pub const MIRRORED: [usize; 64] =
 	0,  1,  2,  3,  4,  5,  6,  7
 ];
 
+use Color::*;
+use PieceType::*;
+
 impl Position {
     pub fn evaluate(&self) -> i16 {
         let mut score: i16 = 0;
 
         for bb in 0..12 {
-            let board = self.bitboards[bb];
-            for square in board {
+            for square in self.bitboards[bb] {
                 score += MATERIAL_WEIGHTS[bb];
-                match bb {
-                    // White pawns
-                    0  => {
-                        score += PAWN_SCORES[square as usize];
-                    },
-                    // White knight
-                    1  => {
-                        score += KNIGHT_SCORES[square as usize];
-                    },
-                    // White bishops
-                    2  => {
-                        score += BISHOP_SCORES[square as usize];
-                    },
-                    // White Rooks
-                    3  => {
-                        score += ROOK_SCORES[square as usize];
-                    },
-                    // White queen
-                    4 => {
-                    },
-                    // White king
-                    5  => {
-                        score += KING_SCORES[square as usize];
-                    },
-                    // Black pawns
-                    6  => {
-                        score -= PAWN_SCORES[MIRRORED[square as usize]];
-                    },
-                    // Black knight
-                    7  => {
-                        score -= KNIGHT_SCORES[MIRRORED[square as usize]];
-                    },
-                    // Black bishop
-                    8  => {
-                        score -= BISHOP_SCORES[MIRRORED[square as usize]];
-                    },
-                    // Black rooks
-                    9  => {
-                        score -= ROOK_SCORES[MIRRORED[square as usize]];
-                    },
-                    // Black queen
-                    10 => {
-                    }
-                    // Black king
-                    11 => {
-                        score -= KING_SCORES[MIRRORED[square as usize]];
-                    },
+                score += match index_to_piece(bb) {
+                    (White, Pawn) => PAWN_SCORES[square as usize],
+                    (Black, Pawn) => -PAWN_SCORES[MIRRORED[square as usize]],
+                    (White, Knight) => KNIGHT_SCORES[square as usize],
+                    (Black, Knight) => -KNIGHT_SCORES[MIRRORED[square as usize]],
+                    (White, Bishop) => BISHOP_SCORES[square as usize],
+                    (Black, Bishop) => -BISHOP_SCORES[MIRRORED[square as usize]],
+                    (White, Rook) => ROOK_SCORES[square as usize],
+                    (Black, Rook) => -ROOK_SCORES[MIRRORED[square as usize]],
+                    (White, Queen) => 0,
+                    (Black, Queen) => 0,
+                    (White, King) => KING_SCORES[square as usize],
+                    (Black, King) => -KING_SCORES[MIRRORED[square as usize]],
                     _ => unreachable!()
                 };
             }
