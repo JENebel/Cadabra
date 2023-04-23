@@ -155,8 +155,8 @@ fn search_bench() -> (u128, u128, f64) {
 
     let search = Search::new(Settings::default());
 
-    let depth = 4;
-    let meta = SearchMeta::new(depth);
+    let depth = 6;
+    let meta = SearchMeta::new_simple_depth(depth);
     
     stdout().flush().unwrap();
     for pos in POSITIONS.iter() {

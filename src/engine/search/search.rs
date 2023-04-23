@@ -1,7 +1,7 @@
 use super::*;
-use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread::{self, JoinHandle}, time::Instant, ops::Add, iter::Sum};
+use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread::{self, JoinHandle}, time::Instant};
 
-//const INFINITY : i16 = 15000;
+const INFINITY : i16 = 30000;
 
 #[derive(Clone)]
 pub struct Search {
@@ -70,63 +70,6 @@ impl Search {
     }
 }
 
-/// The arguments provided in go command
-#[derive(Copy, Clone)]
-pub struct SearchMeta {
-    max_depth: u8,
-}
-
-impl SearchMeta {
-    pub fn new(max_depth: u8) -> Self {
-        assert!(max_depth < MAX_PLY as u8, "Depth must be less than {MAX_PLY}. Was {max_depth}");
-        Self { max_depth }
-    }
-}
-
-#[derive(Clone)]
-pub struct SearchContext {
-    search: Search,
-    search_meta: SearchMeta,
-    pos: Position,
-    pv_table: PVTable,
-
-    nodes: u128,
-}
-
-impl SearchContext {
-    pub fn new(search: Search, search_meta: SearchMeta, pos: Position) -> Self {
-        Self {
-            search,
-            search_meta,
-            pos,
-            pv_table: PVTable::new(),
-            nodes: 0
-        }
-    }
-}
-
-pub struct SearchResult {
-    pub nodes: u128,
-    pub time: u128, // millis
-}
-
-impl Add<Self> for SearchResult {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            nodes: self.nodes + rhs.nodes,
-            time: self.time
-        }
-    }
-}
-
-impl Sum for SearchResult {
-    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.into_iter().reduce(|acc, res| acc + res).unwrap()
-    }
-}
-
 fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: bool) -> SearchResult {
     macro_rules! info {
         ($($msg: tt)*) => {
@@ -149,7 +92,7 @@ fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: b
         }
     }*/
 
-    negamax(&pos, -15000, 15000, context.search_meta.max_depth, 0, context);
+    negamax(&pos, -INFINITY, INFINITY, context.search_meta.max_depth, 0, context);
 
     let time = before.elapsed().as_millis();
 
@@ -157,11 +100,8 @@ fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: b
     if IS_MASTER {
         context.search.stop();
 
+        info!("info time {time} nodes {}", context.nodes);
         info!("bestmove {}", context.pv_table.best_move().unwrap());
-        info!("time {time} ms");
-        info!("nodes {}", context.nodes);
-
-        // If ponder enabled, start pondering
     };
 
     SearchResult {
@@ -175,9 +115,11 @@ fn negamax(pos: &Position, mut alpha: i16, beta: i16, depth: u8, ply: u8, contex
         return beta
     }
 
+    // Quiescence search
+
     context.nodes += 1;
 
-    if ply > depth {
+    if ply >= depth {
         return pos.evaluate()
     };
 

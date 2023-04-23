@@ -2,15 +2,15 @@ use super::*;
 
 #[derive(Clone)]
 pub struct PVTable {
-    pub pv_table: [[Option<Move>; MAX_PLY]; MAX_PLY],
-    pub pv_lengths: [usize; MAX_PLY],
+    pub pv_table: [[Option<Move>; MAX_PLY as usize]; MAX_PLY as usize],
+    pub pv_lengths: [usize; MAX_PLY as usize],
 }
 
 impl PVTable {
     pub fn new() -> Self {
         Self {
-            pv_table: [[None; MAX_PLY]; MAX_PLY],
-            pv_lengths: [0; MAX_PLY],
+            pv_table: [[None; MAX_PLY as usize]; MAX_PLY as usize],
+            pv_lengths: [0; MAX_PLY as usize],
         }
     }
 
@@ -23,6 +23,7 @@ impl PVTable {
     }
 
     pub fn insert_pv_node(&mut self, cmove: Move, ply: u8) {
+        println!("Inserting PV node at ply {}", ply);
         let ply = ply as usize;
 
         self.pv_table[ply][ply] = Some(cmove);

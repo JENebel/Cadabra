@@ -1,4 +1,4 @@
-use std::{io::stdin, process, thread, sync::{mpsc::{channel, Receiver}}, time::Instant};
+use std::{io::stdin, process, thread, sync::{mpsc::{channel, Receiver}}, time::Instant, str::FromStr};
 
 use super::*;
 
@@ -73,35 +73,34 @@ pub fn interface_loop() {
 
             // UCI commands
             "uci" => {
-                println!("name {PKG_NAME} {PKG_VERSION}");
-                println!("author {PKG_AUTHORS}");
+                println!("id name {PKG_NAME} {PKG_VERSION} author {PKG_AUTHORS}");
 
                 // Advertise options
 
                 println!("uciok")
-            }
+            },
             "setoption" => {
                 todo!()
-            }
+            },
             "isready" => {
                 println!("readyok")
-            }
+            },
             "ucinewgame" => {
                 current_search.new_game()
-            }
+            },
             "position" => {
                 match parse_position(&mut command) {
                     Ok(res) => pos = res,
                     Err(err) => println!("{err}"),
                 }
-            }
+            },
             "go" => {
                 if current_search.is_running() {
                     println!("A search is already running");
                     continue
                 }
 
-                let meta = match parse_go(&mut command) {
+                let meta = match parse_go(&mut command, pos) {
                     Ok(c) => c,
                     Err(err) => {
                         println!("{err}");
@@ -165,7 +164,7 @@ pub fn take_next<'a>(command: &'a mut &str) -> Option<&'a str> {
     Some(next)
 }
 
-pub fn take_next_u8<'a>(command: &'a mut &str) -> Option<u8> {
+pub fn take_next_num<'a, T: FromStr>(command: &'a mut &str) -> Option<T> {
     let depth_str = match take_next(command) {
         None => {
             return None
@@ -175,7 +174,7 @@ pub fn take_next_u8<'a>(command: &'a mut &str) -> Option<u8> {
         },
     };
 
-    match depth_str.parse::<u8>() {
+    match depth_str.parse::<T>() {
         Ok(depth) => Some(depth),
         Err(_) => {
             None
@@ -214,25 +213,96 @@ fn parse_position(command: &mut &str) -> Result<Position, String> {
     Ok(pos)
 }
 
-fn parse_go(command: &mut &str) -> Result<SearchMeta, String> {
-    //return Ok(SearchMeta::new(5));
-    match take_next(command) {
-        Some("depth") => {
-            let depth = match take_next_u8(command) {
-                Some(d) => d,
-                None => {
-                    return Err(format!("Illegal go depth"));
-                },
-            };
-
-            Ok(SearchMeta::new(depth))
-        },
-        _ => Err(format!("Illegal go argument"))
+fn parse_go(command: &mut &str, pos: Position) -> Result<SearchMeta, String> {
+    if command == &"" {
+        return Err("Empty go command".to_string())
     }
+
+    let mut max_depth: Option<u8> = None;
+    let mut ponder = false;
+    let mut infinite = false;
+    let mut time: Option<u128> = None;
+    let mut inc: Option<u128> = None;
+    let mut movestogo: Option<u8> = None;
+    let mut nodes: Option<u128> = None;
+    let mut movetime: Option<u128> = None;
+
+    while let Some(arg) = take_next(command) {
+        match arg {
+            "depth" => {
+                max_depth = match take_next_num(command) {
+                    Some(d) => Some(d),
+                    None => {
+                        return Err(format!("Illegal go depth"));
+                    },
+                };
+            },
+
+            "ponder" => ponder = true,
+            "infinite" => infinite = true,
+
+            "wtime" => match take_next_num(command) {
+                Some(t) => if pos.active_color.is_white() {
+                    time = Some(t);
+                },
+                None => {
+                    return Err(format!("Illegal go wtime"));
+                }
+            },
+            "btime" => match take_next_num(command) {
+                Some(t) => if pos.active_color.is_black() {
+                    time = Some(t);
+                },
+                None => {
+                    return Err(format!("Illegal go btime"));
+                }
+            },
+            "winc" => match take_next_num(command) {
+                Some(i) => if pos.active_color.is_white() {
+                    inc = Some(i);
+                },
+                None => {
+                    return Err(format!("Illegal go winc"));
+                }
+            },
+            "binc" => match take_next_num(command) {
+                Some(i) => if pos.active_color.is_black() {
+                    inc = Some(i);
+                },
+                None => {
+                    return Err(format!("Illegal go binc"));
+                }
+            },
+
+            "movestogo" => movestogo = match take_next_num(command) {
+                Some(m) => Some(m),
+                None => {
+                    return Err(format!("Illegal go movestogo"));
+                },
+            },
+            "mate" => unimplemented!(),
+            "movetime" => movetime = match take_next_num(command) {
+                Some(m) => Some(m),
+                None => {
+                    return Err(format!("Illegal go movetime"));
+                },
+            },
+            "nodes" => nodes = match take_next_num(command) {
+                Some(n) => Some(n),
+                None => {
+                    return Err(format!("Illegal go nodes"));
+                },
+            },
+            
+            _ => return Err(format!("Illegal go argument: {arg}"))
+        }
+    }
+
+    SearchMeta::new(max_depth, ponder, infinite, time, inc, movestogo, nodes, movetime)
 }
 
 fn parse_perft(command: &mut &str, pos: &Position) {
-    let depth = match take_next_u8(command) {
+    let depth = match take_next_num(command) {
         Some(d) => d,
         None => {
             println!("Illegal perft command");
