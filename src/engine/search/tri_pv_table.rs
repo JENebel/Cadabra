@@ -23,7 +23,6 @@ impl PVTable {
     }
 
     pub fn insert_pv_node(&mut self, cmove: Move, ply: u8) {
-        println!("Inserting PV node at ply {}", ply);
         let ply = ply as usize;
 
         self.pv_table[ply][ply] = Some(cmove);

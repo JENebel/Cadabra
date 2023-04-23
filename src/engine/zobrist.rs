@@ -9,11 +9,6 @@ const PIECE_KEYS: [u64; 12 * 64] = unsafe { mem::transmute(const_random!([u8; 61
 const CASTLING_KEYS: [u64; 16] = unsafe { mem::transmute(const_random!([u8; 128])) };
 const SIDE_KEY: u64 = const_random!(u64);
 
-#[derive(Copy, Clone, PartialEq, Default)]
-pub struct Zobrist {
-    pub hash: u64
-}
-
 impl Position {
     pub fn apply_side_zobrist(&mut self) {
         self.zobrist_hash ^= SIDE_KEY

@@ -8,15 +8,17 @@ pub struct Search {
     is_running: Arc<AtomicBool>,
     is_stopping: Arc<AtomicBool>,
     settings: Arc<Mutex<Settings>>,
-    // TT here
+    tt: Arc<Mutex<TranspositionTable>>
 }
 
 impl Search {
     pub fn new(settings: Settings) -> Self {
+        let tt = TranspositionTable::new(settings.transposition_table_mb);
         Self {
             is_running: Arc::new(AtomicBool::new(false)),
             is_stopping: Arc::new(AtomicBool::new(false)),
             settings: Arc::new(Mutex::new(settings)),
+            tt: Arc::new(Mutex::new(tt)),
         }
     }
 
@@ -101,7 +103,10 @@ fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: b
         context.search.stop();
 
         info!("info time {time} nodes {}", context.nodes);
-        info!("bestmove {}", context.pv_table.best_move().unwrap());
+        match context.pv_table.best_move() {
+            Some(m) => info!("bestmove {m}"),
+            None => info!("bestmove error"),
+        }
     };
 
     SearchResult {
@@ -119,6 +124,18 @@ fn negamax(pos: &Position, mut alpha: i16, beta: i16, depth: u8, ply: u8, contex
 
     context.nodes += 1;
 
+    let is_pv_node = (beta - alpha) > 1;
+
+    if ply != 0 && !is_pv_node {
+        match context.search.tt.lock().unwrap().probe(pos.zobrist_hash, depth, alpha, beta) {
+            Some(score) => {
+                // TT hit
+                return score;
+            },
+            None => ()
+        }
+    }
+
     if ply >= depth {
         return pos.evaluate()
     };
@@ -127,6 +144,8 @@ fn negamax(pos: &Position, mut alpha: i16, beta: i16, depth: u8, ply: u8, contex
 
     let mut move_list = pos.generate_moves().sort(pos, context);
 
+    let mut pv_move = None;
+
     while let Some(m) = move_list.pop_best() {
         let mut new_pos = pos.clone();
         new_pos.make_move(m);
@@ -134,15 +153,25 @@ fn negamax(pos: &Position, mut alpha: i16, beta: i16, depth: u8, ply: u8, contex
         let score = -negamax(&new_pos, -beta, -alpha, depth, ply + 1, context);
 
         if score > alpha {
+            pv_move = Some(m);
             context.pv_table.insert_pv_node(m, ply);
 
             if score >= beta {
+                context.search.tt.lock().unwrap().record(pos.zobrist_hash, m, depth, beta, NodeType::Beta);
+
                 return beta;
             }
 
             alpha = score;
         }
     }
+    //envir.transposition_table.record(game.zobrist_hash, temp_alpha, depth, hash_flag, envir.ply);
+    
+    match pv_move {
+        Some(m) => context.search.tt.lock().unwrap().record(pos.zobrist_hash, m, depth, beta, NodeType::Exact),
+        None => context.search.tt.lock().unwrap().record_alpha(pos.zobrist_hash, depth, alpha),
+    }
+    
 
     alpha
 }
