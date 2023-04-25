@@ -1,6 +1,6 @@
 use super::*;
 
-pub const MATERIAL_WEIGHTS: [i16; 12] = [100, 300, 350, 500, 1000, 10000, -100, -300, -350, -500, -1000, -10000];
+pub const MATERIAL_WEIGHTS: [i16; 12] = [100, 300, 350, 500, 1000, 0, -100, -300, -350, -500, -1000, 0];
 /*pub const STACKED_PAWN_PENALTY: i32 = -10;
 pub const ISOLATED_PAWN_PENALTY: i32 = -10;
 pub const PASSED_WHITE_PAWN_BONUS: [i32; 8] = [ 0, 10, 30, 50, 75, 100, 150, 200 ];

@@ -1,9 +1,11 @@
-use std::mem::{size_of, self};
+use std::{mem::{size_of, self}, sync::atomic::AtomicU64};
+use std::sync::atomic::Ordering::*;
 
 use super::*;
 
 #[derive(PartialEq)]
-pub enum NodeType {
+pub enum HashFlag {
+    Empty = 0,
     Exact,
     Alpha,
     Beta,
@@ -15,11 +17,11 @@ pub struct EntryData {
 }
 
 impl EntryData {
-    pub fn new(best_move: Move, depth: u8, score: i16, node_type: NodeType) -> Self {
+    pub fn new(best_move: Move, depth: u8, score: i16, flag: HashFlag) -> Self {
         let mut data = best_move.data as u64;
         data |= (depth as u64) << 16;
         data |= (unsafe {mem::transmute::<i16, u16>(score)} as u64) << 24;
-        data |= (node_type as u64) << 40;
+        data |= (flag as u64) << 40;
 
         // 48 bytes used. Rest should be used for age or maybe bigger score value
 
@@ -44,36 +46,26 @@ impl EntryData {
         unsafe { mem::transmute::<u16, i16>((self.data >> 24) as u16) }
     }
 
-    fn node_type(&self) -> NodeType {
-        unsafe { mem::transmute::<u8, NodeType>((self.data >> 40) as u8) }
+    pub fn hash_flag(&self) -> HashFlag {
+        unsafe { mem::transmute::<u8, HashFlag>((self.data >> 40) as u8) }
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[repr(C, align(128))]
 struct TTEntry {
-    hash: u64,
-    data: EntryData
+    hash: AtomicU64,
+    data: AtomicU64
 }
 
 impl TTEntry {
-    pub fn new(hash: u64, data: EntryData) -> Self {
+    pub fn empty() -> Self {
         Self {
-            hash,
-            data
+            hash: AtomicU64::from(0),
+            data: AtomicU64::from(0)
         }
     }
-
-    pub fn is_some(&self) -> bool {
-        self.data.is_some()
-    }
-
-    pub const EMPTY: Self = Self {
-        hash: 0,
-        data: EntryData { data: 0 }
-    };
 }
 
-#[derive(Clone)]
 pub struct TranspositionTable {
     table: Box<[TTEntry]>
 }
@@ -81,13 +73,14 @@ pub struct TranspositionTable {
 impl TranspositionTable {
     const BYTES_PR_MB: usize = 1024 * 1024;
 
-    #[inline(never)]
     pub fn new(megabytes: usize) -> Self {
+        assert!((megabytes & (megabytes - 1)) == 0, "Transposition size must be power of 2"); // Must be power of 2
+
         let bytes = Self::BYTES_PR_MB * megabytes;
-        let entry_count = bytes / size_of::<TTEntry>();
+        let entry_count = bytes / size_of::<TTEntry>(); // Makes entry_count a bitmap: 0b00...0011...11
         
         Self {
-            table: vec![TTEntry::EMPTY; entry_count].into_boxed_slice()
+            table: vec![false; entry_count].iter().map(|_| TTEntry::empty()).collect::<Vec<TTEntry>>().into_boxed_slice()
         }
     }
 
@@ -95,47 +88,55 @@ impl TranspositionTable {
         self.table.len()
     }
 
-    pub fn record(&mut self, hash: u64, best_move: Move, depth: u8, score: i16, node_type: NodeType) {
+    #[inline(never)]
+    pub fn record(&self, hash: u64, best_move: Option<Move>, depth: u8, score: i16, flag: HashFlag) {
         // Adjust mating scores here
 
-        let index = (hash % self.entry_count() as u64) as usize;
-        self.table[index] = TTEntry::new(hash, EntryData::new(best_move, depth, score, node_type));
+        let index = (hash & (self.entry_count() as u64 - 1)) as usize;
+        let data = EntryData::new(best_move.unwrap_or(Move::NULL), depth, score, flag).data;
+        self.table[index].hash.store(hash ^ data, Relaxed);
+        self.table[index].data.store(data, Relaxed);
     }
 
-    pub fn record_alpha(&mut self, hash: u64, depth: u8, beta: i16) {
-        // Adjust mating scores here
-
-        let index = (hash % self.entry_count() as u64) as usize;
-        self.table[index] = TTEntry::new(hash, EntryData::new(unsafe { mem::transmute::<u16, Move>(0)}, depth, beta, NodeType::Beta));
+    #[inline(never)]
+    fn read_hash(&self, index: usize) -> u64 {
+        self.table[index].hash.load(Acquire)
     }
 
-    pub fn probe(&self, hash: u64, depth: u8, alpha: i16, beta: i16) -> Option<i16> {
-        let index = (hash % self.entry_count() as u64) as usize;
-        let entry = &self.table[index];
+    #[inline(never)]
+    fn read_data(&self, index: usize) -> EntryData {
+        EntryData { data: self.table[index].data.load(Acquire) }
+    }
 
-        if entry.is_some() && entry.hash == hash {
-            if entry.data.depth() >= depth {
-                //Adjust mating scores before extraction
-                let adjusted_score = entry.data.score();
-                /*if adjusted_score < -MATE_BOUND {
-                    adjusted_score += ply as i32;
-                } else if adjusted_score > MATE_BOUND {
-                    adjusted_score -= ply as i32;
-                }*/
+    #[inline(never)]
+    fn read(&self, hash: u64, depth: u8) -> EntryData {
+        let index = (hash & (self.entry_count() as u64 - 1)) as usize;
+        let ehash = self.read_hash(index);//self.table[index].hash.load(Relaxed);
+        let edata = self.read_data(index); //EntryData { data: self.table[index].data.load(Relaxed) };
 
-
-                if entry.data.node_type() == NodeType::Exact {
-                    return Some(adjusted_score)
-                }
-                else if entry.data.node_type() == NodeType::Alpha && adjusted_score <= alpha {
-                    return Some(alpha)
-                }
-                else if entry.data.node_type() == NodeType::Beta && adjusted_score >= beta {
-                    return Some(beta)
-                }
-            }
+        if ehash ^ edata.data != hash || edata.depth() < depth {
+            return EntryData::default();
         }
 
-        return None;
+        return edata
+    }
+
+    #[inline(never)]
+    /// Returns (score, best_move, hash_flag) 
+    pub fn probe(&self, hash: u64, depth: u8) -> (i16, Move, HashFlag) {
+        let data = self.read(hash, depth);
+
+        //Adjust mating scores before extraction
+        let adjusted_score = data.score();
+        /*if adjusted_score < -MATE_BOUND {
+            adjusted_score += ply as i32;
+        } else if adjusted_score > MATE_BOUND {
+            adjusted_score -= ply as i32;
+        }*/
+
+        let moove = data.best_move();
+        let flag = data.hash_flag();
+
+        (adjusted_score, moove, flag)
     }
 }

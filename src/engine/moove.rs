@@ -28,6 +28,8 @@ pub struct Move {
 }
 
 impl Move {
+    pub const NULL: Move = Move { data: 0 };
+
     fn new_internal(src: u8, dst: u8, move_type: u8) -> Self {
         Self {
             data: move_type as u16
