@@ -22,9 +22,9 @@ impl TTEntry {
         data |= (depth as u128) << 16;
         data |= (unsafe {mem::transmute::<i16, u16>(score)} as u128) << 24;
         data |= (flag as u128) << 40;
-        data |= (hash as u128) << 48;
+        data |= (hash as u128) << 64;
 
-        // 48 bytes used. Rest should be used for age or maybe bigger score value
+        // 48 bytes used for data. Rest should be used for age or maybe bigger score value
 
         Self { data }
     }
@@ -47,7 +47,7 @@ impl TTEntry {
     }
 
     pub fn hash(&self) -> u64 {
-        (self.data >> 48) as u64
+        (self.data >> 64) as u64
     }
 }
 
@@ -56,22 +56,6 @@ impl From<u128> for TTEntry {
         Self { data }
     }
 }
-
-/*struct TTEntry {
-    data: AtomicU128
-}
-
-impl TTEntry {
-    
-
-    pub fn load(&self) -> Option<TTEntryData> {
-        TTEntryData { data: self.data.load(Relaxed) }
-    }
-
-    pub fn store(&self, entry: TTEntryData) {
-        self.data.store(entry.data, Relaxed);
-    }
-}*/
 
 pub struct TranspositionTable {
     table: Box<[AtomicU128]>
@@ -122,24 +106,15 @@ impl TranspositionTable {
 
     /// Returns (score, best_move, hash_flag) 
     pub fn probe(&self, hash: u64) -> Option<TTEntry> {
-        self.load(hash)
-        /*let data = self.load(hash);
-
-        if data.depth() < depth {
-            return (0, Move::NULL, HashFlag::Empty);
-        }
-
         //Adjust mating scores before extraction
-        let adjusted_score = data.score();
+        //let adjusted_score = data.score();
         /*if adjusted_score < -MATE_BOUND {
             adjusted_score += ply as i32;
         } else if adjusted_score > MATE_BOUND {
             adjusted_score -= ply as i32;
         }*/
 
-        let moove = data.best_move();
-        let flag = data.hash_flag();
+        self.load(hash)
 
-        (adjusted_score, moove, flag)*/
     }
 }

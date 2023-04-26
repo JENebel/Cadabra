@@ -12,31 +12,29 @@ pub const MVV_LVA: [[i16; 6]; 6] = [
 
 impl Move {
     #[inline(always)]
-    pub fn score_move(&self, pos: &Position, context: &mut SearchContext) -> i16 {
-        /*if envir.score_pv {
-            if envir.pv_table[0][envir.ply as usize] == cmove {
-                envir.score_pv = false;
-                return 20000;
+    pub fn score_move(&self, pos: &Position, context: &mut SearchContext, best_move: Option<Move>) -> i16 {
+        if let Some(moove) = best_move {
+            if *self == moove {
+                return 30000
             }
-        }*/
+        }
 
         let _ = context.clone();
 
+        // Special case for enpassant
         if self.is_enpassant() {
-            return MVV_LVA[1][1]
+            return MVV_LVA[0][0] // Pawn x Pawn
         }
     
         let src = self.src();
         let dst = self.dst();
-        //Captures
+        
         if self.is_capture() {
             let src_piece = pos.piece_type_at(src);
             let dst_piece = pos.piece_type_at(dst);
     
-            MVV_LVA[src_piece.index(Color::White)][dst_piece.index(Color::White)] + 5000
+            MVV_LVA[src_piece.index(Color::White)][dst_piece.index(Color::White)] + 10000
         }
-    
-        //Quiet moves
         else {
             0
             /*if envir.killer_moves[0][envir.ply as usize] == Some(cmove) {

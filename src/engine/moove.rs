@@ -22,7 +22,7 @@ pub enum MoveType {
 ///
 /// Note that the same bits are used for promotion and the moved piece.\
 /// This is ok as we know it is a pawn if we are promoting.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Move {
     pub data: u16
 }

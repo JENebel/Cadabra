@@ -86,15 +86,13 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printin
     let before = Instant::now();
 
     // Iterative deepening loop
-    /*for ply in 1..=(context.search_meta.max_depth.min(MAX_PLY as u8 - 1)) {
-        negamax(&pos, -15000, 15000, ply, 0, context);
+    for depth in 1..=(context.search_meta.max_depth) {
+        negamax(&pos, -INFINITY, INFINITY, depth, 0, context);
 
         if context.search.is_stopping() {
             break;
         }
-    }*/
-
-    negamax(&pos, -INFINITY, INFINITY, context.search_meta.max_depth, 0, context);
+    }
 
     let time = before.elapsed().as_millis();
 
@@ -149,7 +147,7 @@ fn negamax(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, co
     context.pv_table.init_ply(ply);
     let mut hash_flag = HashFlag::UpperBound;
 
-    let mut move_list = pos.generate_moves().sort(pos, context);
+    let mut move_list = pos.generate_moves().sort(pos, context, best_move);
 
     while let Some(m) = move_list.pop_best() {
         let mut new_pos = pos.clone();
