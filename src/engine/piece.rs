@@ -6,8 +6,9 @@ use PieceType::*;
 pub const PIECE_STRINGS: [&str; 13] = ["P", "N", "B", "R", "Q", "K", "p", "n", "b", "r", "q", "k", "None"];
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum PieceType {
+    #[default]
     Pawn = 0,
     Knight = 1,
     Bishop = 2,
@@ -20,12 +21,6 @@ pub enum PieceType {
 impl From<u8> for PieceType {
     fn from(value: u8) -> Self {
         unsafe { mem::transmute(value) }
-    }
-}
-
-impl Default for PieceType {
-    fn default() -> Self {
-        Pawn
     }
 }
 

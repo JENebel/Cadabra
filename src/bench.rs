@@ -185,10 +185,10 @@ fn search_bench() -> (u128, u128, f64) {
         tt_hits += res.tt_hits;
     }
 
-    let search_mnps = mega_nodes_pr_sec(nodes as u128, search_time);
+    let search_mnps = mega_nodes_pr_sec(nodes, search_time);
 
     println!(" Finished search bench in {} ms", search_time);
-    println!("  Searched {:.4} MNodes", (nodes as f64) / (1000000 as f64));
+    println!("  Searched {:.4} MNodes", (nodes as f64) / 1000000_f64);
     println!("  Speed was {search_mnps:.4} MNodes/s");
 
     println!("  Searched {} nodes", nodes);

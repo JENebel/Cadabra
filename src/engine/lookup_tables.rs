@@ -61,7 +61,7 @@ const fn generate_rank_masks() -> [u64; 64] {
     const_for!(rank in 0..8 => {
         const_for!(file in 0..8 => {
             const_for!(i in 0..8 => {
-                masks[rank * 8 + file] |= (1 << i) << 8*rank;
+                masks[rank * 8 + file] |= (1 << i) << (8*rank);
             })
         })
     });
@@ -73,7 +73,7 @@ const fn generate_file_masks() -> [u64; 64] {
     const_for!(rank in 0..8 => {
         const_for!(file in 0..8 => {
             const_for!(i in 0..8 => {
-                masks[rank * 8 + file] |= (1 << file) << i*8;
+                masks[rank * 8 + file] |= (1 << file) << (i*8);
             });
         });
     });
@@ -90,16 +90,16 @@ const fn generate_d1_masks() -> [u64; 64] {
             while f < 7 && r < 7 {
                 f += 1;
                 r += 1;
-                masks[rank * 8 + file] |= (1 << f) << 8*r;
+                masks[rank * 8 + file] |= (1 << f) << (8*r);
             }
             r = rank;
             f = file;
             while f > 0 && r > 0 {
                 f -= 1;
                 r -= 1;
-                masks[rank * 8 + file] |= (1 << f) << 8*r;
+                masks[rank * 8 + file] |= (1 << f) << (8*r);
             }
-            masks[rank * 8 + file] |= 1 << 8 * rank + file
+            masks[rank * 8 + file] |= 1 << (8 * rank + file)
         });
     });
 
@@ -111,13 +111,13 @@ const fn generate_d2_masks() -> [u64; 64] {
     
     const_for!(rank in 0..8 => {
         const_for!(file in 0..8 => {
-            masks[rank * 8 + file] |= (1 << file) << 8*rank;
+            masks[rank * 8 + file] |= (1 << file) << (8*rank);
             let mut r = rank;
             let mut f = file;
             while f < 7 && r > 0 {
                 f += 1;
                 r -= 1;
-                masks[rank * 8 + file] |= (1 << f) << 8*r;
+                masks[rank * 8 + file] |= (1 << f) << (8*r);
                 
             }
             r = rank;
@@ -125,9 +125,9 @@ const fn generate_d2_masks() -> [u64; 64] {
             while f > 0 && r < 7 {
                 f -= 1;
                 r += 1;
-                masks[rank * 8 + file] |= (1 << f) << 8*r;
+                masks[rank * 8 + file] |= (1 << f) << (8*r);
             }
-            masks[rank * 8 + file] |= 1 << 8 * rank + file
+            masks[rank * 8 + file] |= 1 << (8 * rank + file)
         });
     });
 

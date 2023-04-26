@@ -152,7 +152,7 @@ fn negamax(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, co
     let mut move_list = pos.generate_moves().sort(pos, context, best_move);
 
     while let Some(m) = move_list.pop_best() {
-        let mut new_pos = pos.clone();
+        let mut new_pos = *pos;
         new_pos.make_move(m);
 
         let score = -negamax(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);

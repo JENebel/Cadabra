@@ -38,7 +38,7 @@ impl Square {
             return Err(format!("Square string must be 2 chars but was {}", chars.len()))
         }
         
-        let file = chars[0] - 97 as u8;
+        let file = chars[0] - 97;
         if file > 7 {
             return Err(format!("Illegal file in square string"))
         }

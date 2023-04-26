@@ -155,7 +155,7 @@ pub fn take_next<'a>(command: &'a mut &str) -> Option<&'a str> {
         return None
     }
 
-    let (next, rest) = command.split_once(" ").unwrap_or_else(|| {(command, "")});
+    let (next, rest) = command.split_once(' ').unwrap_or((command, ""));
 
     let rest = rest.trim();
 
@@ -164,7 +164,7 @@ pub fn take_next<'a>(command: &'a mut &str) -> Option<&'a str> {
     Some(next)
 }
 
-pub fn take_next_num<'a, T: FromStr>(command: &'a mut &str) -> Option<T> {
+pub fn take_next_num<T: FromStr>(command: &mut &str) -> Option<T> {
     let depth_str = match take_next(command) {
         None => {
             return None

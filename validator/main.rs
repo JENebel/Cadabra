@@ -53,12 +53,8 @@ fn run_perft_tests() {
 
         (send_task, recv_result, handle)
     };
-
-    let short = if let Some("short") = args.get(2).map(|a| a.as_str()) {
-        true
-    } else {
-        false
-    };
+    
+    let short = args.contains(&"short".to_string());
 
     let positions = TEST_POSITIONS.iter().take(if short {24} else {TEST_POSITIONS.len()});
 
@@ -107,8 +103,8 @@ fn ref_engine_loop(mut ref_engine: Child, (send_result, recv_task): (Sender<Hash
             Err(_) => break,
         };
 
-        writeln!(writer, "{}", format!("position fen {}", fen)).unwrap();
-        writeln!(writer, "{}", format!("go perft {}", depth)).unwrap();
+        writeln!(writer, "position fen {}", fen).unwrap();
+        writeln!(writer, "go perft {}", depth).unwrap();
         writer.flush().unwrap();
 
         let mut results = HashMap::new();
@@ -138,17 +134,17 @@ fn validate_position(fen: String, name: &str, depth: u8, tracing: bool, (send_ta
 
     if depth == 1 {
         let missed_moves = ref_res.iter().filter(|m| !own_res.contains_key(m.0)).map(|m| m.0).collect::<Vec<&String>>();
-        if missed_moves.len() > 0 {
+        if !missed_moves.is_empty() {
             return Err((format!("Missed {} legal: {missed_moves:?}", missed_moves.len()), pos))
         }
 
         let extra_moves = own_res.iter().filter(|m| !ref_res.contains_key(m.0)).map(|m| m.0).collect::<Vec<&String>>();
-        if extra_moves.len() > 0 {
+        if !extra_moves.is_empty() {
             return Err((format!("Found {} too many: {extra_moves:?}", extra_moves.len()), pos))
         }
 
         if tracing {
-            return Err((format!("This is weird, Probably an error in the move generator"), pos));
+            return Err(("This is weird, Probably an error in the move generator".to_string(), pos));
         }
     } else {
         for (key, nodes) in ref_res {

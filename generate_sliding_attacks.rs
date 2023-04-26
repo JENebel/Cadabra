@@ -43,9 +43,9 @@ fn array_string(data: Vec<u64>, type_str: &str, cons_name: &str) -> Result<Strin
     let len = data.len();
     write!(result, "pub const {cons_name}: [{type_str}; {len}] = [")?;
 
-    for i in 0..len {
-        if i % 200 == 0 { write!(result, "\n")? }
-        write!(result, "{},", data[i])?;
+    for (i, item) in data.iter().enumerate().take(len) {
+        if i % 200 == 0 { writeln!(result)? }
+        write!(result, "{},", item)?;
     }
     write!(result, "\n];\n\n")?;
 
@@ -57,11 +57,11 @@ fn generate_hv_sliding_attacks() -> (Vec<u64>, [u64; 64], Box<[u64; 102400]>) {
     let mut offsets: [u64; 64] = [0; 64];
     let mut current_offset = 0;
 
-    let masks: Vec<u64> = (0..64).map(|sq| hv_mask_from(sq)).collect();
+    let masks: Vec<u64> = (0..64).map(hv_mask_from).collect();
 
     for square in 0..64 {
         offsets[square] = current_offset;
-        let number_of_occupancies = (2 as u64).pow(masks[square].count_ones());
+        let number_of_occupancies = (2_u64).pow(masks[square].count_ones());
 
         for occ_index in 0..number_of_occupancies {
             let occ = set_occupancy(occ_index, masks[square]);
@@ -79,11 +79,11 @@ fn generate_d12_sliding_attacks() -> (Vec<u64>, [u64; 64], [u64; 5248]) {
     let mut offsets: [u64; 64] = [0; 64];
     let mut current_offset = 0;
 
-    let masks: Vec<u64> = (0..64).map(|sq| bishop_mask_from(sq)).collect();
+    let masks: Vec<u64> = (0..64).map(bishop_mask_from).collect();
 
     for square in 0..64 {
         offsets[square] = current_offset;
-        let number_of_occupancies = (2 as u64).pow(masks[square].count_ones()) as u64;
+        let number_of_occupancies = (2_u64).pow(masks[square].count_ones());
 
         for occ_index in 0..number_of_occupancies {
             let occ = set_occupancy(occ_index, masks[square]);
@@ -101,19 +101,19 @@ fn hv_mask_from(square: u8) -> u64 {
     let mut result: u64 = 0;
 
     for file in 1..(square % 8) {
-        result |= 1 << square - file
+        result |= 1 << (square - file)
     }
 
     for file in 1..(7 - square % 8) {
-        result |= 1 << square + file
+        result |= 1 << (square + file)
     }
 
     for rank in 1..(square / 8) {
-        result |= 1 << square - rank * 8
+        result |= 1 << (square - rank * 8)
     }
 
     for rank in 1..(7 - square / 8) {
-        result |= 1 << square + rank * 8
+        result |= 1 << (square + rank * 8)
     }
 
     result

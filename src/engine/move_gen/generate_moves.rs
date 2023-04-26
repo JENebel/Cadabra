@@ -457,10 +457,10 @@ impl Position {
     fn pin_mask_d1(&self, occ: Bitboard, slider_pos: u8) -> u64 {
         let king_pos = self.king_position(self.active_color) as usize;
 
-        let diagonal = D1_MASKS[king_pos as usize];
+        let diagonal = D1_MASKS[king_pos];
 
         let pexed = occ.as_u64().pext(diagonal);
-        let kp = LOOKUP_D2[king_pos as usize];
+        let kp = LOOKUP_D2[king_pos];
         let sq = LOOKUP_D2[slider_pos as usize];
 
         let index = 2048*kp + 256*sq + pexed as usize;
@@ -473,12 +473,12 @@ impl Position {
     fn pin_mask_d2(&self, occ: Bitboard, slider_pos: u8) -> u64 {
         let king_pos = self.king_position(self.active_color) as usize;
 
-        let diagonal = D2_MASKS[king_pos as usize];
+        let diagonal = D2_MASKS[king_pos];
 
         let pexed = occ.as_u64().pext(diagonal);
 
         // sq and kp are flipped to get correct mask
-        let kp = LOOKUP_D1[king_pos as usize];
+        let kp = LOOKUP_D1[king_pos];
         let sq = LOOKUP_D1[slider_pos as usize];
 
         let index = 2048*kp + 256*sq + pexed as usize;

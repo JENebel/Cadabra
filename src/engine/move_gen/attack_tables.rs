@@ -64,12 +64,12 @@ const fn generate_pawn_attacks(color: bool) -> [u64; 64] {
             let src: u64 = 1 << index;
             
             if color {
-                if file != 7 { attacks[index] |= src >> 7 as u64 }
-                if file != 0 { attacks[index] |= src >> 9 as u64 }
+                if file != 7 { attacks[index] |= src >> 7_u64 }
+                if file != 0 { attacks[index] |= src >> 9_u64 }
                 
             } else {
-                if file != 0 { attacks[index] |= src << 7 as u64 }
-                if file != 7 { attacks[index] |= src << 9 as u64 }
+                if file != 0 { attacks[index] |= src << 7_u64 }
+                if file != 7 { attacks[index] |= src << 9_u64 }
             }
         });
     });
@@ -85,17 +85,17 @@ const fn generate_knight_attacks() -> [u64; 64] {
             let index = rank*8+file;
             let src: u64 = 1 << index;
             
-            if rank > 1 && file < 7 { attacks[index] |= src >> 15 as u64 }
-            if rank > 0 && file < 6 { attacks[index] |= src >> 6 as u64 }
+            if rank > 1 && file < 7 { attacks[index] |= src >> 15_u64 }
+            if rank > 0 && file < 6 { attacks[index] |= src >> 6_u64 }
 
-            if rank < 7 && file < 6 { attacks[index] |= src << 10 as u64 }
-            if rank < 6 && file < 7 { attacks[index] |= src << 17 as u64 }
+            if rank < 7 && file < 6 { attacks[index] |= src << 10_u64 }
+            if rank < 6 && file < 7 { attacks[index] |= src << 17_u64 }
 
-            if rank > 1 && file > 0 { attacks[index] |= src >> 17 as u64 }
-            if rank > 0 && file > 1 { attacks[index] |= src >> 10 as u64 }
+            if rank > 1 && file > 0 { attacks[index] |= src >> 17_u64 }
+            if rank > 0 && file > 1 { attacks[index] |= src >> 10_u64 }
             
-            if rank < 6 && file > 0 { attacks[index] |= src << 15 as u64 }
-            if rank < 7 && file > 1 { attacks[index] |= src << 6 as u64 }
+            if rank < 6 && file > 0 { attacks[index] |= src << 15_u64 }
+            if rank < 7 && file > 1 { attacks[index] |= src << 6_u64 }
         });
     });
     
@@ -110,15 +110,15 @@ const fn generate_king_attacks() -> [u64; 64] {
             let index = rank*8+file;
             let src: u64 = 1 << index;
             
-            if rank > 0 { attacks[index] |= src >> 8 as u64 }
-            if file > 0 { attacks[index] |= src >> 1 as u64 }
-            if rank < 7 { attacks[index] |= src << 8 as u64 }
-            if file < 7 { attacks[index] |= src << 1 as u64 }
+            if rank > 0 { attacks[index] |= src >> 8_u64 }
+            if file > 0 { attacks[index] |= src >> 1_u64 }
+            if rank < 7 { attacks[index] |= src << 8_u64 }
+            if file < 7 { attacks[index] |= src << 1_u64 }
 
-            if file > 0 && rank > 0 { attacks[index] |= src >> 9 as u64 }
-            if file < 7 && rank > 0 { attacks[index] |= src >> 7 as u64 }
-            if file > 0 && rank < 7 { attacks[index] |= src << 7 as u64 }
-            if file < 7 && rank < 7 { attacks[index] |= src << 9 as u64 }
+            if file > 0 && rank > 0 { attacks[index] |= src >> 9_u64 }
+            if file < 7 && rank > 0 { attacks[index] |= src >> 7_u64 }
+            if file > 0 && rank < 7 { attacks[index] |= src << 7_u64 }
+            if file < 7 && rank < 7 { attacks[index] |= src << 9_u64 }
         });
     });
 
