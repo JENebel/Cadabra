@@ -21,6 +21,7 @@ pub fn run_bench(save: bool) {
     println!();
 
     // PERFT BENCH
+    //let perft_mnps = 0.0; 
     let perft_mnps = perft_bench();
 
     println!();
@@ -153,35 +154,38 @@ fn search_bench() -> (u128, u128, f64) {
 
     let before_wu = Instant::now();
 
-    let search = Search::new(Settings::default());
-
     let depth = 6;
     let meta = SearchMeta::new_simple_depth(black_box(depth));
     
     stdout().flush().unwrap();
     for pos in POSITIONS.iter() {
-        let s = search.clone();
-        black_box(s).start(*pos, meta, false);
+        let search = Search::new(Settings::default());
+        black_box(search).start(*pos, meta, false);
     }
     println!("Done");
     println!(" Estimated bench time: {:.2} s", (before_wu.elapsed().as_millis() as f64 / 1000.) * ITERATIONS as f64);
 
-    let before = Instant::now();
     let mut nodes = 0;
+    let mut tt_hits = 0;
+
+    let mut search_time = 0;
 
     for pos in POSITIONS.iter() {
-        let s = search.clone();
-        let res = black_box(s).start(*pos, meta, false);
+        let search = Search::new(Settings::default());
+        let res = black_box(search).start(*pos, meta, false);
+        search_time += res.time;
         nodes += res.nodes;
+        tt_hits += res.tt_hits;
     }
-
-    let search_time = before.elapsed().as_millis();
 
     let search_mnps = mega_nodes_pr_sec(nodes as u128, search_time);
 
     println!(" Finished search bench in {} ms", search_time);
     println!("  Searched {:.4} MNodes", (nodes as f64) / (1000000 as f64));
     println!("  Speed was {search_mnps:.4} MNodes/s");
+
+    println!("  Searched {} nodes", nodes);
+    println!("  TT hits: {tt_hits}");
 
     (search_time, nodes, search_mnps)
 }

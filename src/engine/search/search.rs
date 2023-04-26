@@ -111,6 +111,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printin
 
     SearchResult {
         nodes: context.nodes,
+        tt_hits: context.tt_hits,
         time
     }
 }
@@ -120,42 +121,33 @@ fn negamax(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, co
         return beta
     }
 
-    // Quiescence search
+    if depth == 0 {
+        return pos.evaluate();
+        // Quiescence search
+    };
 
     context.nodes += 1;
 
-    
-
     let mut best_move = None;
-
-    if ply > 0 {
-        let (score, moove, flag) = context.search.tt.probe(pos.zobrist_hash, depth);
-        match flag {
-            HashFlag::Empty => {},
-            HashFlag::Exact => return score,
-            HashFlag::Alpha => {
-                alpha = alpha.max(score);
-                best_move = Some(moove);
-                if alpha >= beta {
-                    return score
-                }
-            },
-            HashFlag::Beta => {
-                beta = beta.min(score);
-                best_move = Some(moove);
-                if alpha >= beta {
-                    return score
-                }
-            },
+    
+    if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
+        if entry.depth() >= depth {
+            match entry.hash_flag() {
+                HashFlag::Exact => return entry.score(),
+                HashFlag::LowerBound => alpha = alpha.max(entry.score()),
+                HashFlag::UpperBound => beta = beta.min(entry.score()),
+            }
+            if alpha >= beta {
+                return entry.score()
+            }
         }
+        best_move = Some(entry.best_move());
+
+        context.tt_hits += 1;
     }
 
-    if ply >= depth {
-        return pos.evaluate()
-    };
-
     context.pv_table.init_ply(ply);
-    let mut hash_flag = HashFlag::Alpha;
+    let mut hash_flag = HashFlag::UpperBound;
 
     let mut move_list = pos.generate_moves().sort(pos, context);
 
@@ -163,14 +155,14 @@ fn negamax(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, co
         let mut new_pos = pos.clone();
         new_pos.make_move(m);
 
-        let score = -negamax(&new_pos, -beta, -alpha, depth, ply + 1, context);
+        let score = -negamax(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
 
         if score > alpha {
             best_move = Some(m);
             context.pv_table.insert_pv_node(m, ply);
 
             if score >= beta {
-                context.search.tt.record(pos.zobrist_hash, best_move, depth, beta, HashFlag::Beta);
+                context.search.tt.record(pos.zobrist_hash, best_move, depth, beta, HashFlag::LowerBound);
                 return beta;
             }
 

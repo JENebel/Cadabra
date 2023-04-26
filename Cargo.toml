@@ -24,5 +24,6 @@ const-random = "0.1.15"
 const_for = "0.1.2"
 heapless = "0.7.16"
 lazy_static = "1.4.0"
+portable-atomic = "1.2.0"
 #datasize = "*"
 #kanal = { git = "https://github.com/fereidani/kanal"}

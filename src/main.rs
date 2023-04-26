@@ -7,13 +7,11 @@ fn main() {
 
     println!("{} {} by {}", PKG_NAME, PKG_VERSION, PKG_AUTHORS);
 
+    // Benchmarking
     if args.contains(&"bench".to_string()) {
         run_bench(args.contains(&"save".to_string()));
         return;
     }
-
-    /*run_search::<true>(&mut SearchContext::new(Search::new(Settings::default()), SearchMeta::new_simple_depth(7), Position::start_pos()), true);
-    return;*/
 
 
     /*let ec = TranspositionTable::new(16).entry_count() as u64;
