@@ -83,7 +83,7 @@ impl Add<Self> for SearchResult {
         Self {
             nodes: self.nodes + rhs.nodes,
             tt_hits: self.tt_hits + rhs.tt_hits,
-            time: self.time
+            time: self.time.max(rhs.time)
         }
     }
 }

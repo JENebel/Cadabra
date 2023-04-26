@@ -94,6 +94,8 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printin
         }
     }
 
+    //negamax(&pos, -INFINITY, INFINITY, context.search_meta.max_depth, 0, context);
+
     let time = before.elapsed().as_millis();
 
     // Stop helper threads

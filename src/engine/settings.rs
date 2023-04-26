@@ -8,7 +8,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             threads: 1,
-            transposition_table_mb: 128
+            transposition_table_mb: 256
         }
     }
 }

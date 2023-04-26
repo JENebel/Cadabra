@@ -24,7 +24,7 @@ impl TTEntry {
         data |= (flag as u128) << 40;
         data |= (hash as u128) << 64;
 
-        // 48 bytes used for data. Rest should be used for age or maybe bigger score value
+        // 48 bytes used for data. Rest should be used for age and maybe something more.
 
         Self { data }
     }
