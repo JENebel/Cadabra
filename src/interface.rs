@@ -10,7 +10,7 @@ pub fn interface_loop() {
 
     let settings = Settings::default();
 
-    let current_search: Search = Search::new(settings);
+    let mut current_search: Search = Search::new(settings);
 
     loop {
         let line = wait_for_input(&ui_receiver);
@@ -86,7 +86,8 @@ pub fn interface_loop() {
                 println!("readyok")
             },
             "ucinewgame" => {
-                current_search.new_game()
+                current_search.stop();
+                current_search = Search::new(settings);
             },
             "position" => {
                 match parse_position(&mut command) {

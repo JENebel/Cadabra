@@ -65,11 +65,26 @@ impl Search {
     pub fn is_stopping(&self) -> bool {
         self.is_stopping.load(Relaxed)
     }
+}
 
-    /// Resets the transposition table etc.
-    pub fn new_game(&self) {
-        
+pub fn time_left(nano_times: &Vec<u128>, target_millis: u128) -> bool {
+    if nano_times.len() < 2 {
+        return true
     }
+
+    // Estimate next time
+    let mut incs: Vec<f64> = Vec::new();
+    for t in nano_times.windows(2).rev().take(3) {
+        incs.push((t[1] as f64) / (t[0] as f64));
+    }
+
+
+    let avg: f64 = incs.iter().sum::<f64>() / incs.len() as f64;
+    let last = (*nano_times.last().unwrap() / 1000000) as f64;
+    let estimate = last + last * (avg as f64);
+    //println!("est. {} ms", estimate);
+    
+    target_millis > estimate as u128
 }
 
 pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: bool) -> SearchResult {
@@ -85,13 +100,23 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printin
 
     let before = Instant::now();
 
+    let mut times = Vec::new();
+
+    let mut depth_reached = 0;
+
     // Iterative deepening loop
     for depth in 1..=(context.search_meta.max_depth) {
+        if !time_left(&times, context.search_meta.time_target) { break }
+
         negamax(&pos, -INFINITY, INFINITY, depth, 0, context);
+        depth_reached = depth;
 
         if context.search.is_stopping() {
             break;
         }
+
+        //println!("actual {} ms", before.elapsed().as_millis());
+        times.push(before.elapsed().as_nanos());
     }
 
     //negamax(&pos, -INFINITY, INFINITY, context.search_meta.max_depth, 0, context);
@@ -101,8 +126,9 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printin
     // Stop helper threads
     if IS_MASTER {
         context.search.stop();
+        context.search.is_running.store(false, Relaxed);
 
-        info!("info time {time} nodes {}", context.nodes);
+        info!("info depth {depth_reached} time {time} nodes {}", context.nodes);
         match context.pv_table.best_move() {
             Some(m) => info!("bestmove {m}"),
             None => info!("bestmove error"),
