@@ -161,7 +161,7 @@ fn search_bench() -> (u128, u128, f64) {
 
     let before_wu = Instant::now();
 
-    let depth = 7;
+    let depth = 8;
     let meta = SearchMeta::new_simple_depth(black_box(depth));
     
     stdout().flush().unwrap();

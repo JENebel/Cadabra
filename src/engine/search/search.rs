@@ -103,7 +103,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printin
     let mut score = 0;
 
     // Iterative deepening loop
-    for depth in (thread_id+1)..=(context.search_meta.max_depth) {
+    for depth in (thread_id % 3 + 2)..=(context.search_meta.max_depth) {
         score = negamax::<IS_MASTER>(&pos, -INFINITY, INFINITY, depth, 0, context);
         depth_reached = depth;
 

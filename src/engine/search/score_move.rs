@@ -12,14 +12,12 @@ pub const MVV_LVA: [[i16; 6]; 6] = [
 
 impl Move {
     #[inline(always)]
-    pub fn score_move(&self, pos: &Position, context: &mut SearchContext, best_move: Option<Move>) -> i16 {
+    pub fn score_move(&self, pos: &Position, _context: &mut SearchContext, best_move: Option<Move>) -> i16 {
         if let Some(moove) = best_move {
             if *self == moove {
                 return 30000
             }
         }
-
-        let _ = context.clone();
 
         // Special case for enpassant
         if self.is_enpassant() {

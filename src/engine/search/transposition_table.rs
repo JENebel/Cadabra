@@ -81,19 +81,20 @@ impl TranspositionTable {
 
     fn load(&self, hash: u64) -> Option<TTEntry> {
         let index = (hash & (self.entry_count() as u64 - 1)) as usize;
-        let hash = self.table[index].0.load(Relaxed);
-        let data = self.table[index].1.load(Relaxed);
-        let entry = TTEntry::from((hash, data));
-        if entry.hash() != hash {
-            None
-        } else {
+        let entry = TTEntry::from((
+                self.table[index].0.load(Relaxed),
+                self.table[index].1.load(Relaxed),
+        ));
+        if entry.hash ^ entry.data == hash {
             Some(entry)
+        } else {
+            None
         }
     }
 
     fn store(&self, hash: u64, entry: TTEntry) {
         let index = (hash & (self.entry_count() as u64 - 1)) as usize;
-        self.table[index].0.store(entry.hash, Relaxed);
+        self.table[index].0.store(entry.hash ^ entry.data, Relaxed);
         self.table[index].1.store(entry.data, Relaxed);
     }
 
