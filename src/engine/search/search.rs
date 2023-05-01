@@ -8,7 +8,7 @@ pub struct Search {
     is_running: Arc<AtomicBool>,
     is_stopping: Arc<AtomicBool>,
     settings: Arc<Mutex<Settings>>,
-    tt: Arc<TranspositionTable>
+    tt: Arc<TranspositionTable>,
 }
 
 impl Search {
@@ -34,11 +34,11 @@ impl Search {
             let pos = pos.clone();
 
             let h: JoinHandle<SearchResult> = thread::spawn(move || {
-                let mut context = SearchContext::new(search, meta, pos);
+                let mut context = SearchContext::new(search, meta, pos, Instant::now());
                 if t == 0 {       
-                    run_search::<true>(&mut context, print)
+                    run_search::<true>(&mut context, print, t)
                 } else {       
-                    run_search::<false>(&mut context, print)
+                    run_search::<false>(&mut context, print, t)
                 }
             });
 
@@ -87,7 +87,7 @@ pub fn time_left(nano_times: &Vec<u128>, target_millis: u128) -> bool {
     target_millis > estimate as u128
 }
 
-pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: bool) -> SearchResult {
+pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: bool, thread_id: u8) -> SearchResult {
     macro_rules! info {
         ($($msg: tt)*) => {
             if is_printing {
@@ -98,37 +98,30 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printin
 
     let pos = context.pos;
 
-    let before = Instant::now();
-
-    let mut times = Vec::new();
-
     let mut depth_reached = 0;
 
-    // Iterative deepening loop
-    for depth in 1..=(context.search_meta.max_depth) {
-        if !time_left(&times, context.search_meta.time_target) { break }
+    let mut score = 0;
 
-        negamax(&pos, -INFINITY, INFINITY, depth, 0, context);
+    // Iterative deepening loop
+    for depth in (thread_id+1)..=(context.search_meta.max_depth) {
+        score = negamax::<IS_MASTER>(&pos, -INFINITY, INFINITY, depth, 0, context);
         depth_reached = depth;
 
         if context.search.is_stopping() {
             break;
         }
-
-        //println!("actual {} ms", before.elapsed().as_millis());
-        times.push(before.elapsed().as_nanos());
     }
 
     //negamax(&pos, -INFINITY, INFINITY, context.search_meta.max_depth, 0, context);
 
-    let time = before.elapsed().as_millis();
+    let time = context.start_time.elapsed().as_millis();
 
     // Stop helper threads
     if IS_MASTER {
         context.search.stop();
         context.search.is_running.store(false, Relaxed);
 
-        info!("info depth {depth_reached} time {time} nodes {}", context.nodes);
+        info!("info cp{score} depth {depth_reached} time {time} nodes {}", context.nodes);
         match context.pv_table.best_move() {
             Some(m) => info!("bestmove {m}"),
             None => info!("bestmove error"),
@@ -142,9 +135,14 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printin
     }
 }
 
-fn negamax(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
-    if context.search.is_stopping() { // Cancel search
-        return beta
+fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
+    if context.nodes & 0b111111111111 == 0 {
+        if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
+            context.search.stop();
+            return beta
+        } else if context.search.is_stopping() { // Cancel search
+            return beta
+        }
     }
 
     if depth == 0 {
@@ -181,7 +179,7 @@ fn negamax(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, co
         let mut new_pos = *pos;
         new_pos.make_move(m);
 
-        let score = -negamax(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
+        let score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
 
         if score > alpha {
             best_move = Some(m);

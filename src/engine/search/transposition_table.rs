@@ -1,7 +1,5 @@
-use std::{mem::{size_of, self}};
+use std::{mem::{size_of, self}, sync::atomic::AtomicU64};
 use std::sync::atomic::Ordering::*;
-
-use portable_atomic::AtomicU128;
 
 use super::*;
 
@@ -13,20 +11,20 @@ pub enum HashFlag {
 }
 
 pub struct TTEntry {
-    data: u128
+    hash: u64,
+    data: u64
 }
 
 impl TTEntry {
     pub fn new(hash: u64, best_move: Move, depth: u8, score: i16, flag: HashFlag) -> Self {
-        let mut data = best_move.data as u128;
-        data |= (depth as u128) << 16;
-        data |= (unsafe {mem::transmute::<i16, u16>(score)} as u128) << 24;
-        data |= (flag as u128) << 40;
-        data |= (hash as u128) << 64;
+        let mut data = best_move.data as u64;
+        data |= (depth as u64) << 16;
+        data |= (unsafe {mem::transmute::<i16, u16>(score)} as u64) << 24;
+        data |= (flag as u64) << 40;
 
         // 48 bytes used for data. Rest should be used for age and maybe something more.
 
-        Self { data }
+        Self { hash, data }
     }
 
     pub fn best_move(&self) -> Move {
@@ -47,18 +45,18 @@ impl TTEntry {
     }
 
     pub fn hash(&self) -> u64 {
-        (self.data >> 64) as u64
+        self.hash 
     }
 }
 
-impl From<u128> for TTEntry {
-    fn from(data: u128) -> Self {
-        Self { data }
+impl From<(u64, u64)> for TTEntry {
+    fn from((hash, data): (u64, u64)) -> Self {
+        Self { hash, data }
     }
 }
 
 pub struct TranspositionTable {
-    table: Box<[AtomicU128]>
+    table: Box<[(AtomicU64, AtomicU64)]>
 }
 
 impl TranspositionTable {
@@ -73,7 +71,7 @@ impl TranspositionTable {
         assert!((entry_count & (entry_count - 1)) == 0, "Transposition entry count must be power of 2");
         
         Self {
-            table: vec![false; entry_count].iter().map(|_| AtomicU128::from(0)).collect::<Vec<AtomicU128>>().into_boxed_slice()
+            table: vec![false; entry_count].iter().map(|_| (AtomicU64::from(0), AtomicU64::from(0))).collect::<Vec<(AtomicU64, AtomicU64)>>().into_boxed_slice()
         }
     }
 
@@ -83,8 +81,9 @@ impl TranspositionTable {
 
     fn load(&self, hash: u64) -> Option<TTEntry> {
         let index = (hash & (self.entry_count() as u64 - 1)) as usize;
-        let data = self.table[index].load(Relaxed);
-        let entry = TTEntry::from(data);
+        let hash = self.table[index].0.load(Relaxed);
+        let data = self.table[index].1.load(Relaxed);
+        let entry = TTEntry::from((hash, data));
         if entry.hash() != hash {
             None
         } else {
@@ -94,7 +93,8 @@ impl TranspositionTable {
 
     fn store(&self, hash: u64, entry: TTEntry) {
         let index = (hash & (self.entry_count() as u64 - 1)) as usize;
-        self.table[index].store(entry.data, Relaxed);
+        self.table[index].0.store(entry.hash, Relaxed);
+        self.table[index].1.store(entry.data, Relaxed);
     }
 
     pub fn record(&self, hash: u64, best_move: Option<Move>, depth: u8, score: i16, flag: HashFlag) {

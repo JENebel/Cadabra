@@ -1,4 +1,4 @@
-use std::{ops::Add, iter::Sum};
+use std::{ops::Add, iter::Sum, time::Instant};
 
 use super::*;
 
@@ -52,21 +52,28 @@ pub struct SearchContext {
     pub search_meta: SearchMeta,
     pub pos: Position,
     pub pv_table: PVTable,
+    pub start_time: Instant,
 
     pub nodes: u128,
     pub tt_hits : u128,
 }
 
 impl SearchContext {
-    pub fn new(search: Search, search_meta: SearchMeta, pos: Position) -> Self {
+    pub fn new(search: Search, search_meta: SearchMeta, pos: Position, start_time: Instant) -> Self {
         Self {
             search,
             search_meta,
             pos,
             pv_table: PVTable::new(),
+            start_time,
             nodes: 0,
             tt_hits: 0,
         }
+    }
+
+    /// Returns true if the search should continue, as well as mark as stopping if the time is up
+    pub fn exceeded_time_target(&self) -> bool {
+        self.start_time.elapsed().as_millis() > self.search_meta.time_target
     }
 }
 

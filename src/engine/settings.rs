@@ -7,7 +7,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            threads: 1,
+            threads: 2,
             transposition_table_mb: 256
         }
     }
