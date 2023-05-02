@@ -34,11 +34,11 @@ impl Search {
             let pos = pos.clone();
 
             let h: JoinHandle<SearchResult> = thread::spawn(move || {
-                let mut context = SearchContext::new(search, meta, pos, Instant::now());
+                let mut context = SearchContext::new(search, meta, pos, Instant::now(), print);
                 if t == 0 {       
-                    run_search::<true>(&mut context, print, t)
+                    run_search::<true>(&mut context, t)
                 } else {       
-                    run_search::<false>(&mut context, print, t)
+                    run_search::<false>(&mut context, t)
                 }
             });
 
@@ -87,68 +87,63 @@ pub fn time_left(nano_times: &Vec<u128>, target_millis: u128) -> bool {
     target_millis > estimate as u128
 }
 
-pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, is_printing: bool, thread_id: u8) -> SearchResult {
-    macro_rules! info {
-        ($($msg: tt)*) => {
-            if is_printing {
-                println!($($msg)*)
-            }
-        };
-    }
+macro_rules! info {
+    ($context:expr, $($msg: tt)*) => {
+        if IS_MASTER && $context.is_printing {
+            println!($($msg)*)
+        }
+    };
+}
 
+pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id: u8) -> SearchResult {
     let pos = context.pos;
 
-    let mut depth_reached = 0;
-
-    let mut score = 0;
-
     // Iterative deepening loop
-    for depth in (thread_id % 3 + 2)..=(context.search_meta.max_depth) {
-        score = negamax::<IS_MASTER>(&pos, -INFINITY, INFINITY, depth, 0, context);
-        depth_reached = depth;
+    for depth in (thread_id % 4 + 1)..=(context.search_meta.max_depth) {
+        let score = negamax::<IS_MASTER>(&pos, -INFINITY, INFINITY, depth, 0, context);
 
         if context.search.is_stopping() {
             break;
         }
+
+        let time = context.start_time.elapsed().as_millis();
+        info!(context, "info score cp {score} depth {depth} nodes {} time {}", context.nodes, time);
     }
 
     //negamax(&pos, -INFINITY, INFINITY, context.search_meta.max_depth, 0, context);
-
-    let time = context.start_time.elapsed().as_millis();
 
     // Stop helper threads
     if IS_MASTER {
         context.search.stop();
         context.search.is_running.store(false, Relaxed);
 
-        info!("info cp{score} depth {depth_reached} time {time} nodes {}", context.nodes);
         match context.pv_table.best_move() {
-            Some(m) => info!("bestmove {m}"),
-            None => info!("bestmove error"),
+            Some(m) => info!(context, "bestmove {m}"),
+            None => panic!("No best move!"),
         }
     };
 
     SearchResult {
         nodes: context.nodes,
         tt_hits: context.tt_hits,
-        time
+        time: context.start_time.elapsed().as_millis()
     }
 }
 
 fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
-    if context.nodes & 0b111111111111 == 0 {
-        if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
-            context.search.stop();
-            return beta
-        } else if context.search.is_stopping() { // Cancel search
-            return beta
-        }
-    }
-
     if depth == 0 {
         return pos.evaluate();
         // Quiescence search
     };
+
+    if context.nodes & 0b111111111111 == 0 {
+        if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
+            context.search.stop();
+            return 0
+        } else if context.search.is_stopping() { // Cancel search
+            return 0
+        }
+    }
 
     context.nodes += 1;
 
@@ -174,6 +169,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     let mut hash_flag = HashFlag::UpperBound;
 
     let mut move_list = pos.generate_moves().sort(pos, context, best_move);
+    let move_count = move_list.len();
 
     while let Some(m) = move_list.pop_best() {
         let mut new_pos = *pos;
@@ -183,8 +179,15 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
         if score > alpha {
             best_move = Some(m);
-            context.pv_table.insert_pv_node(m, ply);
 
+            // Print PV line if best move changed
+            let best_changed = best_move != context.pv_table.best_move();
+            context.pv_table.insert_pv_node(m, ply);
+            if ply == 0 && best_changed {
+                info!(context, "info score cp {score} pv {}", context.pv_table);
+            }
+
+            // Beta cutoff
             if score >= beta {
                 context.search.tt.record(pos.zobrist_hash, best_move, depth, beta, HashFlag::LowerBound);
                 return beta;
@@ -194,6 +197,10 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
             alpha = score;
         }
+    }
+
+    if move_count == 0 {
+        alpha = 0;
     }
     
     context.search.tt.record(pos.zobrist_hash, best_move, depth, alpha, hash_flag);

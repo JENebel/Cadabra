@@ -9,7 +9,6 @@ pub struct SearchMeta {
     pub time_target: u128,
     pub max_nodes: u128,
     pub ponder: bool,
-
 }
 
 const INF: u128 = 3155692597470; // 100 years in milliseconds, aka Infinite
@@ -53,19 +52,21 @@ pub struct SearchContext {
     pub pos: Position,
     pub pv_table: PVTable,
     pub start_time: Instant,
+    pub is_printing: bool,
 
     pub nodes: u128,
     pub tt_hits : u128,
 }
 
 impl SearchContext {
-    pub fn new(search: Search, search_meta: SearchMeta, pos: Position, start_time: Instant) -> Self {
+    pub fn new(search: Search, search_meta: SearchMeta, pos: Position, start_time: Instant, is_printing: bool) -> Self {
         Self {
             search,
             search_meta,
             pos,
             pv_table: PVTable::new(),
             start_time,
+            is_printing,
             nodes: 0,
             tt_hits: 0,
         }

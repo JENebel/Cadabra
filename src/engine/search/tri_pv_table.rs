@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use super::*;
 
 #[derive(Clone)]
@@ -32,5 +34,16 @@ impl PVTable {
         }
 
         self.pv_lengths[ply] = self.pv_lengths[ply + 1];
+    }
+}
+
+impl Display for PVTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut i = 0;
+        while let Some(m) = self.pv_table[i][i] {
+            write!(f, "{} ", m)?;
+            i += 1;
+        };
+        Ok(())
     }
 }
