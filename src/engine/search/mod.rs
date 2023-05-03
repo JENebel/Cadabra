@@ -17,3 +17,6 @@ pub use tri_pv_table::*;
 use crate::engine::*;
 
 pub const MAX_PLY: u8 = 64;
+pub const INFINITY: i16 = 30000;
+pub const MATE_VALUE: i16 = 29000;
+pub const MATE_BOUND: i16 = 28000;

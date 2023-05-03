@@ -98,8 +98,15 @@ impl TranspositionTable {
         self.table[index].1.store(entry.data, Relaxed);
     }
 
-    pub fn record(&self, hash: u64, best_move: Option<Move>, depth: u8, score: i16, flag: HashFlag) {
+    pub fn record(&self, hash: u64, best_move: Option<Move>, depth: u8, score: i16, flag: HashFlag, ply: u8) {
         // Adjust mating scores here
+        let score = if score < -MATE_BOUND {
+            score - ply as i16
+        } else if score > MATE_BOUND {
+            score + ply as i16
+        } else {
+            score
+        };
 
         let entry = TTEntry::new(hash, best_move.unwrap_or(Move::NULL), depth, score, flag);
         self.store(hash, entry);
@@ -107,15 +114,6 @@ impl TranspositionTable {
 
     /// Returns (score, best_move, hash_flag) 
     pub fn probe(&self, hash: u64) -> Option<TTEntry> {
-        //Adjust mating scores before extraction
-        //let adjusted_score = data.score();
-        /*if adjusted_score < -MATE_BOUND {
-            adjusted_score += ply as i32;
-        } else if adjusted_score > MATE_BOUND {
-            adjusted_score -= ply as i32;
-        }*/
-
         self.load(hash)
-
     }
 }

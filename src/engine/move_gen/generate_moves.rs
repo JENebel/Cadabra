@@ -486,4 +486,15 @@ impl Position {
 
         mask.pdep(diagonal)
     }
+
+    /// Determines whether the current player is in check
+    pub fn is_in_check(&self) -> bool {
+        let color = self.active_color;
+        let opp_color = color.opposite();
+        let king_pos = self.king_position(color);
+        !(pawn_attacks(king_pos, color) & self.bb(opp_color, Pawn)).is_empty() ||
+        !(knight_attacks(king_pos) & self.bb(opp_color, Knight)).is_empty() ||
+        !(d12_attacks(king_pos, self.all_occupancies) & (self.bb(opp_color, Bishop) | self.bb(opp_color, Queen))).is_empty() ||
+        !(hv_attacks(king_pos, self.all_occupancies) & (self.bb(opp_color, Rook) | self.bb(opp_color, Queen))).is_empty()
+    }
 }

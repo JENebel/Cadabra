@@ -1,8 +1,6 @@
 use super::*;
 use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread::{self, JoinHandle}, time::Instant};
 
-const INFINITY : i16 = 30000;
-
 #[derive(Clone)]
 pub struct Search {
     is_running: Arc<AtomicBool>,
@@ -150,14 +148,24 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     let mut best_move = None;
     
     if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
+        // Adjust mating score
+        let score = entry.score();
+        let score = if score < -MATE_BOUND {
+            score + ply as i16
+        } else if score > MATE_BOUND {
+            score - ply as i16
+        } else {
+            score
+        };
+
         if entry.depth() >= depth {
             match entry.hash_flag() {
-                HashFlag::Exact => return entry.score(),
-                HashFlag::LowerBound => alpha = alpha.max(entry.score()),
-                HashFlag::UpperBound => beta = beta.min(entry.score()),
+                HashFlag::Exact => return score,
+                HashFlag::LowerBound => alpha = alpha.max(score),
+                HashFlag::UpperBound => beta = beta.min(score),
             }
             if alpha >= beta {
-                return entry.score()
+                return score
             }
         }
         best_move = Some(entry.best_move());
@@ -168,8 +176,19 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     context.pv_table.init_ply(ply);
     let mut hash_flag = HashFlag::UpperBound;
 
+    let is_in_check = pos.is_in_check();
+
     let mut move_list = pos.generate_moves().sort(pos, context, best_move);
-    let move_count = move_list.len();
+
+    // Mate & Draw
+    if move_list.len() == 0 {
+        if is_in_check {
+            return -MATE_VALUE + ply as i16;
+        }
+        else {
+            return 0;
+        }
+    }
 
     while let Some(m) = move_list.pop_best() {
         let mut new_pos = *pos;
@@ -189,7 +208,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
             // Beta cutoff
             if score >= beta {
-                context.search.tt.record(pos.zobrist_hash, best_move, depth, beta, HashFlag::LowerBound);
+                context.search.tt.record(pos.zobrist_hash, best_move, depth, beta, HashFlag::LowerBound, ply);
                 return beta;
             }
 
@@ -198,12 +217,8 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             alpha = score;
         }
     }
-
-    if move_count == 0 {
-        alpha = 0;
-    }
     
-    context.search.tt.record(pos.zobrist_hash, best_move, depth, alpha, hash_flag);
+    context.search.tt.record(pos.zobrist_hash, best_move, depth, alpha, hash_flag, ply);
     
     alpha
 }
