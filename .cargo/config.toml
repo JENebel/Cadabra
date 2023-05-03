@@ -7,12 +7,15 @@ opt-level = 1
 [profile.release]
 lto = true
 codegen-units = 1
-debug = true
+#debug = true
 
 [alias]
 validate = "run --bin validator stockfish"
 benchmark = "run --release bench"
 dev_benchmark = "run bench"
+
+track = "run --bin tracker save"
+duel = "run --release --bin tracker run"
 
 [env]
 CONST_RANDOM_SEED = "42069"

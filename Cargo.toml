@@ -6,12 +6,16 @@ edition = "2021"
 license = "BSD-2-Clause"
 description = "UCI compatible chess engine"
 repository = "https://github.com/JENebel/Cadabra/"
-build = "generate_sliding_attacks.rs"
+build = "src/generate_sliding_attacks.rs"
 default-run = "cadabra"
 
 [[bin]]
+name = "tracker"
+path = "src/improvement_tracker/main.rs"
+
+[[bin]]
 name = "validator"
-path = "validator/main.rs"
+path = "src/validator/main.rs"
 
 [[bin]]
 name = "cadabra"

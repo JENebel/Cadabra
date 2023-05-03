@@ -46,8 +46,8 @@ fn run_perft_tests() {
                                     .stdin(Stdio::piped())
                                     .stdout(Stdio::piped())
                                     .spawn()
-                                    .expect("Could not launch reference engine. Check path.");
-
+                                    .expect(format!("Could not launch reference engine \"{}\". Check path.", args[1]).as_str());
+                                
             ref_engine_loop(ref_engine, (send_result, recv_task))
         });
 
@@ -121,6 +121,8 @@ fn ref_engine_loop(mut ref_engine: Child, (send_result, recv_task): (Sender<Hash
         }
         send_result.send(results).unwrap();
     }
+
+    ref_engine.kill().unwrap();
 }
 
 fn validate_position(fen: String, name: &str, depth: u8, tracing: bool, (send_task, recv_result): (&mut Sender<(String, u8)>, &mut Receiver<HashMap<String, u64>>)) -> Result<(), (String, Position)> {
