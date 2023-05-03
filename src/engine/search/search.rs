@@ -130,38 +130,41 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
 }
 
 fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
-    if depth == 0 {
-        return pos.evaluate();
-        // Quiescence search
-    };
-
     let mut best_move = None;
     
-    if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
-        // Adjust mating score
-        let score = entry.score();
-        let score = if score < -MATE_BOUND {
-            score + ply as i16
-        } else if score > MATE_BOUND {
-            score - ply as i16
-        } else {
-            score
-        };
-
-        if entry.depth() >= depth {
-            match entry.hash_flag() {
-                HashFlag::Exact => return score,
-                HashFlag::LowerBound => alpha = alpha.max(score),
-                HashFlag::UpperBound => beta = beta.min(score),
+    // Ply > 0 or we risk not knowing the move
+    if ply > 0 {
+        if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
+            // Adjust mating score
+            let score = entry.score();
+            let score = if score < -MATE_BOUND {
+                score + ply as i16
+            } else if score > MATE_BOUND {
+                score - ply as i16
+            } else {
+                score
+            };
+    
+            if entry.depth() >= depth {
+                match entry.hash_flag() {
+                    HashFlag::Exact => return score,
+                    HashFlag::LowerBound => alpha = alpha.max(score),
+                    HashFlag::UpperBound => beta = beta.min(score),
+                }
+                if alpha >= beta {
+                    return score
+                }
             }
-            if alpha >= beta {
-                return score
-            }
+            best_move = Some(entry.best_move());
+    
+            context.tt_hits += 1;
         }
-        best_move = Some(entry.best_move());
-
-        context.tt_hits += 1;
     }
+
+    if depth == 0 {
+        return quiescence::<IS_MASTER>(pos, alpha, beta, ply, context);
+        //return pos.evaluate();
+    };
 
     if context.nodes & 0b111111111111 == 0 {
         if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
@@ -171,7 +174,6 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             return 0
         }
     }
-
     context.nodes += 1;
 
     context.pv_table.init_ply(ply);
@@ -200,12 +202,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         if score > alpha {
             best_move = Some(m);
 
-            // Print PV line if best move changed
-            let best_changed = best_move != context.pv_table.best_move();
             context.pv_table.insert_pv_node(m, ply);
-            if ply == 0 && best_changed {
-                info!(context, "info score cp {score} pv {}", context.pv_table);
-            }
 
             // Beta cutoff
             if score >= beta {
@@ -221,5 +218,52 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     
     context.search.tt.record(pos.zobrist_hash, best_move, depth, alpha, hash_flag, ply);
     
+    alpha
+}
+
+#[inline(always)]
+fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, ply: u8, context: &mut SearchContext) -> i16 {
+    if context.nodes & 0b111111111111 == 0 {
+        if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
+            context.search.stop();
+            return 0
+        } else if context.search.is_stopping() { // Cancel search
+            return 0
+        }
+    }
+    context.nodes += 1;
+
+    let eval = pos.evaluate();
+
+    // Dont't go on if reached max ply
+    if ply > MAX_PLY as u8 - 1 || pos.half_moves == 100 {
+        return eval;
+    }
+
+    if eval > alpha {
+        alpha = eval;
+
+        if eval >= beta {
+            return beta
+        }
+    }
+
+    let moves = pos.generate_moves().sort(pos, context, None);
+
+    for m in moves.filter(|m| m.is_capture()) {
+        let mut copy = pos.clone();
+        copy.make_move(m);
+        
+        let score = -quiescence::<IS_MASTER>(&copy, -beta, -alpha, ply + 1, context);
+
+        if score > alpha {
+            alpha = score;
+
+            if score >= beta {
+                return beta;
+            }
+        }
+    }
+
     alpha
 }
