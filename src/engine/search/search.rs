@@ -105,7 +105,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
         }
 
         let time = context.start_time.elapsed().as_millis();
-        info!(context, "info score cp {score} depth {depth} nodes {} time {}", context.nodes, time);
+        info!(context, "info score cp {score} depth {depth} nodes {} time {} pv {}", context.nodes, time, context.pv_table);
     }
 
     //negamax(&pos, -INFINITY, INFINITY, context.search_meta.max_depth, 0, context);
@@ -122,6 +122,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
     };
 
     SearchResult {
+
         nodes: context.nodes,
         tt_hits: context.tt_hits,
         time: context.start_time.elapsed().as_millis()
@@ -133,17 +134,6 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         return pos.evaluate();
         // Quiescence search
     };
-
-    if context.nodes & 0b111111111111 == 0 {
-        if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
-            context.search.stop();
-            return 0
-        } else if context.search.is_stopping() { // Cancel search
-            return 0
-        }
-    }
-
-    context.nodes += 1;
 
     let mut best_move = None;
     
@@ -172,6 +162,17 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
         context.tt_hits += 1;
     }
+
+    if context.nodes & 0b111111111111 == 0 {
+        if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
+            context.search.stop();
+            return 0
+        } else if context.search.is_stopping() { // Cancel search
+            return 0
+        }
+    }
+
+    context.nodes += 1;
 
     context.pv_table.init_ply(ply);
     let mut hash_flag = HashFlag::UpperBound;
