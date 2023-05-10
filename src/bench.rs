@@ -154,20 +154,20 @@ fn perft_bench() -> f64 {
 
     perft_mnps
 }
-                //(millis, nodes)
+                //(millis, nodes, MNPS)
 fn search_bench() -> (u128, u128, f64) {
     println!(" Running search time to depth benchmark...");
     print!(" Warming up...\t");
 
     let before_wu = Instant::now();
 
-    let depth = 8;
+    let depth = 7;
     let meta = SearchMeta::new_simple_depth(black_box(depth));
     
     stdout().flush().unwrap();
     for pos in POSITIONS.iter() {
         let search = Search::new(Settings::default());
-        black_box(search).start(*pos, meta, false);
+        black_box(search).start(*pos, meta, true);
     }
     println!("Done");
     println!(" Estimated bench time: {:.2} s", (before_wu.elapsed().as_millis() as f64 / 1000.) * ITERATIONS as f64);
@@ -179,7 +179,7 @@ fn search_bench() -> (u128, u128, f64) {
 
     for pos in POSITIONS.iter() {
         let search = Search::new(Settings::default());
-        let res = black_box(search).start(*pos, meta, false);
+        let res = black_box(search).start(*pos, meta, true);
         search_time += res.time;
         nodes += res.nodes;
         tt_hits += res.tt_hits;

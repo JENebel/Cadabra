@@ -20,7 +20,7 @@ impl SearchMeta {
 
     pub fn new(max_depth: Option<u8>, ponder: bool, infinite: bool, time_left: Option<u128>, inc: Option<u128>, movestogo: Option<u8>, nodes: Option<u128>, movetime: Option<u128>) -> Result<Self, String> {
         let time_target = if let Some(movetime) = movetime { // Fixed time search
-            movetime
+            movetime - 250  // Buffer
         } else if infinite { // Infinite search
             INF
         } else if let Some(time_left) = time_left { // Time control search

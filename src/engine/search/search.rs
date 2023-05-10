@@ -93,6 +93,16 @@ macro_rules! info {
     };
 }
 
+fn score_str(score: i16) -> String {
+    if score < -MATE_BOUND {
+        format!("mate {}", score + MATE_VALUE)
+    } else if score > MATE_BOUND {
+        format!("mate {}", MATE_VALUE - score)
+    } else {
+        format!("cp {}", score)
+    }
+}
+
 pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id: u8) -> SearchResult {
     let pos = context.pos;
 
@@ -105,7 +115,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
         }
 
         let time = context.start_time.elapsed().as_millis();
-        info!(context, "info score cp {score} depth {depth} nodes {} time {} pv {}", context.nodes, time, context.pv_table);
+        info!(context, "info score {} depth {depth} nodes {} time {} pv {}", score_str(score), context.nodes, time, context.pv_table);
     }
 
     //negamax(&pos, -INFINITY, INFINITY, context.search_meta.max_depth, 0, context);
