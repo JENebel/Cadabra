@@ -4,6 +4,7 @@ use super::*;
 
 pub fn interface_loop() {
     let mut pos = Position::start_pos();
+    let mut rep_table = RepetitionTable::new();
     
     // Spawn listening thread that reads input without blocking main thread
     let ui_receiver = spawn_ui_listener_thread();
@@ -44,7 +45,7 @@ pub fn interface_loop() {
                     }
                 };
 
-                if let Err(err) = pos.make_uci_move(moov) {
+                if let Err(err) = pos.make_uci_move(moov, &mut rep_table) {
                     println!("{err}")
                 }
             },
@@ -91,7 +92,10 @@ pub fn interface_loop() {
             },
             "position" => {
                 match parse_position(&mut command) {
-                    Ok(res) => pos = res,
+                    Ok((n_pos, n_rep)) => {
+                        pos = n_pos;
+                        rep_table = n_rep;
+                    },
                     Err(err) => println!("{err}"),
                 }
             },
@@ -110,8 +114,9 @@ pub fn interface_loop() {
                 };
 
                 let search = current_search.clone();
+                let rep_table = rep_table.clone();
                 thread::spawn(move || {
-                    search.start(pos, meta, true);
+                    search.start(pos, rep_table, meta, true);
                 });
             },
             "stop" => {
@@ -191,7 +196,7 @@ fn wait_for_input(ui_receiver: &Receiver<String>) -> String {
     ui_receiver.recv().expect("Error receiving ui command!")
 }
 
-fn parse_position(command: &mut &str) -> Result<Position, String> {
+fn parse_position(command: &mut &str) -> Result<(Position, RepetitionTable), String> {
     let mut split = command.split("moves");
     let mut pos_str = match split.next() {
         Some(pos_str) => pos_str.trim(),
@@ -204,14 +209,16 @@ fn parse_position(command: &mut &str) -> Result<Position, String> {
         _ => return Err(format!("Illegal position argument"))
     };
 
+    let mut rep_table = RepetitionTable::new();
+
     if let Some(mut move_args) = split.next() {
         move_args = move_args.trim();
         while let Some(moov) = take_next(&mut move_args) {
-            pos.make_uci_move(moov)?;
+            pos.make_uci_move(moov, &mut rep_table)?;
         }
     }
 
-    Ok(pos)
+    Ok((pos, rep_table))
 }
 
 fn parse_go(command: &mut &str, pos: Position) -> Result<SearchMeta, String> {

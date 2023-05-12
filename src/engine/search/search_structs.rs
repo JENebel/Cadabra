@@ -50,6 +50,7 @@ pub struct SearchContext {
     pub search: Search,
     pub search_meta: SearchMeta,
     pub pos: Position,
+    pub rep_table: RepetitionTable,
     pub pv_table: PVTable,
     pub start_time: Instant,
     pub is_printing: bool,
@@ -59,11 +60,12 @@ pub struct SearchContext {
 }
 
 impl SearchContext {
-    pub fn new(search: Search, search_meta: SearchMeta, pos: Position, start_time: Instant, is_printing: bool) -> Self {
+    pub fn new(search: Search, search_meta: SearchMeta, pos: Position, rep_table: RepetitionTable, start_time: Instant, is_printing: bool) -> Self {
         Self {
             search,
             search_meta,
             pos,
+            rep_table,
             pv_table: PVTable::new(),
             start_time,
             is_printing,
@@ -99,5 +101,38 @@ impl Add<Self> for SearchResult {
 impl Sum for SearchResult {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.into_iter().reduce(|acc, res| acc + res).unwrap()
+    }
+}
+
+#[derive(Clone)]
+pub struct RepetitionTable {
+    hashes: heapless::Vec<u64, 100>
+}
+
+impl RepetitionTable {
+    pub fn new() -> Self {
+        Self { hashes: heapless::Vec::new() }
+    }
+
+    pub fn push(&mut self, hash: u64) {
+        unsafe { self.hashes.push_unchecked(hash) }
+    }
+
+    pub fn clear(&mut self) {
+        self.hashes.clear()
+    }
+
+    pub fn is_in_3_fold_rep(&self) -> bool {
+        let current = self.hashes.last().unwrap();
+        let mut count = 0;
+        for hash in self.hashes.iter().rev() {
+            if current == hash {
+                count += 1;
+                if count >= 3 {
+                    return true
+                }
+            }
+        }
+        false
     }
 }

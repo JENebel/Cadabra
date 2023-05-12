@@ -4,10 +4,10 @@ use Color::*;
 use Square::*;
 
 impl Position {
-    pub fn make_uci_move(&mut self, moove: &str) -> Result<(), String> {
+    pub fn make_uci_move(&mut self, moove: &str, rep_table: &mut RepetitionTable) -> Result<(), String> {
         let m = self.generate_moves().find(|m| format!("{m}") == moove);
         if let Some(m) = m {
-            self.make_move(m);
+            self.make_move(m, rep_table);
             Ok(())
         } else {
             Err(format!("Illegal move: {moove}"))
@@ -15,7 +15,7 @@ impl Position {
     }
 
     #[inline(always)]
-    pub fn make_move(&mut self, moove: Move) {
+    pub fn make_move(&mut self, moove: Move, rep_table: &mut RepetitionTable) {
         // Let move_type = moov.move_type;
         let color = self.active_color;
         let opp_color = color.opposite();
@@ -121,10 +121,12 @@ impl Position {
         // Update half moves counter
         if moove.is_capture() || piece == Pawn || moove.is_promotion() {
             self.half_moves = 0;
+            rep_table.clear();
         }
         else {
             self.half_moves += 1;
-        }
+            rep_table.push(self.zobrist_hash)
+        };
 
         // Increment full moves
         self.full_moves += color as u16;

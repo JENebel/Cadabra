@@ -21,7 +21,7 @@ impl Search {
     }
 
     /// Returns the running time
-    pub fn start(&self, pos: Position, meta: SearchMeta, print: bool) -> SearchResult {
+    pub fn start(&self, pos: Position, rep_table: RepetitionTable, meta: SearchMeta, print: bool) -> SearchResult {
         self.is_running.store(true, Relaxed);
 
         // Spawn worker threads
@@ -30,9 +30,10 @@ impl Search {
             let search = self.clone();
             let meta = meta.clone();
             let pos = pos.clone();
+            let rep_table = rep_table.clone();
 
             let h: JoinHandle<SearchResult> = thread::spawn(move || {
-                let mut context = SearchContext::new(search, meta, pos, Instant::now(), print);
+                let mut context = SearchContext::new(search, meta, pos, rep_table, Instant::now(), print);
                 if t == 0 {       
                     run_search::<true>(&mut context, t)
                 } else {       
@@ -132,7 +133,6 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
     };
 
     SearchResult {
-
         nodes: context.nodes,
         tt_hits: context.tt_hits,
         time: context.start_time.elapsed().as_millis()
@@ -141,7 +141,16 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
 
 fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
     let mut best_move = None;
+
+    // Check for 3 fold repetition. It is first possible after 4 irreversible moves.
+    // The check reduces performance impact of check
+    if pos.half_moves > 4 {
+        if context.rep_table.is_in_3_fold_rep() {
+            return 0
+        }
+    }
     
+    // Probe transposition table
     // Ply > 0 or we risk not knowing the move
     if ply > 0 {
         if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
@@ -171,11 +180,14 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         }
     }
 
+    // Run quiescence search if the desired depth is reached
     if depth == 0 {
         return quiescence::<IS_MASTER>(pos, alpha, beta, ply, context);
-        //return pos.evaluate();
     };
 
+    context.nodes += 1;
+
+    // Stop search if time is exceeded. Only rarely check to reduce performance impact
     if context.nodes & 0b111111111111 == 0 {
         if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
             context.search.stop();
@@ -184,16 +196,20 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             return 0
         }
     }
-    context.nodes += 1;
 
+    // Initialize PV table to ply
     context.pv_table.init_ply(ply);
+
+    // Initialize TT entry hashflag
     let mut hash_flag = HashFlag::UpperBound;
 
+    // Check if in check
     let is_in_check = pos.is_in_check();
 
+    // Generate moves
     let mut move_list = pos.generate_moves().sort(pos, context, best_move);
 
-    // Mate & Draw
+    // detect mate or stalemate if there are no legal moves
     if move_list.len() == 0 {
         if is_in_check {
             return -MATE_VALUE + ply as i16;
@@ -203,36 +219,47 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         }
     }
 
+    // Loop through moves
     while let Some(m) = move_list.pop_best() {
         let mut new_pos = *pos;
-        new_pos.make_move(m);
+        new_pos.make_move(m, &mut context.rep_table);
 
         let score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
 
+        // Alpha cutoff
         if score > alpha {
             best_move = Some(m);
 
+            // Insert PV node
             context.pv_table.insert_pv_node(m, ply);
 
             // Beta cutoff
             if score >= beta {
+                // Record lower bound score in TT
                 context.search.tt.record(pos.zobrist_hash, best_move, depth, beta, HashFlag::LowerBound, ply);
+                
+                // Return early
                 return beta;
             }
 
+            // We now have an exact score to store in TT, as it is a PV node
             hash_flag = HashFlag::Exact;
 
+            // Update alpha
             alpha = score;
         }
     }
     
+    // Record upper bound/exact score in TT depending on if we have a PV node
     context.search.tt.record(pos.zobrist_hash, best_move, depth, alpha, hash_flag, ply);
     
     alpha
 }
 
+/// Quiescence search
 #[inline(always)]
 fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, ply: u8, context: &mut SearchContext) -> i16 {
+    // Stop search if time limit exceeded
     if context.nodes & 0b111111111111 == 0 {
         if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
             context.search.stop();
@@ -241,8 +268,10 @@ fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, 
             return 0
         }
     }
+
     context.nodes += 1;
 
+    // Evaluate position immediately
     let eval = pos.evaluate();
 
     // Dont't go on if reached max ply
@@ -250,6 +279,7 @@ fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, 
         return eval;
     }
 
+    // Try cutoff
     if eval > alpha {
         alpha = eval;
 
@@ -258,17 +288,21 @@ fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, 
         }
     }
 
+    // Generate moves
     let moves = pos.generate_moves().sort(pos, context, None);
 
+    // Loop through all captures
     for m in moves.filter(|m| m.is_capture()) {
         let mut copy = pos.clone();
-        copy.make_move(m);
+        copy.make_move(m, &mut context.rep_table);
         
         let score = -quiescence::<IS_MASTER>(&copy, -beta, -alpha, ply + 1, context);
 
+        // Alpha cutoff
         if score > alpha {
             alpha = score;
 
+            // Beta cutoff
             if score >= beta {
                 return beta;
             }

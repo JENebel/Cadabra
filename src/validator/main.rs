@@ -12,18 +12,18 @@ fn main() {
     run_perft_tests()
 }
 
-fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
+fn debug_perft(pos: &Position, depth: u8, rep_table: &mut RepetitionTable) -> HashMap<String, u64> {
     let moves = pos.generate_moves();
 
     let mut result: HashMap<String, u64> = HashMap::new();
 
     for m in moves {
         let mut copy = *pos;
-        copy.make_move(m);
+        copy.make_move(m, rep_table);
         let sub_nodes = if depth >2 {
             copy.perft::<false>(depth - 1)
         } else if depth > 1 {
-            debug_perft(&copy, depth - 1).iter().map(|m| m.1).sum()
+            debug_perft(&copy, depth - 1, rep_table).iter().map(|m| m.1).sum()
         } else {
             1
         };
@@ -130,7 +130,7 @@ fn validate_position(fen: String, name: &str, depth: u8, tracing: bool, (send_ta
     send_task.send((fen.clone(), depth)).unwrap();
 
     let mut pos = Position::from_fen(fen.as_str()).unwrap();
-    let own_res = debug_perft(&pos, depth);
+    let own_res = debug_perft(&pos, depth, &mut RepetitionTable::new());
 
     let ref_res = recv_result.recv().unwrap();
 
@@ -151,7 +151,7 @@ fn validate_position(fen: String, name: &str, depth: u8, tracing: bool, (send_ta
     } else {
         for (key, nodes) in ref_res {
             if nodes != *own_res.get(&key).unwrap() {
-                pos.make_uci_move(&key).unwrap();
+                pos.make_uci_move(&key, &mut RepetitionTable::new()).unwrap();
                 println!("Wrong move count on {name} at depth {depth}! Tracing with {key}");
                 return validate_position(pos.fen_string(), name, depth - 1, true, (send_task, recv_result));
             };
