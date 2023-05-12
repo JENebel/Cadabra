@@ -21,7 +21,7 @@ impl Search {
     }
 
     /// Returns the running time
-    pub fn start(&self, pos: Position, rep_table: RepetitionTable, meta: SearchMeta, print: bool) -> SearchResult {
+    pub fn start(&self, pos: Position, rep_table: RepetitionTable, meta: SearchArgs, print: bool) -> SearchStats {
         self.is_running.store(true, Relaxed);
 
         // Spawn worker threads
@@ -32,7 +32,7 @@ impl Search {
             let pos = pos.clone();
             let rep_table = rep_table.clone();
 
-            let h: JoinHandle<SearchResult> = thread::spawn(move || {
+            let h: JoinHandle<SearchStats> = thread::spawn(move || {
                 let mut context = SearchContext::new(search, meta, pos, rep_table, Instant::now(), print);
                 if t == 0 {       
                     run_search::<true>(&mut context, t)
@@ -45,7 +45,7 @@ impl Search {
         }
 
         // Wait for all threads to terminate and combine results
-        let result: SearchResult = workers.into_iter().map(|w| w.join().unwrap()).sum();
+        let result: SearchStats = workers.into_iter().map(|w| w.join().unwrap()).sum();
 
         self.is_stopping.store(false, Relaxed);
         self.is_running.store(false, Relaxed);
@@ -104,7 +104,7 @@ fn score_str(score: i16) -> String {
     }
 }
 
-pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id: u8) -> SearchResult {
+pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id: u8) -> SearchStats {
     let pos = context.pos;
 
     // Iterative deepening loop
@@ -132,7 +132,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
         }
     };
 
-    SearchResult {
+    SearchStats {
         nodes: context.nodes,
         tt_hits: context.tt_hits,
         time: context.start_time.elapsed().as_millis()
@@ -142,12 +142,9 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
 fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
     let mut best_move = None;
 
-    // Check for 3 fold repetition. It is first possible after 4 irreversible moves.
-    // The check reduces performance impact of check
-    if pos.half_moves > 4 {
-        if context.rep_table.is_in_3_fold_rep() {
-            return 0
-        }
+    // Detect 3 fold repetition stalemate
+    if context.rep_table.is_in_3_fold_rep(pos) {
+        return 0
     }
     
     // Probe transposition table

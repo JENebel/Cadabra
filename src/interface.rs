@@ -69,6 +69,9 @@ pub fn interface_loop() {
                 for m in pos.generate_moves() {
                     println!(" {m}")
                 }
+            },
+            "3fold" => {
+                println!("{}", rep_table.is_in_3_fold_rep(&pos))
             }
 
 
@@ -221,7 +224,7 @@ fn parse_position(command: &mut &str) -> Result<(Position, RepetitionTable), Str
     Ok((pos, rep_table))
 }
 
-fn parse_go(command: &mut &str, pos: Position) -> Result<SearchMeta, String> {
+fn parse_go(command: &mut &str, pos: Position) -> Result<SearchArgs, String> {
     if command == &"" {
         return Err("Empty go command".to_string())
     }
@@ -306,7 +309,7 @@ fn parse_go(command: &mut &str, pos: Position) -> Result<SearchMeta, String> {
         }
     }
 
-    SearchMeta::new(max_depth, ponder, infinite, time, inc, movestogo, nodes, movetime)
+    SearchArgs::new(max_depth, ponder, infinite, time, inc, movestogo, nodes, movetime)
 }
 
 fn parse_perft(command: &mut &str, pos: &Position) {

@@ -4,15 +4,21 @@ mod search;
 mod transposition_table;
 mod tri_pv_table;
 mod score_move;
-mod search_structs;
+mod search_context;
+mod repetition_table;
+mod search_args;
+mod search_stats;
 
 //use transposition_table::*;
 pub use evaluation::*;
 pub use search::*;
 pub use perft::*;
 pub use transposition_table::*;
-pub use search_structs::*;
+pub use search_context::*;
 pub use tri_pv_table::*;
+pub use repetition_table::*;
+pub use search_args::*;
+pub use search_stats::*;
 
 use crate::engine::*;
 

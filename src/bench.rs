@@ -162,7 +162,7 @@ fn search_bench() -> (u128, u128, f64) {
     let before_wu = Instant::now();
 
     let depth = 5;
-    let meta = SearchMeta::new_simple_depth(black_box(depth));
+    let meta = SearchArgs::new_simple_depth(black_box(depth));
     
     stdout().flush().unwrap();
     for pos in POSITIONS.iter() {
