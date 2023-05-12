@@ -78,8 +78,10 @@ pub fn interface_loop() {
             // UCI commands
             "uci" => {
                 println!("id name {PKG_NAME} {PKG_VERSION} author {PKG_AUTHORS}");
+                println!();
 
                 // Advertise options
+                println!("option name Hash type spin default 16 min 1 max 1048576");
 
                 println!("uciok")
             },
