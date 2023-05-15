@@ -1,21 +1,23 @@
 use super::*;
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct RepetitionTable {
-    hashes: heapless::Vec<u64, 100>
+    len: usize,
+    hashes: [u64; 100]
 }
 
 impl RepetitionTable {
     pub fn new() -> Self {
-        Self { hashes: heapless::Vec::new() }
+        Self { len: 0, hashes: [0; 100] }
     }
 
     pub fn push(&mut self, hash: u64) {
-        unsafe { self.hashes.push_unchecked(hash) }
+        self.hashes[self.len] = hash;
+        self.len += 1;
     }
 
     pub fn clear(&mut self) {
-        self.hashes.clear()
+        self.len = 0;
     }
     
     pub fn is_in_3_fold_rep(&self, pos: &Position) -> bool {
@@ -23,10 +25,10 @@ impl RepetitionTable {
         // The check reduces performance impact
         if pos.half_moves >= 8 {
             // Count occurences of current position
-            let repetitins = self.hashes.iter().filter(|a| *a == &pos.zobrist_hash).count();
-            return repetitins >= 3
+            let hash = pos.zobrist_hash;
+            let repetitions = self.hashes.iter().filter(|a| **a == hash).count();
+            return repetitions >= 3
         }
         false
     }
-    
 }

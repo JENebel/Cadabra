@@ -22,6 +22,8 @@ pub struct Position {
     pub full_moves: u16,
     pub half_moves: u8,
     pub zobrist_hash: u64,
+
+    pub rep_table: RepetitionTable,
 }
 
 impl Position {
@@ -84,6 +86,7 @@ impl Position {
             full_moves,
             half_moves,
             zobrist_hash: 0,
+            rep_table: RepetitionTable::new(),
         };
 
         // Place pieces

@@ -10,10 +10,6 @@ build = "src/generate_sliding_attacks.rs"
 default-run = "cadabra"
 
 [[bin]]
-name = "tracker"
-path = "src/improvement_tracker/main.rs"
-
-[[bin]]
 name = "validator"
 path = "src/validator/main.rs"
 

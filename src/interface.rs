@@ -1,10 +1,9 @@
-use std::{io::stdin, process, thread, sync::{mpsc::{channel, Receiver}}, time::Instant, str::FromStr};
+use std::{io::stdin, process, thread, sync::mpsc::{channel, Receiver}, time::Instant, str::FromStr};
 
 use super::*;
 
 pub fn interface_loop() {
     let mut pos = Position::start_pos();
-    let mut rep_table = RepetitionTable::new();
     
     // Spawn listening thread that reads input without blocking main thread
     let ui_receiver = spawn_ui_listener_thread();
@@ -45,7 +44,7 @@ pub fn interface_loop() {
                     }
                 };
 
-                if let Err(err) = pos.make_uci_move(moov, &mut rep_table) {
+                if let Err(err) = pos.make_uci_move(moov) {
                     println!("{err}")
                 }
             },
@@ -71,7 +70,7 @@ pub fn interface_loop() {
                 }
             },
             "3fold" => {
-                println!("{}", rep_table.is_in_3_fold_rep(&pos))
+                println!("{}", pos.rep_table.is_in_3_fold_rep(&pos))
             }
 
 
@@ -81,7 +80,7 @@ pub fn interface_loop() {
                 println!();
 
                 // Advertise options
-                println!("option name Hash type spin default 16 min 1 max 1048576");
+                // println!("option name Hash type spin default 16 min 1 max 1048576");
 
                 println!("uciok")
             },
@@ -97,10 +96,7 @@ pub fn interface_loop() {
             },
             "position" => {
                 match parse_position(&mut command) {
-                    Ok((n_pos, n_rep)) => {
-                        pos = n_pos;
-                        rep_table = n_rep;
-                    },
+                    Ok(n_pos) => pos = n_pos,
                     Err(err) => println!("{err}"),
                 }
             },
@@ -119,9 +115,8 @@ pub fn interface_loop() {
                 };
 
                 let search = current_search.clone();
-                let rep_table = rep_table.clone();
                 thread::spawn(move || {
-                    search.start(pos, rep_table, meta, true);
+                    search.start(pos, meta, true);
                 });
             },
             "stop" => {
@@ -201,7 +196,7 @@ fn wait_for_input(ui_receiver: &Receiver<String>) -> String {
     ui_receiver.recv().expect("Error receiving ui command!")
 }
 
-fn parse_position(command: &mut &str) -> Result<(Position, RepetitionTable), String> {
+fn parse_position(command: &mut &str) -> Result<Position, String> {
     let mut split = command.split("moves");
     let mut pos_str = match split.next() {
         Some(pos_str) => pos_str.trim(),
@@ -214,16 +209,14 @@ fn parse_position(command: &mut &str) -> Result<(Position, RepetitionTable), Str
         _ => return Err(format!("Illegal position argument"))
     };
 
-    let mut rep_table = RepetitionTable::new();
-
     if let Some(mut move_args) = split.next() {
         move_args = move_args.trim();
         while let Some(moov) = take_next(&mut move_args) {
-            pos.make_uci_move(moov, &mut rep_table)?;
+            pos.make_uci_move(moov)?;
         }
     }
 
-    Ok((pos, rep_table))
+    Ok(pos)
 }
 
 fn parse_go(command: &mut &str, pos: Position) -> Result<SearchArgs, String> {

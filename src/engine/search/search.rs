@@ -21,7 +21,7 @@ impl Search {
     }
 
     /// Returns the running time
-    pub fn start(&self, pos: Position, rep_table: RepetitionTable, meta: SearchArgs, print: bool) -> SearchStats {
+    pub fn start(&self, pos: Position, meta: SearchArgs, print: bool) -> SearchStats {
         self.is_running.store(true, Relaxed);
 
         // Spawn worker threads
@@ -30,11 +30,10 @@ impl Search {
             let search = self.clone();
             let meta = meta.clone();
             let pos = pos.clone();
-            let rep_table = rep_table.clone();
 
             let h: JoinHandle<SearchStats> = thread::spawn(move || {
-                let mut context = SearchContext::new(search, meta, pos, rep_table, Instant::now(), print);
-                if t == 0 {       
+                let mut context = SearchContext::new(search, meta, pos, Instant::now(), print);
+                if t == 0 {
                     run_search::<true>(&mut context, t)
                 } else {       
                     run_search::<false>(&mut context, t)
@@ -66,26 +65,6 @@ impl Search {
     }
 }
 
-pub fn time_left(nano_times: &Vec<u128>, target_millis: u128) -> bool {
-    if nano_times.len() < 2 {
-        return true
-    }
-
-    // Estimate next time
-    let mut incs: Vec<f64> = Vec::new();
-    for t in nano_times.windows(2).rev().take(3) {
-        incs.push((t[1] as f64) / (t[0] as f64));
-    }
-
-
-    let avg: f64 = incs.iter().sum::<f64>() / incs.len() as f64;
-    let last = (*nano_times.last().unwrap() / 1000000) as f64;
-    let estimate = last + last * (avg as f64);
-    //println!("est. {} ms", estimate);
-    
-    target_millis > estimate as u128
-}
-
 macro_rules! info {
     ($context:expr, $($msg: tt)*) => {
         if IS_MASTER && $context.is_printing {
@@ -107,49 +86,49 @@ fn score_str(score: i16) -> String {
 pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id: u8) -> SearchStats {
     let pos = context.pos;
 
+    let mut best_move = Option::None;
     // Iterative deepening loop
-    for depth in (thread_id % 4 + 1)..=(context.search_meta.max_depth) {
+    for depth in (thread_id % 4 + 1)..(context.search_meta.max_depth + 1) {
         let score = negamax::<IS_MASTER>(&pos, -INFINITY, INFINITY, depth, 0, context);
+
+        if context.search.is_stopping() /*|| score > MATE_BOUND || score < -MATE_BOUND */{
+            break;
+        }
+
+        best_move = context.pv_table.best_move();
 
         let time = context.start_time.elapsed().as_millis();
         info!(context, "info score {} depth {depth} nodes {} time {} pv {}", score_str(score), context.nodes, time, context.pv_table);
-
-        if context.search.is_stopping() || score > MATE_BOUND || score < -MATE_BOUND {
-            break;
-        }
     }
-
-    //negamax(&pos, -INFINITY, INFINITY, context.search_meta.max_depth, 0, context);
 
     // Stop helper threads
     if IS_MASTER {
         context.search.stop();
         context.search.is_running.store(false, Relaxed);
 
-        match context.pv_table.best_move() {
-            Some(m) => info!(context, "bestmove {m}"),
-            None => panic!("No best move!"),
-        }
+        info!(context, "bestmove {}", best_move.unwrap())
     };
 
     SearchStats {
-        nodes: context.nodes,
+        nodes: context.nodes + context.qui_nodes,
         tt_hits: context.tt_hits,
         time: context.start_time.elapsed().as_millis()
     }
 }
 
-fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
+fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, mut depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
     let mut best_move = None;
 
-    // Detect 3 fold repetition stalemate
-    if context.rep_table.is_in_3_fold_rep(pos) {
+    // Detect 50 move rule and 3 fold repetition stalemate
+    if pos.half_moves == 100 || pos.rep_table.is_in_3_fold_rep(pos) {
         return 0
     }
     
+    /*let is_pv = (beta - alpha) > 1;*/
+
     // Probe transposition table
     // Ply > 0 or we risk not knowing the move
-    if ply > 0 {
+    if ply > 0 /*&& !is_pv*/ {
         if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
             // Adjust mating score
             let score = entry.score();
@@ -160,7 +139,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             } else {
                 score
             };
-    
+
             if entry.depth() >= depth {
                 match entry.hash_flag() {
                     HashFlag::Exact => return score,
@@ -177,15 +156,17 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         }
     }
 
+    if ply == MAX_PLY as u8 - 1 {
+        return pos.evaluate();
+    }
+
     // Run quiescence search if the desired depth is reached
     if depth == 0 {
         return quiescence::<IS_MASTER>(pos, alpha, beta, ply, context);
     };
 
-    context.nodes += 1;
-
     // Stop search if time is exceeded. Only rarely check to reduce performance impact
-    if context.nodes & 0b111111111111 == 0 {
+    if context.nodes & 0b11111111111 == 0 {
         if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
             context.search.stop();
             return 0
@@ -193,6 +174,8 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             return 0
         }
     }
+
+    context.nodes += 1;
 
     // Initialize PV table to ply
     context.pv_table.init_ply(ply);
@@ -202,6 +185,8 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     // Check if in check
     let is_in_check = pos.is_in_check();
+
+    if is_in_check { depth += 1 };
 
     // Generate moves
     let mut move_list = pos.generate_moves().sort(pos, context, best_move);
@@ -219,7 +204,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     // Loop through moves
     while let Some(m) = move_list.pop_best() {
         let mut new_pos = *pos;
-        new_pos.make_move(m, &mut context.rep_table);
+        new_pos.make_move(m);
 
         let score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
 
@@ -256,23 +241,13 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 /// Quiescence search
 #[inline(always)]
 fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, ply: u8, context: &mut SearchContext) -> i16 {
-    // Stop search if time limit exceeded
-    if context.nodes & 0b111111111111 == 0 {
-        if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
-            context.search.stop();
-            return 0
-        } else if context.search.is_stopping() { // Cancel search
-            return 0
-        }
-    }
-
-    context.nodes += 1;
+    context.qui_nodes += 1;
 
     // Evaluate position immediately
     let eval = pos.evaluate();
 
     // Dont't go on if reached max ply
-    if ply > MAX_PLY as u8 - 1 || pos.half_moves == 100 {
+    if ply == MAX_PLY as u8 - 1 || pos.half_moves == 100 {
         return eval;
     }
 
@@ -291,7 +266,7 @@ fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, 
     // Loop through all captures
     for m in moves.filter(|m| m.is_capture()) {
         let mut copy = pos.clone();
-        copy.make_move(m, &mut context.rep_table);
+        copy.make_move(m);
         
         let score = -quiescence::<IS_MASTER>(&copy, -beta, -alpha, ply + 1, context);
 

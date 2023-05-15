@@ -4,18 +4,30 @@ use Color::*;
 use Square::*;
 
 impl Position {
-    pub fn make_uci_move(&mut self, moove: &str, rep_table: &mut RepetitionTable) -> Result<(), String> {
+    pub fn make_uci_move(&mut self, moove: &str) -> Result<(), String> {
         let m = self.generate_moves().find(|m| format!("{m}") == moove);
         if let Some(m) = m {
-            self.make_move(m, rep_table);
+            self.make_move(m);
             Ok(())
         } else {
             Err(format!("Illegal move: {moove}"))
         }
     }
 
+    pub fn _make_null_move(&mut self) {
+        // Switch side
+        self.active_color = self.active_color.opposite();
+        self.apply_side_zobrist();
+
+        // Reset enpassant + update hash
+        if !self.enpassant_square.is_empty() {
+            self.apply_enpassant_zobrist(self.enpassant_square.least_significant());
+            self.enpassant_square = Bitboard::EMPTY;
+        };
+    }
+
     #[inline(always)]
-    pub fn make_move(&mut self, moove: Move, rep_table: &mut RepetitionTable) {
+    pub fn make_move(&mut self, moove: Move) {
         // Let move_type = moov.move_type;
         let color = self.active_color;
         let opp_color = color.opposite();
@@ -118,21 +130,21 @@ impl Position {
         self.castling_ability.update(src, dst);
         self.apply_castling_zobrist();
 
-        // Update half moves counter
-        if moove.is_capture() || piece == Pawn || moove.is_promotion() {
-            self.half_moves = 0;
-            rep_table.clear();
-        }
-        else {
-            self.half_moves += 1;
-            rep_table.push(self.zobrist_hash)
-        };
-
         // Increment full moves
         self.full_moves += color as u16;
 
         // Switch side
         self.active_color = opp_color;
         self.apply_side_zobrist();
+
+        // Update half moves counter
+        if moove.is_capture() || piece == Pawn || moove.is_promotion() {
+            self.half_moves = 0;
+            self.rep_table.clear();
+        }
+        else {
+            self.half_moves += 1;
+            self.rep_table.push(self.zobrist_hash)
+        };
     }
 }

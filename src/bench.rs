@@ -167,7 +167,7 @@ fn search_bench() -> (u128, u128, f64) {
     stdout().flush().unwrap();
     for pos in POSITIONS.iter() {
         let search = Search::new(Settings::default());
-        black_box(search).start(*pos, RepetitionTable::new(), meta, true);
+        black_box(search).start(*pos, meta, true);
     }
     println!("Done");
     println!(" Estimated bench time: {:.2} s", (before_wu.elapsed().as_millis() as f64 / 1000.) * ITERATIONS as f64);
@@ -179,7 +179,7 @@ fn search_bench() -> (u128, u128, f64) {
 
     for pos in POSITIONS.iter() {
         let search = Search::new(Settings::default());
-        let res = black_box(search).start(*pos, RepetitionTable::new(), meta, true);
+        let res = black_box(search).start(*pos, meta, true);
         search_time += res.time;
         nodes += res.nodes;
         tt_hits += res.tt_hits;
