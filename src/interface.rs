@@ -32,7 +32,7 @@ pub fn interface_loop() {
             "fen" => {
                 println!("{}", pos.fen_string());
             },
-            "x" => { // "x" added for conveniece. Does the same as UCI's quit
+            "x" => { // "x" added for conveniece. Does the same as UCI's 'quit'
                 quit()
             },
             "move" => {
@@ -69,19 +69,25 @@ pub fn interface_loop() {
                     println!(" {m}")
                 }
             },
-            "3fold" => {
+            "threefold" => {
                 println!("{}", pos.rep_table.is_in_3_fold_rep(&pos))
+            },
+            "clear_hash" => {
+                current_search.clear_hash(settings);
             }
+
 
 
             // UCI commands
             "uci" => {
-                println!("id name {PKG_NAME} {PKG_VERSION} author {PKG_AUTHORS}");
+                println!("id name {PKG_NAME} {PKG_VERSION}");
+                println!("id author {PKG_AUTHORS}");
                 println!();
 
                 // Advertise options
                 println!("option name Hash type spin default 16 min 1 max 1048576");
                 println!("option name Threads type spin default 1 min 1 max 255");
+                println!("option name Clear Hash type button");
 
                 // Apply modified settings
                 current_search = Search::new(settings);
@@ -91,6 +97,11 @@ pub fn interface_loop() {
             "setoption" => {
                 if current_search.is_running() {
                     println!("Cannot change options while a search is running");
+                    continue;
+                }
+
+                if command == "name Clear Hash" {
+                    current_search.clear_hash(settings);
                     continue;
                 }
 

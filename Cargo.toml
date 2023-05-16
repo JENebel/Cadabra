@@ -1,7 +1,7 @@
 [package]
 name = "cadabra"
-version = "0.4.0"
-authors = ["Joachim Enggård Nebel"]
+version = "1.0.0"
+authors = ["Joachim Enggaard Nebel"]
 edition = "2021"
 license = "BSD-2-Clause"
 description = "UCI compatible chess engine"

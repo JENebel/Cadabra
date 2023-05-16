@@ -29,6 +29,10 @@ impl Search {
         *self.settings.lock().unwrap() = new_settings;
     }
 
+    pub fn clear_hash(&mut self, new_settings: Settings) {
+        self.tt = Arc::new(TranspositionTable::new(new_settings.transposition_table_mb))
+    }
+
     /// Returns the running time
     pub fn start(&self, pos: Position, meta: SearchArgs, print: bool) -> SearchStats {
         self.is_running.store(true, Relaxed);
