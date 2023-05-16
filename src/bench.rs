@@ -29,32 +29,49 @@ pub fn run_bench(save: bool) {
 
     // PERFT BENCH
     //let perft_mnps = 0.0; 
-    let perft_mnps = perft_bench();
+    let (perft_time, perft_mnps) = perft_bench();
 
     println!();
 
     // SEARCH TIME TO DEPTH (ttd)
-    let (search_time, nodes, search_mnps) = search_bench();
-
-    println!();
+    let (search_time, nodes, search_mnps, tt_hits) = search_bench();
 
     // TODO
     // Stats for multithreaded
     // TT fill% + hits
 
 
+    // Print results
+    println!();
+    println!("*** RESULTS ***");
+    println!();
+
+    println!(" Perft:");
+    println!("  Perft bench took {} ms", perft_time);
+    println!("  Speed was {perft_mnps:.2} MNodes/s");
+
+    println!();
+
+    println!(" Search:");
+    println!("  Search bench took {} ms", search_time);
+    println!("  Searched {} nodes ≈ {:.4} MNodes", nodes, (nodes as f64) / 1000000_f64);
+    println!("  Speed was {search_mnps:.4} MNodes/s");
+    println!("  TT hits: {tt_hits}");
+    
+    println!();
+
     // Load baseline
     if let Ok(file) = File::open(baseline_path()) {
         let lines = io::BufReader::new(file).lines().map(|l| l.unwrap()).collect::<Vec<String>>();
 
-        println!("  Changes:");
+        println!(" Changes:");
         // Perft
         {
             let prev = lines.iter().find(|l| l.starts_with("perft")).unwrap().split_once(':').unwrap().1.parse::<f64>().unwrap();
             let diff_perc = ((perft_mnps - prev) / prev) * 100.;
             let diff_str = color_string_percent(format!("{:>+.3} MNodes/s", perft_mnps - prev).normal(), diff_perc, true);
             let diff_perc_str = color_string_percent(format!("{:>+.3}%", diff_perc).normal(), diff_perc, true);
-            println!(" Perft performance changed by {} ≈ {}", diff_str, diff_perc_str);
+            println!("  Perft performance changed by {} ≈ {}", diff_str, diff_perc_str);
         }
 
         // Search node count
@@ -63,7 +80,7 @@ pub fn run_bench(save: bool) {
             let diff_perc = ((nodes as f64 - prev as f64) / prev as f64) * 100.;
             let diff_str = color_string_percent(format!("{:>+} nodes", nodes as i128 - prev  as i128).normal(), diff_perc, false);
             let diff_perc_str = color_string_percent(format!("{:>+.3}%", diff_perc).normal(), diff_perc, false);
-            println!(" Search node count changed by {} ≈ {}", diff_str, diff_perc_str);
+            println!("  Search node count changed by {} ≈ {}", diff_str, diff_perc_str);
         }
 
         // Search TTD
@@ -72,7 +89,7 @@ pub fn run_bench(save: bool) {
             let diff_perc = ((search_time as f64 - prev as f64) / prev as f64) * 100.;
             let diff_str = color_string_percent(format!("{:>+} ms", search_time as i128 - prev  as i128).normal(), diff_perc, false);
             let diff_perc_str = color_string_percent(format!("{:>+.3}%", diff_perc).normal(), diff_perc, false);
-            println!(" Search time to depth changed by {} ≈ {}", diff_str, diff_perc_str);
+            println!("  Search time to depth changed by {} ≈ {}", diff_str, diff_perc_str);
         }
 
         // Search MNodes/s
@@ -81,7 +98,7 @@ pub fn run_bench(save: bool) {
             let diff_perc = ((search_mnps - prev) / prev) * 100.;
             let diff_str = color_string_percent(format!("{:>+.4} MNodes/s", search_mnps - prev).normal(), diff_perc, true);
             let diff_perc_str = color_string_percent(format!("{:>+.3}%", diff_perc).normal(), diff_perc, true);
-            println!(" Search MNodes/s changed by {} ≈ {}", diff_str, diff_perc_str);
+            println!("  Search MNodes/s changed by {} ≈ {}", diff_str, diff_perc_str);
         }
     }
 
@@ -92,7 +109,9 @@ pub fn run_bench(save: bool) {
         writeln!(file, "s_ttd:{}", search_time).unwrap();
         writeln!(file, "nodes:{}", nodes).unwrap();
         writeln!(file, "search_mnps:{}", search_mnps).unwrap();
-        println!("Baseline saved");
+        
+        println!();
+        println!(" Baseline saved");
     }
 
     println!()
@@ -121,7 +140,7 @@ fn mega_nodes_pr_sec(nodes: u128, millis: u128) -> f64 {
     (nodes as f64 / millis as f64) / 1000.
 }
 
-fn perft_bench() -> f64 {
+fn perft_bench() -> (u128, f64) {
     println!(" Running perft benchmark...");
     print!(" Warming up...\t");
 
@@ -149,13 +168,10 @@ fn perft_bench() -> f64 {
     
     let perft_mnps = mega_nodes_pr_sec(nodes as u128, perft_time);
 
-    println!(" Finished perft bench in {:.2}s", perft_time as f64 / 1000.);
-    println!("  Speed was {perft_mnps:.2} MNodes/s");
-
-    perft_mnps
+    (perft_time, perft_mnps)
 }
                 //(millis, nodes, MNPS)
-fn search_bench() -> (u128, u128, f64) {
+fn search_bench() -> (u128, u128, f64, u128) {
     println!(" Running search time to depth benchmark...");
     print!(" Warming up...\t");
 
@@ -187,14 +203,7 @@ fn search_bench() -> (u128, u128, f64) {
 
     let search_mnps = mega_nodes_pr_sec(nodes, search_time);
 
-    println!(" Finished search bench in {} ms", search_time);
-    println!("  Searched {:.4} MNodes", (nodes as f64) / 1000000_f64);
-    println!("  Speed was {search_mnps:.4} MNodes/s");
-
-    println!("  Searched {} nodes", nodes);
-    println!("  TT hits: {tt_hits}");
-
-    (search_time, nodes, search_mnps)
+    (search_time, nodes, search_mnps, tt_hits)
 }
 
 fn baseline_path() -> PathBuf {

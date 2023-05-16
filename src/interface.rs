@@ -22,62 +22,6 @@ pub fn interface_loop() {
         };
 
         match cmd_name {
-            // Cadabra specific commands
-            "help" => {
-                todo!()
-            },
-            "d" => {
-                println!("{}", pos);
-            },
-            "fen" => {
-                println!("{}", pos.fen_string());
-            },
-            "x" => { // "x" added for conveniece. Does the same as UCI's 'quit'
-                quit()
-            },
-            "move" => {
-                let moov = match take_next(&mut command) {
-                    Some(m) => m,
-                    None => {
-                        println!("Provide a move to make");
-                        continue
-                    }
-                };
-
-                if let Err(err) = pos.make_uci_move(moov) {
-                    println!("{err}")
-                }
-            },
-            "eval" => {
-                println!("Heuristic value: {}", pos.evaluate())
-            },
-            "zobrist" => {
-                println!("Zobrist hash:: {:x}", pos.zobrist_hash)
-            }
-            "perft" => {
-                parse_perft(&mut command, &pos);
-            },
-            "bench" => {
-                match take_next(&mut command) {
-                    Some("save") => run_bench(true),
-                    None => run_bench(false),
-                    Some(arg) => println!("Illegal parameter for bench '{arg}'. Only 'save' is supported"),
-                }
-            },
-            "legal" => {
-                for m in pos.generate_moves() {
-                    println!(" {m}")
-                }
-            },
-            "threefold" => {
-                println!("{}", pos.rep_table.is_in_3_fold_rep(&pos))
-            },
-            "clear_hash" => {
-                current_search.clear_hash(settings);
-            }
-
-
-
             // UCI commands
             "uci" => {
                 println!("id name {PKG_NAME} {PKG_VERSION}");
@@ -160,6 +104,62 @@ pub fn interface_loop() {
                     Some("off") => println!("Debug setting does nothing"),
                     _ => println!("Debug can be 'on' or 'off'"),
                 }
+            }
+
+            
+
+            // Cadabra specific commands
+            "help" => {
+                todo!()
+            },
+            "d" => {
+                println!("{}", pos);
+            },
+            "fen" => {
+                println!("{}", pos.fen_string());
+            },
+            "x" => { // "x" added for conveniece. Does the same as UCI's 'quit'
+                quit()
+            },
+            "move" => {
+                let moov = match take_next(&mut command) {
+                    Some(m) => m,
+                    None => {
+                        println!("Provide a move to make");
+                        continue
+                    }
+                };
+
+                if let Err(err) = pos.make_uci_move(moov) {
+                    println!("{err}")
+                }
+            },
+            "eval" => {
+                println!("Heuristic value: {}", pos.evaluate())
+            },
+            "zobrist" => {
+                println!("Zobrist hash:: {:x}", pos.zobrist_hash)
+            }
+            "perft" => {
+                parse_perft(&mut command, &pos);
+            },
+            "bench" => {
+                match take_next(&mut command) {
+                    Some("save") => run_bench(true),
+                    None => run_bench(false),
+                    Some(arg) => println!("Illegal parameter for bench '{arg}'. Only 'save' is supported"),
+                }
+            },
+            "legal" => {
+                for m in pos.generate_moves() {
+                    println!(" {m}")
+                }
+            },
+            "threefold" => {
+                println!("{}", pos.rep_table.is_in_3_fold_rep(&pos))
+            },
+            "clear_hash" => {
+                current_search.clear_hash(settings);
             }
 
             _ => println!("Unknown command '{cmd_name}', use 'help' command for all commands")

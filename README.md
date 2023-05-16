@@ -1,5 +1,112 @@
 # Cadabra
 
-Cadabra is a chess engine under development. It is made in rust and is the successor to my first engine [JENCE](https://github.com/PQNebel/JENChessEngine). This engine aims to be much more rust idiomatic and maintainable, and of course stronger.
+Cadabra is a chess engine writen entirely in rust, and is the successor to my first engine [JENCE](https://github.com/PQNebel/JENChessEngine)
+
+ELO is currently approximately 1700-1800, but work is ongoing to improve this drastically.
+
+# Usage
+
+The engine is designed to be used with a UCI compliant GUI. This program does not provide one. GUIs I have used for testing are Arena, CuteChess and Lucas Chess, but many others are available.
+
+<!---
+Precompiled binaries are provided under [releases](https://github.com/JENebel/Cadabra/releases). The BMI2 versions are prefferable, but may not be supported on older machines.
+-->
+
+For the best results, compile it yourself. Make sure rust and cargo are installed first. Then clone the repositiory and simply run the following in the cloned folder
+
+    cargo build --release
+
+The resulting binary will then be located in Cadabra/target/release/
+
+# Commands
+
+The engine supports the [UCI protocol](https://backscattering.de/chess/uci/) as well as these additional commands:
+  - d
+    - Pretty prints the current position.
+  - fen
+    - Prints the Forsynth Edwards Notation(FEN) for the current position.
+  - x
+    - Quits the engine. Equivalent to the UCI 'quit' command.
+  - move [move]
+    - Make a move on the current position. The move must be legal, and should be formatted in UCI format, eg. a2a4 or b7b8q.
+  - eval
+    - Print the static heuristic evaluation of the current position in centipawns.
+  - zobrist
+    - Print the zobrist hash of the current position.
+  - perft [depth]
+    - Perform a perft test to the desired depth.
+  - bench [optional 'save']
+    - Benchmark the engine. Performs a benchmark of perft and search performance. If 'save' is appended, it saves the results for use as a baseline. Future runs will then be compared to this result.
+    - It is preffered to benchmark by running the binary with the 'bench' argument to reduce vaiables.
+  - legal
+    - Lists all legal moves on the current position.
+  - threefold
+    - Prints true/false depending on if the current position is in a threefold repetition state, eg. stalemate.
+  - clear_hash
+    - Clears the internal hash table manually.
 
 
+<a id="options"></a>
+
+# UCI options
+
+These options are available through the GUI used, or can be manually changed if run in CLI.
+  - Hash table size
+    - Sets the hash table size to the desired amount of MBs
+    - Default is 16 MB
+    - "setoption name Hash value 128"
+  - Thread count
+    - Sets the amount of threads to the desired count
+    - Default is 1
+    - "setoption name Threads value 4"
+  - Clear hash
+    - Simply clears the internal hash table
+    - "setoption name Clear Hash"
+
+# Tools
+
+## Benchmarking
+
+There is an internal benchmarking tool for benchmarking performance of the engine. This is also important in testing changes.
+
+A benchmark can be run by using the 'bench' command.
+The best way to benchmark is to clone the repository and run the custom cargo command
+
+    cargo benchmark
+
+If debuggin, it can be useful to use a debug profile. This is available with the following
+
+    cargo dev_benhmark
+
+To save a baseline to compare against, append 'save'
+
+    cargo benchmark save
+
+## Validator
+
+A seperate validator binary is also used available. It is used exclusively for testing. It validates that the move generator is valid, and can track any errors. This makes it easy to identify bugs in the move generator.
+
+To run this use the custom cargo command
+
+    cargo validate
+
+# Implementation
+
+Move generation
+  - Pregenrerated sliding piece attack tables using BMI2's PEXT instructions
+  - Many other pregenerated tables to assist in psudo legal move generation, pin masks etc. to avoid run time calculations
+  - This results in a very fast move generator rivaling the best engines generators, and often beating them in perft speed
+
+Search
+  - Negamax alpha beta search followed by quiescence search
+  - Lazy SMP multithreading (Currently doesn't provide a benefit in practice)
+  - Hash table / transposition table (Currently a simple and rudimentary implementation)
+  - Iterative deepening
+  - Check extensions
+  - MVV-LVA move sorting
+  - Effective time management
+  - Much more is coming...
+
+Static evaluation
+  - Material scores
+  - Simple piece square tables
