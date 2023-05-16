@@ -98,7 +98,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
         best_move = context.pv_table.best_move();
 
         let time = context.start_time.elapsed().as_millis();
-        info!(context, "info score {} depth {depth} nodes {} time {} pv {}", score_str(score), context.nodes, time, context.pv_table);
+        info!(context, "info score {} depth {depth} nodes {} time {} pv {}", score_str(score), context.nodes + context.qui_nodes, time, context.pv_table);
     }
 
     // Stop helper threads
