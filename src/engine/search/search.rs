@@ -20,6 +20,15 @@ impl Search {
         }
     }
 
+    pub fn update_settings(&mut self, new_settings: Settings) {
+        // New tt if size changed
+        if new_settings.transposition_table_mb != self.settings.lock().unwrap().transposition_table_mb {
+            self.tt = Arc::new(TranspositionTable::new(new_settings.transposition_table_mb))
+        }
+
+        *self.settings.lock().unwrap() = new_settings;
+    }
+
     /// Returns the running time
     pub fn start(&self, pos: Position, meta: SearchArgs, print: bool) -> SearchStats {
         self.is_running.store(true, Relaxed);

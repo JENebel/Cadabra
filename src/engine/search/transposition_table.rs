@@ -63,8 +63,6 @@ impl TranspositionTable {
     const BYTES_PR_MB: usize = 1024 * 1024;
 
     pub fn new(megabytes: usize) -> Self {
-        assert!((megabytes & (megabytes - 1)) == 0, "Transposition size must be power of 2");
-
         let bytes = Self::BYTES_PR_MB * megabytes;
         let entry_count = bytes / size_of::<TTEntry>(); // Makes entry_count a bitmap: 0b00...0011...11
         

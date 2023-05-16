@@ -8,7 +8,7 @@ pub fn interface_loop() {
     // Spawn listening thread that reads input without blocking main thread
     let ui_receiver = spawn_ui_listener_thread();
 
-    let settings = Settings::default();
+    let mut settings = Settings::default();
 
     let mut current_search: Search = Search::new(settings);
 
@@ -80,12 +80,27 @@ pub fn interface_loop() {
                 println!();
 
                 // Advertise options
-                // println!("option name Hash type spin default 16 min 1 max 1048576");
+                println!("option name Hash type spin default 16 min 1 max 1048576");
+                println!("option name Threads type spin default 1 min 1 max 255");
+
+                // Apply modified settings
+                current_search = Search::new(settings);
 
                 println!("uciok")
             },
             "setoption" => {
-                todo!()
+                if current_search.is_running() {
+                    println!("Cannot change options while a search is running");
+                    continue;
+                }
+
+                match parse_set_option(&mut command, settings) {
+                    Ok(n_settings) => {
+                        settings = n_settings;
+                        current_search.update_settings(settings)
+                    },
+                    Err(err) => println!("{err}"),
+                }
             },
             "isready" => {
                 println!("readyok")
@@ -139,6 +154,43 @@ pub fn interface_loop() {
             _ => println!("Unknown command '{cmd_name}', use 'help' command for all commands")
         }
     }
+}
+
+fn parse_set_option(mut command: &str, mut settings: Settings) -> Result<Settings, String> {
+    match take_next(&mut command) {
+        Some("name") => (),
+        _ => return Err("Expected 'name' in command after 'setoption'".to_string()),
+    }
+    match take_next(&mut command) {
+        Some("Hash") => match take_next(&mut command) {
+            Some("value") => match take_next_num(&mut command) {
+                Some(megabytes) => {
+                    if (megabytes & (megabytes - 1)) != 0 || megabytes < 1 {
+                        return Err("Transposition size must be a positive power of 2".to_string());
+                    }
+                    settings.transposition_table_mb = megabytes;
+                },
+                _ => return Err("No value provided for Hash option".to_string())
+            },
+            _ => return Err("Expected 'value' after 'Hash'".to_string())
+        },
+        Some("Threads") => match take_next(&mut command) {
+            Some("value") => match take_next_num(&mut command) {
+                Some(threads) => {
+                    if threads < 1 {
+                        return Err("Threads must be at least 1".to_string());
+                    }
+                    settings.threads = threads;
+                },
+                _ => return Err("No value provided for Threads option".to_string())
+            },
+            _ => return Err("Expected 'value' after 'Threads'".to_string())
+        },
+        Some(unknown) => return Err(format!("Unknown option name '{unknown}'")),
+        None => return Err("No option name provided".to_string()),
+    }
+
+    Ok(settings)
 }
 
 pub fn spawn_ui_listener_thread() -> Receiver<String> {
