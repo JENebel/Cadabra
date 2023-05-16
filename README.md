@@ -12,7 +12,7 @@ The engine is designed to be used with a UCI compliant GUI. This program does no
 Precompiled binaries are provided under [releases](https://github.com/JENebel/Cadabra/releases). The BMI2 versions are prefferable, but may not be supported on older machines.
 -->
 
-For the best results, compile it yourself. Make sure rust and cargo are installed first. Then clone the repositiory and simply run the following in the cloned folder
+For the best results, compile it yourself. Make sure rust and cargo are installed first. Then download and unzip the source code from [releases](https://github.com/JENebel/Cadabra/releases), and simply run the following command in the folder
 
     cargo build --release
 
@@ -94,7 +94,7 @@ To run this use the custom cargo command
 
 Move generation
   - Pregenrerated sliding piece attack tables using BMI2's PEXT instructions
-  - Many other pregenerated tables to assist in psudo legal move generation, pin masks etc. to avoid run time calculations
+  - Many other pregenerated tables to assist in pseudo legal move generation, pin masks etc. to avoid run time calculations
   - This results in a very fast move generator rivaling the best engines generators, and often beating them in perft speed
 
 Search
