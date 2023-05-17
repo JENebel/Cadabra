@@ -21,29 +21,32 @@ The resulting binary will then be located in Cadabra/target/release/
 # Commands
 
 The engine supports the [UCI protocol](https://backscattering.de/chess/uci/) as well as these additional commands:
-  - d
-    - Pretty prints the current position.
-  - fen
-    - Prints the Forsynth Edwards Notation(FEN) for the current position.
-  - x
-    - Quits the engine. Equivalent to the UCI 'quit' command.
-  - move [move]
-    - Make a move on the current position. The move must be legal, and should be formatted in UCI format, eg. a2a4 or b7b8q.
-  - eval
-    - Print the static heuristic evaluation of the current position in centipawns.
-  - zobrist
-    - Print the zobrist hash of the current position.
-  - perft [depth]
-    - Perform a perft test to the desired depth.
-  - bench [optional 'save']
-    - Benchmark the engine. Performs a benchmark of perft and search performance. If 'save' is appended, it saves the results for use as a baseline. Future runs will then be compared to this result.
-    - It is preffered to benchmark by running the binary with the 'bench' argument to reduce vaiables.
-  - legal
-    - Lists all legal moves on the current position.
-  - threefold
-    - Prints true/false depending on if the current position is in a threefold repetition state, eg. stalemate.
-  - clear_hash
-    - Clears the internal hash table manually.
+
+    d               Pretty prints the current position.
+
+    fen             Prints the Forsynth Edwards Notation(FEN) for the current position.
+
+    x               Quits the engine. Equivalent to the UCI 'quit' command.
+
+    move [move]     Make a move on the current position.
+                    The move must be legal, and should be formatted in UCI format, eg. a2a4 or b7b8q.
+
+    eval            Print the static heuristic evaluation of the current position in centipawns.
+
+    zobrist         Print the zobrist hash of the current position.
+
+    perft [depth]   Perform a perft test to the desired depth.
+
+    bench [save?]   Benchmark the engine. Performs a benchmark of perft and search performance.
+                    If 'save' is appended, it saves the results for use as a baseline.
+                    Future runs will then be compared to this result.
+                    The preffered way is to run with the 'bench' argument instead to reduce vaiables.
+  
+    legal           Lists all legal moves on the current position.
+  
+    threefold       Prints true/false depending on if the current position is in a threefold repetition stalemate.
+  
+    clear_hash      Clears the internal hash table manually.
 
 
 <a id="options"></a>
