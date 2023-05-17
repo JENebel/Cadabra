@@ -10,10 +10,6 @@ build = "src/generate_sliding_attacks.rs"
 default-run = "cadabra"
 
 [[bin]]
-name = "validator"
-path = "src/validator/main.rs"
-
-[[bin]]
 name = "cadabra"
 path = "src/main.rs"
 
@@ -23,3 +19,6 @@ colored = "2.0.0"
 const_for = "0.1.2"
 heapless = "0.7.16"
 lazy_static = "1.4.0"
+
+[dev-dependencies]
+chess = "3.2.0"
