@@ -1,8 +1,11 @@
 # Cadabra
 
-Cadabra is a chess engine writen entirely in rust, and is the successor to my first engine [JENCE](https://github.com/PQNebel/JENChessEngine)
+Cadabra is a chess engine writen entirely in rust, and is the successor to my first engine [JENCE](https://github.com/PQNebel/JENChessEngine).
 
-ELO is currently approximately 1700-1800, but work is ongoing to improve this drastically.
+Cadabra is listed on [CCRL](http://ccrl.chessdom.com/ccrl/404/) with the following rating:
+| Version | CCRL Blitz |
+|---------|------------|
+| 1.x     | 1438 +-32  |
 
 # Usage
 
@@ -44,7 +47,7 @@ The engine supports the [UCI protocol](https://backscattering.de/chess/uci/) as 
   
     legal           Lists all legal moves on the current position.
   
-    threefold       Prints true/false depending on if the current position is in a threefold repetition stalemate.
+    threefold       Prints true if in a threefold repetition stalemate, otherwise prints false.
   
     clear_hash      Clears the internal hash table manually.
 
@@ -77,7 +80,7 @@ The best way to benchmark is to clone the repository and run the custom cargo co
 
     cargo benchmark
 
-If debuggin, it can be useful to use a debug profile. This is available with the following
+If debugging, it can be useful to use a debug profile. This is available with the following
 
     cargo dev_benhmark
 
