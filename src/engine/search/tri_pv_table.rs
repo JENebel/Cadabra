@@ -16,34 +16,29 @@ impl PVTable {
         }
     }
 
-    pub fn init_ply(&mut self, ply: u8) {
-        self.pv_lengths[ply as usize] = ply as usize
-    }
-
     pub fn best_move(&self) -> Option<Move> {
         self.pv_table[0][0]
     }
 
     pub fn insert_pv_node(&mut self, cmove: Move, ply: u8) {
+        println!("Inserting pv node: {} at {ply}", cmove);
         let ply = ply as usize;
 
         self.pv_table[ply][ply] = Some(cmove);
-        
-        for next_ply in (ply + 1)..self.pv_lengths[ply + 1] {
-            self.pv_table[ply][next_ply] = self.pv_table[ply + 1][next_ply];
-        }
 
-        self.pv_lengths[ply] = self.pv_lengths[ply + 1];
+        self.pv_lengths[ply] = ply.max(self.pv_lengths[ply + 1]);
+
+        for i in (ply + 1)..=self.pv_lengths[ply + 1] {
+            self.pv_table[ply][i] = self.pv_table[ply + 1][i];
+        }
     }
 }
 
 impl Display for PVTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut i = 0;
-        while let Some(m) = self.pv_table[i][i] {
-            write!(f, "{} ", m)?;
-            i += 1;
-        };
+        for i in 0..=self.pv_lengths[0] {
+            write!(f, "{} ", self.pv_table[0][i].unwrap())?;
+        }
         Ok(())
     }
 }

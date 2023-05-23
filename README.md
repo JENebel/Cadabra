@@ -111,6 +111,7 @@ Search
   - Check extensions
   - MVV-LVA move sorting
   - Effective time management
+  - Aspiration window
   - Much more is coming...
 
 Static evaluation

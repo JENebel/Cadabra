@@ -1,6 +1,11 @@
 use super::*;
 use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread::{self, JoinHandle}, time::Instant};
 
+/// Initial aspiration window is +- this value
+const ASPIRATION_WINDOW: i16 = 15;
+/// Exponentially increase window by this multiplier on fail
+const ASPIRATION_WINDOW_MULT: i16 = 3;
+
 #[derive(Clone)]
 pub struct Search {
     is_running: Arc<AtomicBool>,
@@ -88,7 +93,7 @@ macro_rules! info {
 
 fn score_str(score: i16) -> String {
     if score >= -MATE_VALUE && score < -MATE_BOUND {
-        format!("mate {} ", -(score + MATE_VALUE) / 2 - 1)
+        format!("mate {}", -(score + MATE_VALUE) / 2 - 1)
     } else if score <= MATE_VALUE && score > MATE_BOUND {
         format!("mate {}", (MATE_VALUE - score) / 2 + 1)
     } else {
@@ -100,14 +105,43 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
     let pos = context.pos;
 
     let mut best_move = Option::None;
-    // Iterative deepening loop
-    for depth in (thread_id % 4 + 1)..(context.search_meta.max_depth + 1) {
-        let score = negamax::<IS_MASTER>(&pos, -INFINITY, INFINITY, depth, 0, context);
+    let (mut alpha, mut beta) = (-INFINITY, INFINITY);
 
-        if context.search.is_stopping() /*|| score > MATE_BOUND || score < -MATE_BOUND */{
-            break;
+    // Iterative deepening loop
+    for depth in (thread_id % 4 + 1)..=(context.search_meta.max_depth) {
+        // Run initial search with narrow search (Except first time)
+        let mut score = negamax::<IS_MASTER>(&pos, alpha, beta, depth, 0, context);
+
+        // Widening aspiration window
+        let mut alpha_mult = 1;
+        let mut beta_mult = 1;
+        loop {
+            if context.search.is_stopping() {
+                break;
+            }
+
+            if score <= alpha {
+                // Widen window alpha side
+                alpha_mult *= ASPIRATION_WINDOW_MULT;
+                alpha = (score as i32 - alpha_mult as i32 * ASPIRATION_WINDOW as i32).min(-INFINITY as i32) as i16;
+                score = negamax::<IS_MASTER>(&pos, alpha, beta, depth, 0, context);
+            } else if score >= beta {
+                // Widen window beta side
+                beta_mult *= ASPIRATION_WINDOW_MULT;
+                beta = (score as i32 + beta_mult as i32 * ASPIRATION_WINDOW as i32).max(INFINITY as i32) as i16;
+                score = negamax::<IS_MASTER>(&pos, alpha, beta, depth, 0, context);
+            } else {
+                // Succcessful search
+                // Reset window for next iteration
+                (alpha, beta) = (score - ASPIRATION_WINDOW, score + ASPIRATION_WINDOW);
+                break;
+            }
         }
 
+        if context.search.is_stopping() {
+            break;
+        }
+        
         best_move = context.pv_table.best_move();
 
         let time = context.start_time.elapsed().as_millis();
@@ -137,12 +171,12 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         return 0
     }
     
-    /*let is_pv = (beta - alpha) > 1;*/
+    let is_pv = (beta as i32 - alpha as i32) > 1;
 
     // Probe transposition table
-    // Ply > 0 or we risk not knowing the move
-    if ply > 0 /*&& !is_pv*/ {
-        if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
+    if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
+        // Ply > 0 or we risk not knowing the move
+        if !is_pv && ply > 0 {
             // Adjust mating score
             let score = entry.score();
             let score = if score < -MATE_BOUND {
@@ -163,10 +197,11 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
                     return score
                 }
             }
-            best_move = Some(entry.best_move());
-    
-            context.tt_hits += 1;
         }
+     
+        best_move = Some(entry.best_move());
+
+        context.tt_hits += 1;
     }
 
     if ply == MAX_PLY as u8 - 1 {
@@ -189,9 +224,6 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     }
 
     context.nodes += 1;
-
-    // Initialize PV table to ply
-    context.pv_table.init_ply(ply);
 
     // Initialize TT entry hashflag
     let mut hash_flag = HashFlag::UpperBound;

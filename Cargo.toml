@@ -1,17 +1,12 @@
 [package]
 name = "cadabra"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Joachim Enggaard Nebel"]
 edition = "2021"
 license = "BSD-2-Clause"
 description = "UCI compatible chess engine"
 repository = "https://github.com/JENebel/Cadabra/"
 build = "src/generate_sliding_attacks.rs"
-default-run = "cadabra"
-
-[[bin]]
-name = "cadabra"
-path = "src/main.rs"
 
 [dependencies]
 bitintr = "0.3.0"
