@@ -204,6 +204,8 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         context.tt_hits += 1;
     }
 
+    context.pv_table.pv_lengths[ply as usize] = ply as usize;
+
     if ply == MAX_PLY as u8 - 1 {
         return pos.evaluate();
     }
