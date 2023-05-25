@@ -170,7 +170,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     // Probe transposition table
     if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
-        // Ply > 0 or we risk not knowing the move
+        // Ply > 0 or we risk not knowing the move. !is_pv, or we get weird stuff happening
         if !is_pv && ply > 0 {
             // Adjust mating score
             let score = entry.score();
@@ -230,6 +230,19 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     if is_in_check { depth += 1 };
 
+    // NULL MOVE PRUNING
+    /*let only_pawns_left = pos.bb(pos.active_color, PieceType::Pawn).count_bits() + 1 == pos.color_bb(pos.active_color).count_bits();
+    if !is_pv && !is_in_check && depth >= 3{
+        let mut new_pos = *pos;
+        new_pos.make_null_move();
+
+        let score = -negamax::<IS_MASTER>(&new_pos, -beta, -beta + 1, depth - 3, ply + 1, context);
+
+        if score >= beta {
+            return score
+        }
+    }*/
+
     // Generate moves
     let mut move_list = pos.generate_moves().sort(pos, context, best_move, ply);
 
@@ -243,12 +256,64 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         }
     }
 
+    let mut moves_searched = 0;
     // Loop through moves
     while let Some(moove) = move_list.pop_best() {
         let mut new_pos = *pos;
         new_pos.make_move(moove);
+        let caused_check = new_pos.is_in_check();
 
-        let score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
+        let mut score;
+        if moves_searched == 0 {
+            // Full search in left-most node
+            score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
+        } else {
+            // LATE MOVE REDUCTIONS
+
+            // Determine if LMR should be used
+            let reduced = !is_pv 
+                && depth >= 3 
+                && !moove.is_capture() 
+                && !moove.is_promotion() 
+                && !is_in_check 
+                && !caused_check 
+                && moves_searched >= 4;
+
+            if reduced {
+                // Reduced null window search
+
+
+                // Opt 1
+                let reduction = if moves_searched < 10 { 1 } else { depth / 3 };
+
+                // Opt 2
+                // let reduction = if moves_searched < 10 { 1 } else { 2 };
+
+                // opt 3
+                // let reduction = 1;
+
+
+                score = -negamax::<IS_MASTER>(&new_pos, -alpha - 1, -alpha, depth - 1 - reduction, ply + 1, context);
+
+                if score > alpha {
+                    // Full null window search on failure
+                    score = -negamax::<IS_MASTER>(&new_pos, -alpha - 1, -alpha, depth - 1, ply + 1, context);
+
+                    if score > alpha {
+                        // Full search on failure
+                        score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
+                    }
+                }
+            } else {
+                // Full null window search
+                score = -negamax::<IS_MASTER>(&new_pos, -alpha - 1, -alpha, depth - 1, ply + 1, context);
+
+                if score > alpha {
+                    // Full search on failure
+                    score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
+                }
+            }
+        }
 
         // Alpha cutoff
         if score > alpha {
@@ -277,6 +342,8 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             // Update alpha
             alpha = score;
         }
+
+        moves_searched += 1;
     }
     
     // Record upper bound/exact score in TT depending on if we have a PV node
