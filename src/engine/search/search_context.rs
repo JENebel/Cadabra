@@ -8,6 +8,7 @@ pub struct SearchContext {
     pub search_meta: SearchArgs,
     pub pos: Position,
     pub pv_table: PVTable,
+    pub killer_moves: [[Option<Move>; MAX_PLY as usize]; KILLER_MOVE_COUNT],
     pub start_time: Instant,
     pub is_printing: bool,
 
@@ -23,6 +24,7 @@ impl SearchContext {
             search_meta,
             pos,
             pv_table: PVTable::new(),
+            killer_moves: [[None; MAX_PLY as usize]; KILLER_MOVE_COUNT],
             start_time,
             is_printing,
             nodes: 0,
@@ -34,5 +36,13 @@ impl SearchContext {
     /// Returns true if the search should continue, as well as mark as stopping if the time is up
     pub fn exceeded_time_target(&self) -> bool {
         self.start_time.elapsed().as_millis() > self.search_meta.time_target
+    }
+
+    pub fn insert_killer_move(&mut self, moove: Move, ply: u8) {
+        for i in (1..KILLER_MOVE_COUNT).rev() {
+            self.killer_moves[i][ply as usize] = self.killer_moves[i - 1][ply as usize];
+        }
+
+        self.killer_moves[0][ply as usize] = Some(moove);
     }
 }

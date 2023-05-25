@@ -1,11 +1,6 @@
 use super::*;
 use std::{sync::{atomic::{Ordering::*, AtomicBool}, Arc, Mutex}, thread::{self, JoinHandle}, time::Instant};
 
-/// Initial aspiration window is +- this value
-const ASPIRATION_WINDOW: i16 = 15;
-/// Exponentially increase window by this multiplier on fail
-const ASPIRATION_WINDOW_MULT: i16 = 3;
-
 #[derive(Clone)]
 pub struct Search {
     is_running: Arc<AtomicBool>,
@@ -236,7 +231,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     if is_in_check { depth += 1 };
 
     // Generate moves
-    let mut move_list = pos.generate_moves().sort(pos, context, best_move);
+    let mut move_list = pos.generate_moves().sort(pos, context, best_move, ply);
 
     // detect mate or stalemate if there are no legal moves
     if move_list.len() == 0 {
@@ -249,21 +244,26 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     }
 
     // Loop through moves
-    while let Some(m) = move_list.pop_best() {
+    while let Some(moove) = move_list.pop_best() {
         let mut new_pos = *pos;
-        new_pos.make_move(m);
+        new_pos.make_move(moove);
 
         let score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
 
         // Alpha cutoff
         if score > alpha {
-            best_move = Some(m);
+            best_move = Some(moove);
 
             // Insert PV node
-            context.pv_table.insert_pv_node(m, ply);
+            context.pv_table.insert_pv_node(moove, ply);
 
             // Beta cutoff
             if score >= beta {
+                // Record killer move
+                if !moove.is_capture() {
+                    context.insert_killer_move(moove, ply)
+                }
+
                 // Record lower bound score in TT
                 context.search.tt.record(pos.zobrist_hash, best_move, depth, beta, HashFlag::LowerBound, ply);
                 
@@ -308,7 +308,7 @@ fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, 
     }
 
     // Generate moves
-    let moves = pos.generate_moves().sort(pos, context, None);
+    let moves = pos.generate_moves().sort(pos, context, None, ply);
 
     // Loop through all captures
     for m in moves.filter(|m| m.is_capture()) {

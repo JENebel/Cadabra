@@ -112,7 +112,7 @@ Search
   - MVV-LVA move sorting
   - Effective time management
   - Aspiration window
-  - Much more is coming...
+  - Killer move table
 
 Static evaluation
   - Material scores

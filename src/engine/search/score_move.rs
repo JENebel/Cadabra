@@ -1,5 +1,9 @@
 use super::*;
 
+const PV_MOVE_SCORE: i16 = 30000;
+const BASE_CAPTURE_SCORE: i16 = 29000;
+const BASE_KILLER_SCORE: i16 = 28500;
+
 ///[attacker][victim]
 pub const MVV_LVA: [[i16; 6]; 6] = [
     [105, 205, 305, 405, 505, 605],
@@ -12,10 +16,10 @@ pub const MVV_LVA: [[i16; 6]; 6] = [
 
 impl Move {
     #[inline(always)]
-    pub fn score_move(&self, pos: &Position, _context: &mut SearchContext, best_move: Option<Move>) -> i16 {
+    pub fn score_move(&self, pos: &Position, context: &mut SearchContext, best_move: Option<Move>, ply: u8) -> i16 {
         if let Some(moove) = best_move {
             if *self == moove {
-                return 30000
+                return PV_MOVE_SCORE
             }
         }
 
@@ -27,22 +31,21 @@ impl Move {
         let src = self.src();
         let dst = self.dst();
         
+        // Captures
         if self.is_capture() {
             let src_piece = pos.piece_type_at(src);
             let dst_piece = pos.piece_type_at(dst);
     
-            MVV_LVA[src_piece.index(Color::White)][dst_piece.index(Color::White)] + 10000
+            return MVV_LVA[src_piece.index(Color::White)][dst_piece.index(Color::White)] + BASE_CAPTURE_SCORE
         }
-        else {
-            0
-            /*if envir.killer_moves[0][envir.ply as usize] == Some(cmove) {
-                9000
-            } else if envir.killer_moves[1][envir.ply as usize] == Some(cmove) {
-                8000
+
+        // Killer moves
+        for i in 0..KILLER_MOVE_COUNT {
+            if Some(*self) == context.killer_moves[i][ply as usize] {
+                return BASE_KILLER_SCORE - i as i16
             }
-            else {
-                envir.history_moves[cmove.piece() as usize][to_sq as usize]
-            }*/
         }
+
+        0
     }
 }
