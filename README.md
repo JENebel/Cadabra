@@ -2,10 +2,13 @@
 
 Cadabra is a chess engine writen entirely in rust, and is the successor to my first engine [JENCE](https://github.com/PQNebel/JENChessEngine).
 
+If you are lucky, Cadabra is online on [Lichess](https://lichess.org/@/CadabraBot).
+
 Cadabra is listed on [CCRL](http://ccrl.chessdom.com/ccrl/404/) with the following rating:
-| Version | CCRL Blitz |
-|---------|------------|
-| 1.x     | 1438 +-32  |
+| Version | CCRL Blitz | Lichess |
+|---------|------------|---------|
+| 1.0     | 1438 +-32  |         |
+| 1.1     |     -      |  ~1990  |
 
 # Usage
 
