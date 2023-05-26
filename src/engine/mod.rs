@@ -16,7 +16,7 @@ use square::*;
 use lookup_tables::*;
 use piece::*;
 use color::*;
-use bitboard::*;
+pub use bitboard::*;
 use moove::*;
 
 pub use castling::*;

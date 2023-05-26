@@ -3,7 +3,7 @@ use std::{io::{Write, stdout}, collections::HashMap, str::FromStr};
 use cadabra::*;
 use chess::*;
 
-fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
+fn debug_perft(pos: &Position, depth: u8) -> Result<HashMap<String, u64>, (String, Position)> {
     let moves = pos.generate_moves();
 
     let mut result: HashMap<String, u64> = HashMap::new();
@@ -11,17 +11,20 @@ fn debug_perft(pos: &Position, depth: u8) -> HashMap<String, u64> {
     for m in moves {
         let mut copy = *pos;
         copy.make_move(m);
+        if copy.zobrist_hash != Position::from_fen(&copy.fen_string()).unwrap().zobrist_hash {
+            return Err((format!("Wrong zobrist after move {m}"), *pos))
+        }
         let sub_nodes = if depth >2 {
             copy.perft::<false>(depth - 1)
         } else if depth > 1 {
-            debug_perft(&copy, depth - 1).iter().map(|m| m.1).sum()
+            debug_perft(&copy, depth - 1)?.iter().map(|m| m.1).sum()
         } else {
             1
         };
         result.insert(format!("{m}"), sub_nodes);
     }
 
-    result
+    Ok(result)
 }
 
 fn ref_debug_perft(pos: chess::Board, depth: u8) -> HashMap<String, u64> {
@@ -72,7 +75,8 @@ fn validate_position(fen: String, name: &str, depth: u8, tracing: bool) -> Resul
     // Reference engine io
 
     let mut pos = Position::from_fen(fen.as_str()).unwrap();
-    let own_res = debug_perft(&pos, depth);
+    let own_res = debug_perft(&pos, depth)?;
+
     let ref_res = ref_debug_perft(Board::from_str(&fen).unwrap(), depth);
 
     if depth == 1 {

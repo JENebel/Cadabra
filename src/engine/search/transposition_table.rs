@@ -77,23 +77,18 @@ impl TranspositionTable {
         self.table.len()
     }
 
-    fn load(&self, hash: u64) -> Option<TTEntry> {
-        let index = (hash & (self.entry_count() as u64 - 1)) as usize;
+    pub fn probe(&self, hash: u64) -> Option<TTEntry> {
+        let index = (hash % self.entry_count() as u64) as usize;
         let entry = TTEntry::from((
-                self.table[index].0.load(Relaxed),
-                self.table[index].1.load(Relaxed),
+            self.table[index].0.load(Relaxed),
+            self.table[index].1.load(Relaxed),
         ));
-        if entry.hash ^ entry.data == hash {
+
+        if (entry.hash ^ entry.data) == hash {
             Some(entry)
         } else {
             None
         }
-    }
-
-    fn store(&self, hash: u64, entry: TTEntry) {
-        let index = (hash & (self.entry_count() as u64 - 1)) as usize;
-        self.table[index].0.store(entry.hash ^ entry.data, Relaxed);
-        self.table[index].1.store(entry.data, Relaxed);
     }
 
     pub fn record(&self, hash: u64, best_move: Option<Move>, depth: u8, score: i16, flag: HashFlag, ply: u8) {
@@ -107,11 +102,9 @@ impl TranspositionTable {
         };
 
         let entry = TTEntry::new(hash, best_move.unwrap_or(Move::NULL), depth, score, flag);
-        self.store(hash, entry);
-    }
-
-    /// Returns (score, best_move, hash_flag) 
-    pub fn probe(&self, hash: u64) -> Option<TTEntry> {
-        self.load(hash)
+        
+        let index = (hash % self.entry_count() as u64) as usize;
+        self.table[index].0.store(entry.hash ^ entry.data, Relaxed);
+        self.table[index].1.store(entry.data, Relaxed);
     }
 }

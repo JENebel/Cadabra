@@ -16,7 +16,7 @@ pub struct Position {
     pub piece_squares: [PieceType; 64],
 
     pub active_color: Color,
-    pub enpassant_square: Bitboard,
+    pub enpassant_square_bitboard: Bitboard,
     pub castling_ability: CastlingAbility,
 
     pub full_moves: u16,
@@ -81,7 +81,7 @@ impl Position {
             all_occupancies: Bitboard::EMPTY,
             piece_squares: [Empty; 64],
             active_color,
-            enpassant_square,
+            enpassant_square_bitboard: enpassant_square,
             castling_ability,
             full_moves,
             half_moves,
@@ -109,6 +109,14 @@ impl Position {
         pos.generate_zobrist_hash();
 
         Ok(pos)
+    }
+
+    pub fn enpassant_sq(&self) -> Option<u8> {
+        if self.enpassant_square_bitboard.is_empty() {
+            None
+        } else {
+            Some(self.enpassant_square_bitboard.least_significant())
+        }
     }
 
     pub fn piece_type_at(&self, square: u8) -> PieceType {
@@ -151,8 +159,8 @@ impl Position {
 
         write!(result, " {}", self.castling_ability).unwrap();
 
-        if !self.enpassant_square.is_empty() {
-            write!(result, " {}", Square::from(self.enpassant_square.least_significant())).unwrap()
+        if !self.enpassant_square_bitboard.is_empty() {
+            write!(result, " {}", Square::from(self.enpassant_square_bitboard.least_significant())).unwrap()
         } else {
             write!(result, " -").unwrap()
         }

@@ -48,7 +48,7 @@ impl Square {
             return Err(format!("Illegal rank in square string"))
         }
 
-        Ok(Square::from(8 * file + rank))
+        Ok(Square::from(8 * rank + file))
     }
 }
 

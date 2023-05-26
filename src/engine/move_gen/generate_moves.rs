@@ -200,7 +200,7 @@ impl Position {
             return
         }
 
-        let captures = attacks & pin_mask & self.enpassant_square;
+        let captures = attacks & pin_mask & self.enpassant_square_bitboard;
 
         for enp_sq in captures {
             let captured = match color {
@@ -224,7 +224,7 @@ impl Position {
     #[inline(always)]
     fn generate_pawn_moves(&self, move_list: &mut MoveList, check_mask: Bitboard, hv_pin: Bitboard, d12_pin: Bitboard) {
         let pawns = self.bb(self.active_color, Pawn);
-        let has_enpassant = !self.enpassant_square.is_empty();
+        let has_enpassant = !self.enpassant_square_bitboard.is_empty();
 
         let hv_pinned_pawns = pawns & hv_pin;
         for src in hv_pinned_pawns {

@@ -20,10 +20,10 @@ impl Position {
         self.apply_side_zobrist();
 
         // Reset enpassant + update hash
-        if !self.enpassant_square.is_empty() {
-            self.apply_enpassant_zobrist(self.enpassant_square.least_significant());
-            self.enpassant_square = Bitboard::EMPTY;
-        };
+        if let Some(enpassant_square) = self.enpassant_sq() {
+            self.apply_enpassant_zobrist(enpassant_square);
+            self.enpassant_square_bitboard = Bitboard::EMPTY;
+        }
     }
 
     #[inline(always)]
@@ -39,6 +39,12 @@ impl Position {
         // Unapply current castling ability zobrist (reapplied after castling)
         self.apply_castling_zobrist();
 
+        // Reset enpassant + update hash
+        if let Some(enpassant_square) = self.enpassant_sq() {
+            self.apply_enpassant_zobrist(enpassant_square);
+            self.enpassant_square_bitboard = Bitboard::EMPTY;
+        }
+
         if moove.is_capture() && !moove.is_enpassant() {
             let captured = self.piece_type_at(dst);
             self.remove_piece(opp_color, captured, dst);
@@ -53,7 +59,6 @@ impl Position {
             
             self.remove_piece(opp_color, Pawn, captured);
             self.apply_piece_zobrist(opp_color, Pawn, captured);
-            self.apply_enpassant_zobrist(self.enpassant_square.least_significant());
         }
 
         // Castling KS
@@ -102,11 +107,8 @@ impl Position {
                 Black => dst - 8,
             };
 
-            self.enpassant_square = Bitboard(1 << enp_sq);
-            self.apply_enpassant_zobrist(enp_sq)
-        }
-        else {
-            self.enpassant_square = Bitboard::EMPTY
+            self.enpassant_square_bitboard = Bitboard(1 << enp_sq);
+            self.apply_enpassant_zobrist(enp_sq);
         }
 
         if moove.is_promotion() {

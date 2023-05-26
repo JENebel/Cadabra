@@ -9,6 +9,6 @@ lto = true
 codegen-units = 1
 
 [alias]
-validate = "run --bin validator stockfish"
+validate = "test validate_move_gen -- --ignored"
 benchmark = "run --release bench"
 dev_benchmark = "run bench"

@@ -13,14 +13,6 @@ fn main() {
         return;
     }
 
-    /*let ec = TranspositionTable::new(16).entry_count() as u64;
-    let hash = Position::start_pos().zobrist_hash;
-    println!("entries : \t{:#065b}", ec - 1);
-    println!("hash :    \t{:#065b}", hash);
-    println!("index   : \t{:#065b}", hash & ec - 1);
-    println!("Modulo  : \t{:#065b}", hash % ec);*/
-
-
     // Normal engine run
     // Begin accepting commands
     interface_loop();

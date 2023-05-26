@@ -148,7 +148,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
         context.search.stop();
         context.search.is_running.store(false, Relaxed);
 
-        info!(context, "bestmove {}", best_move.unwrap())
+        info!(context, "bestmove {}", best_move.unwrap());
     };
 
     SearchStats {
@@ -170,8 +170,9 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     // Probe transposition table
     if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
+        context.tt_hits += 1;
         // Ply > 0 or we risk not knowing the move. !is_pv, or we get weird stuff happening
-        if !is_pv && ply > 0 {
+        if !is_pv {
             // Adjust mating score
             let score = entry.score();
             let score = if score < -MATE_BOUND {
@@ -193,10 +194,8 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
                 }
             }
         }
-     
-        best_move = Some(entry.best_move());
 
-        context.tt_hits += 1;
+        best_move = Some(entry.best_move());
     }
 
     context.pv_table.pv_lengths[ply as usize] = ply as usize;
@@ -235,7 +234,12 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     // NULL MOVE PRUNING
     const R: u8 = 2;
     let only_pawns_left = pos.bb(pos.active_color, PieceType::Pawn).count_bits() + 1 == pos.color_bb(pos.active_color).count_bits();
-    let can_nmp = !is_pv && !is_in_check && depth >= R+1 && !only_pawns_left && static_eval >= beta;
+    let can_nmp = !is_pv
+        && !is_in_check 
+        && depth >= R + 1 
+        && !only_pawns_left 
+        && static_eval >= beta;
+
     if can_nmp {
         let mut new_pos = *pos;
         new_pos.make_null_move();
@@ -276,7 +280,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
             // Determine if LMR should be used
             let can_lmr = !is_pv 
-                && depth >= 3 
+                && depth >= 3
                 && !moove.is_capture() 
                 && !moove.is_promotion() 
                 && !is_in_check 
@@ -291,7 +295,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
                 // let reduction = if moves_searched < 6 { 1 } else { depth / 3 };
 
                 // Opt 2
-                let reduction = if moves_searched < 6 { 1 } else { 2 };
+                let reduction = if moves_searched >= 6 { 2 } else { 1 };
 
                 // opt 3
                 // let reduction = 1;

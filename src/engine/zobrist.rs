@@ -1,6 +1,6 @@
 use const_for::const_for;
 
-use super::{Color, PieceType, Position};
+use super::{Color, PieceType, Position, piece::index_to_piece};
 
 macro_rules! generate_keys {
     ($count: expr, $seed: expr) =>  {
@@ -50,10 +50,10 @@ impl Position {
     pub fn generate_zobrist_hash(&mut self) {
         self.zobrist_hash = 0;
 
-        for piece in 0..12 {
-            let bb = self.bitboards[piece];
-            for square in bb {
-                self.zobrist_hash ^= PIECE_KEYS[piece * 12 + square as usize];
+        for i in 0..12 {
+            let (piece_type, color) = index_to_piece(i);
+            for sq in self.bitboards[i] {
+                self.apply_piece_zobrist(piece_type, color, sq);
             }
         }
 
@@ -63,8 +63,8 @@ impl Position {
             self.apply_side_zobrist()
         }
 
-        if !self.enpassant_square.is_empty() {
-            self.apply_enpassant_zobrist(self.enpassant_square.least_significant());
+        if let Some(enpassant_square) = self.enpassant_sq() {
+            self.apply_enpassant_zobrist(enpassant_square);
         }
     }
 }
