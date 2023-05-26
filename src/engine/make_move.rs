@@ -14,7 +14,7 @@ impl Position {
         }
     }
 
-    pub fn _make_null_move(&mut self) {
+    pub fn make_null_move(&mut self) {
         // Switch side
         self.active_color = self.active_color.opposite();
         self.apply_side_zobrist();

@@ -116,6 +116,8 @@ Search
   - Effective time management
   - Aspiration window
   - Killer move table
+  - Late move reductions
+  - Null move pruning
 
 Static evaluation
   - Material scores

@@ -230,18 +230,22 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     if is_in_check { depth += 1 };
 
+    let static_eval = pos.evaluate();
+
     // NULL MOVE PRUNING
-    /*let only_pawns_left = pos.bb(pos.active_color, PieceType::Pawn).count_bits() + 1 == pos.color_bb(pos.active_color).count_bits();
-    if !is_pv && !is_in_check && depth >= 3{
+    const R: u8 = 2;
+    let only_pawns_left = pos.bb(pos.active_color, PieceType::Pawn).count_bits() + 1 == pos.color_bb(pos.active_color).count_bits();
+    let can_nmp = !is_pv && !is_in_check && depth >= R+1 && !only_pawns_left && static_eval >= beta;
+    if can_nmp {
         let mut new_pos = *pos;
         new_pos.make_null_move();
 
-        let score = -negamax::<IS_MASTER>(&new_pos, -beta, -beta + 1, depth - 3, ply + 1, context);
+        let score = -negamax::<IS_MASTER>(&new_pos, -beta, -beta + 1, depth - 1 - R, ply + 1, context);
 
         if score >= beta {
-            return score
+            return beta
         }
-    }*/
+    }
 
     // Generate moves
     let mut move_list = pos.generate_moves().sort(pos, context, best_move, ply);
@@ -271,7 +275,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             // LATE MOVE REDUCTIONS
 
             // Determine if LMR should be used
-            let reduced = !is_pv 
+            let can_lmr = !is_pv 
                 && depth >= 3 
                 && !moove.is_capture() 
                 && !moove.is_promotion() 
@@ -279,15 +283,15 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
                 && !caused_check 
                 && moves_searched >= 4;
 
-            if reduced {
+            if can_lmr {
                 // Reduced null window search
 
 
                 // Opt 1
-                let reduction = if moves_searched < 10 { 1 } else { depth / 3 };
+                // let reduction = if moves_searched < 6 { 1 } else { depth / 3 };
 
                 // Opt 2
-                // let reduction = if moves_searched < 10 { 1 } else { 2 };
+                let reduction = if moves_searched < 6 { 1 } else { 2 };
 
                 // opt 3
                 // let reduction = 1;
