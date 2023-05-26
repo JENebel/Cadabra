@@ -6,19 +6,19 @@ use lazy_static::lazy_static;
 use crate::engine::*;
 
 lazy_static!(
-    pub static ref POSITIONS: Vec<Position> = vec![
-        Position::start_pos(),
-        Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -").unwrap(),     // Kiwipete
-        Position::from_fen("r2q1rk1/5pp1/1ppp3p/2n1nbN1/4p1PP/P1P1P3/Q2PBP2/R1B2RK1 b - - 1 17").unwrap(),   // JENCE
-        Position::from_fen("1r1q1rk1/5pp1/1NRpb2p/p3p3/8/P2P2P1/1P2PPBP/3Q1RK1 b - - 0 19").unwrap(),        // Kasparov v Georgiev
-        Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap(), // Tricky position
-        Position::from_fen("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1").unwrap(),  // Killer position
-        Position::from_fen("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9").unwrap(), // CMK position
-        Position::from_fen("6k1/3q1pp1/pp5p/1r5n/8/1P3PP1/PQ4BP/2R3K1 w - - 0 1").unwrap(),
-        Position::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 10").unwrap(),
-        Position::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1").unwrap(),
-        Position::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").unwrap(),
-        Position::from_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10").unwrap(),
+    pub static ref POSITIONS: Vec<(i8, Position)> = vec![
+        (2, Position::start_pos()),
+        (-4, Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -").unwrap()),     // Kiwipete
+        (0, Position::from_fen("r2q1rk1/5pp1/1ppp3p/2n1nbN1/4p1PP/P1P1P3/Q2PBP2/R1B2RK1 b - - 1 17").unwrap()),    // JENCE
+        (1, Position::from_fen("1r1q1rk1/5pp1/1NRpb2p/p3p3/8/P2P2P1/1P2PPBP/3Q1RK1 b - - 0 19").unwrap()),         // Kasparov v Georgiev
+        (-4, Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap()), // Tricky position
+        (1, Position::from_fen("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1").unwrap()),   // Killer position
+        (-5, Position::from_fen("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9").unwrap()), // CMK position
+        (1, Position::from_fen("6k1/3q1pp1/pp5p/1r5n/8/1P3PP1/PQ4BP/2R3K1 w - - 0 1").unwrap()),
+        (3, Position::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 10").unwrap()),
+        (0, Position::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1").unwrap()),
+        (2, Position::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").unwrap()),
+        (-4, Position::from_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10").unwrap()),
     ];
 );
 
@@ -147,7 +147,7 @@ fn perft_bench() -> (u128, f64) {
     let before_wu = Instant::now();
     
     stdout().flush().unwrap();
-    for pos in POSITIONS.iter() {
+    for (_, pos) in POSITIONS.iter() {
         black_box(pos).perft::<false>(black_box(5));
     }
     println!("Done");
@@ -158,7 +158,7 @@ fn perft_bench() -> (u128, f64) {
     let before = Instant::now();
 
     for _ in 1..=ITERATIONS {
-        for pos in POSITIONS.iter() {
+        for (_, pos) in POSITIONS.iter() {
             nodes += black_box(pos).perft::<false>(black_box(5));
         }
         stdout().flush().unwrap();
@@ -174,15 +174,16 @@ fn perft_bench() -> (u128, f64) {
 fn search_bench() -> (u128, u128, f64, u128) {
     println!(" Running search time to depth benchmark...");
 
-    let depth = 6;
-    let meta = SearchArgs::new_simple_depth(black_box(depth));
+    let base_depth = 8;
+    
 
     let mut nodes = 0;
     let mut tt_hits = 0;
 
     let mut search_time = 0;
 
-    for pos in POSITIONS.iter() {
+    for (bias, pos) in POSITIONS.iter() {
+        let meta = SearchArgs::new_simple_depth(black_box((base_depth as i8 + bias) as u8));
         let search = Search::new(Settings::default());
         let res = black_box(search).start(*pos, meta, true);
         search_time += res.time;

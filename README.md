@@ -112,12 +112,14 @@ Search
   - Hash table / transposition table (Currently a simple and rudimentary implementation)
   - Iterative deepening
   - Check extensions
-  - MVV-LVA move sorting
   - Effective time management
   - Aspiration window
-  - Killer move table
   - Late move reductions
   - Null move pruning
+  - Move sorting
+    - MVV-LVA
+    - Killer moves
+    - History moves
 
 Static evaluation
   - Material scores

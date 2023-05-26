@@ -9,6 +9,7 @@ pub struct SearchContext {
     pub pos: Position,
     pub pv_table: PVTable,
     pub killer_moves: [[Option<Move>; MAX_PLY as usize]; KILLER_MOVE_COUNT],
+    pub history_moves: [[i16; 64]; 12],
     pub start_time: Instant,
     pub is_printing: bool,
 
@@ -25,6 +26,7 @@ impl SearchContext {
             pos,
             pv_table: PVTable::new(),
             killer_moves: [[None; MAX_PLY as usize]; KILLER_MOVE_COUNT],
+            history_moves: [[0; 64]; 12],
             start_time,
             is_printing,
             nodes: 0,

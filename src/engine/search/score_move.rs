@@ -46,6 +46,7 @@ impl Move {
             }
         }
 
-        0
+        let (color, piece) = pos.piece_at(src);
+        context.history_moves[piece.index(color)][dst as usize].min(1000)
     }
 }

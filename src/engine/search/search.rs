@@ -347,6 +347,11 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             // We now have an exact score to store in TT, as it is a PV node
             hash_flag = HashFlag::Exact;
 
+            if !moove.is_capture() {
+                let (color, piece) = pos.piece_at(moove.src());
+                context.history_moves[piece.index(color)][moove.dst() as usize] += (depth * depth) as i16;
+            }
+
             // Update alpha
             alpha = score;
         }
