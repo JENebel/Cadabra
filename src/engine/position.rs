@@ -19,7 +19,7 @@ pub struct Position {
     pub enpassant_square_bitboard: Bitboard,
     pub castling_ability: CastlingAbility,
 
-    pub full_moves: u16,
+    pub full_moves: u8,
     pub half_moves: u8,
     pub zobrist_hash: u64,
 
@@ -67,7 +67,7 @@ impl Position {
         } else { 0 };
 
         // Full moves
-        let full_moves: u16 = if let Some(fm_str) = split.next() {
+        let full_moves: u8 = if let Some(fm_str) = split.next() {
             match fm_str.parse() {
                 Ok(i) => i,
                 Err(_) => return Err(format!("Full moves was not a number")),

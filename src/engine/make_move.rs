@@ -133,7 +133,7 @@ impl Position {
         self.apply_castling_zobrist();
 
         // Increment full moves
-        self.full_moves += color as u16;
+        self.full_moves += color as u8;
 
         // Switch side
         self.active_color = opp_color;

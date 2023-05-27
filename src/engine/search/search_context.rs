@@ -7,6 +7,7 @@ pub struct SearchContext {
     pub search: Search,
     pub search_meta: SearchArgs,
     pub pos: Position,
+    pub tt_age: u8,
     pub pv_table: PVTable,
     pub killer_moves: [[Option<Move>; MAX_PLY as usize]; KILLER_MOVE_COUNT],
     pub history_moves: [[u16; 64]; 12],
@@ -20,10 +21,12 @@ pub struct SearchContext {
 
 impl SearchContext {
     pub fn new(search: Search, search_meta: SearchArgs, pos: Position, start_time: Instant, is_printing: bool) -> Self {
+        let tt_age = *search.age.lock().unwrap();
         Self {
             search,
             search_meta,
             pos,
+            tt_age,
             pv_table: PVTable::new(),
             killer_moves: [[None; MAX_PLY as usize]; KILLER_MOVE_COUNT],
             history_moves: [[0; 64]; 12],

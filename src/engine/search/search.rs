@@ -7,6 +7,7 @@ pub struct Search {
     is_stopping: Arc<AtomicBool>,
     settings: Arc<Mutex<Settings>>,
     tt: Arc<TranspositionTable>,
+    pub age: Arc<Mutex<u8>>,
 }
 
 impl Search {
@@ -17,6 +18,7 @@ impl Search {
             is_stopping: Arc::new(AtomicBool::new(false)),
             settings: Arc::new(Mutex::new(settings)),
             tt: Arc::new(tt),
+            age: Arc::new(Mutex::new(0)),
         }
     }
 
@@ -61,6 +63,8 @@ impl Search {
 
         self.is_stopping.store(false, Relaxed);
         self.is_running.store(false, Relaxed);
+
+        *self.age.lock().unwrap() += 1;
 
         result
     }
@@ -336,7 +340,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
                 }
 
                 // Record lower bound score in TT
-                context.search.tt.record(pos.zobrist_hash, best_move, depth, beta, HashFlag::LowerBound, ply);
+                context.search.tt.record(pos.zobrist_hash, best_move, depth, beta, HashFlag::LowerBound, ply, context.tt_age);
                 
                 // Return early
                 return beta;
@@ -359,7 +363,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     }
     
     // Record upper bound/exact score in TT depending on if we have a PV node
-    context.search.tt.record(pos.zobrist_hash, best_move, depth, alpha, hash_flag, ply);
+    context.search.tt.record(pos.zobrist_hash, best_move, depth, alpha, hash_flag, ply, context.tt_age);
     
     alpha
 }
