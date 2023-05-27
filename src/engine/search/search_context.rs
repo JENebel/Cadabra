@@ -9,7 +9,7 @@ pub struct SearchContext {
     pub pos: Position,
     pub pv_table: PVTable,
     pub killer_moves: [[Option<Move>; MAX_PLY as usize]; KILLER_MOVE_COUNT],
-    pub history_moves: [[i16; 64]; 12],
+    pub history_moves: [[u16; 64]; 12],
     pub start_time: Instant,
     pub is_printing: bool,
 
@@ -46,5 +46,9 @@ impl SearchContext {
         }
 
         self.killer_moves[0][ply as usize] = Some(moove);
+    }
+
+    pub fn insert_history_move(&mut self, moove: Move, (color, piece): (Color, PieceType), depth: u8) {
+        self.history_moves[piece.index(color)][moove.dst() as usize] += (depth * depth) as u16;
     }
 }

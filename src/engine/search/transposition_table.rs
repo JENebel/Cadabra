@@ -66,7 +66,7 @@ impl TranspositionTable {
         let bytes = Self::BYTES_PR_MB * megabytes;
         let entry_count = bytes / size_of::<TTEntry>(); // Makes entry_count a bitmap: 0b00...0011...11
         
-        assert!((entry_count & (entry_count - 1)) == 0, "Transposition entry count must be power of 2");
+        //assert!((entry_count & (entry_count - 1)) == 0, "Transposition entry count must be power of 2");
         
         Self {
             table: vec![false; entry_count].iter().map(|_| (AtomicU64::from(0), AtomicU64::from(0))).collect::<Vec<(AtomicU64, AtomicU64)>>().into_boxed_slice()

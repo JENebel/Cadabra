@@ -1,11 +1,11 @@
 use super::*;
 
-const PV_MOVE_SCORE: i16 = 30000;
-const BASE_CAPTURE_SCORE: i16 = 29000;
-const BASE_KILLER_SCORE: i16 = 28500;
+const PV_MOVE_SCORE: u16 = 30000;
+const BASE_CAPTURE_SCORE: u16 = 29000;
+const BASE_KILLER_SCORE: u16 = 28000;
 
 ///[attacker][victim]
-pub const MVV_LVA: [[i16; 6]; 6] = [
+pub const MVV_LVA: [[u16; 6]; 6] = [
     [105, 205, 305, 405, 505, 605],
     [104, 204, 304, 404, 504, 604],
     [103, 203, 303, 403, 503, 603],
@@ -16,7 +16,7 @@ pub const MVV_LVA: [[i16; 6]; 6] = [
 
 impl Move {
     #[inline(always)]
-    pub fn score_move(&self, pos: &Position, context: &mut SearchContext, best_move: Option<Move>, ply: u8) -> i16 {
+    pub fn score_move(&self, pos: &Position, context: &mut SearchContext, best_move: Option<Move>, ply: u8) -> u16 {
         if let Some(moove) = best_move {
             if *self == moove {
                 return PV_MOVE_SCORE
@@ -42,7 +42,7 @@ impl Move {
         // Killer moves
         for i in 0..KILLER_MOVE_COUNT {
             if Some(*self) == context.killer_moves[i][ply as usize] {
-                return BASE_KILLER_SCORE - i as i16
+                return BASE_KILLER_SCORE - i as u16
             }
         }
 

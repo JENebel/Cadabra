@@ -146,8 +146,6 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
     // Stop helper threads
     if IS_MASTER {
         context.search.stop();
-        context.search.is_running.store(false, Relaxed);
-
         info!(context, "bestmove {}", best_move.unwrap());
     };
 
@@ -347,9 +345,10 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             // We now have an exact score to store in TT, as it is a PV node
             hash_flag = HashFlag::Exact;
 
+            // Record history move
             if !moove.is_capture() {
                 let (color, piece) = pos.piece_at(moove.src());
-                context.history_moves[piece.index(color)][moove.dst() as usize] += (depth * depth) as i16;
+                context.insert_history_move(moove, (color, piece), depth)
             }
 
             // Update alpha

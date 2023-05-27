@@ -1,7 +1,7 @@
 use super::*;
 
 pub struct MoveList {
-    moves: heapless::Vec<(Move, i16), 256>
+    moves: heapless::Vec<(Move, u16), 256>
 }
 
 impl MoveList {
