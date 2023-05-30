@@ -24,6 +24,9 @@ lazy_static!(
 
 const ITERATIONS: u16 = 1;
 
+/// Base depth for search bench
+const BASE_DEPTH: u8 = 9;
+
 pub fn run_bench(save: bool) {
     println!();
 
@@ -174,16 +177,15 @@ fn perft_bench() -> (u128, f64) {
 fn search_bench() -> (u128, u128, f64, u128) {
     println!(" Running search time to depth benchmark...");
 
-    let base_depth = 8;
-
     let mut nodes = 0;
     let mut tt_hits = 0;
 
     let mut search_time = 0;
 
     for (bias, pos) in POSITIONS.iter() {
-        let meta = SearchArgs::new_simple_depth(black_box((base_depth as i8 + bias) as u8));
-        let search = Search::new(Settings::default().transposition_table_mb(128).threads(1));
+        let search = Search::new(Settings::default());
+
+        let meta = SearchArgs::new_simple_depth(black_box((BASE_DEPTH as i8 + bias) as u8));
         let res = black_box(search).start(*pos, meta, true);
         search_time += res.time;
         nodes += res.nodes;

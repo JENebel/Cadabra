@@ -27,6 +27,12 @@ pub struct Move {
     pub data: u16
 }
 
+impl From<u16> for Move {
+    fn from(data: u16) -> Self {
+        Self { data }
+    }
+}
+
 impl Move {
     pub const NULL: Move = Move { data: 0 };
 
@@ -113,6 +119,10 @@ impl Move {
             0b1100 => Queen,
             _ => unreachable!()
         }
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.data == Self::NULL.data
     }
 }
 

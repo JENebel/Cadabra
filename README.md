@@ -7,8 +7,8 @@ If you are lucky, Cadabra is online on [Lichess](https://lichess.org/@/CadabraBo
 Cadabra is listed on [CCRL](http://ccrl.chessdom.com/ccrl/404/) with the following rating:
 | Version | CCRL Blitz | Lichess |
 |---------|------------|---------|
-| 1.0     | 1438 +-32  |         |
-| 1.1     |     -      |  ~1990  |
+| 1.0     | 1442 +-21  |         |
+| 1.1     |     -      |  ≈2000  |
 
 # Usage
 
@@ -28,31 +28,33 @@ The resulting binary will then be located in Cadabra/target/release/
 
 The engine supports the [UCI protocol](https://backscattering.de/chess/uci/) as well as these additional commands:
 
-    d               Pretty prints the current position.
+    d                 Pretty prints the current position.
 
-    fen             Prints the Forsynth Edwards Notation(FEN) for the current position.
+    fen               Prints the Forsynth Edwards Notation(FEN) for the current position.
 
-    x               Quits the engine. Equivalent to the UCI 'quit' command.
+    x                 Quits the engine. Equivalent to the UCI 'quit' command.
 
-    move [move]     Make a move on the current position.
-                    The move must be legal, and should be formatted in UCI format, eg. a2a4 or b7b8q.
+    move [move]       Make a move on the current position.
+                      The move must be legal, and should be formatted in UCI format, eg. a2a4 or b7b8q.
 
-    eval            Print the static heuristic evaluation of the current position in centipawns.
+    eval              Print the static heuristic evaluation of the current position in centipawns.
 
-    zobrist         Print the zobrist hash of the current position.
+    zobrist           Print the zobrist hash of the current position.
 
-    perft [depth]   Perform a perft test to the desired depth.
+    perft [depth]     Perform a perft test to the desired depth.
 
-    bench [save?]   Benchmark the engine. Performs a benchmark of perft and search performance.
-                    If 'save' is appended, it saves the results for use as a baseline.
-                    Future runs will then be compared to this result.
-                    The preffered way is to run with the 'bench' argument instead to reduce vaiables.
+    bench [save?]     Benchmark the engine. Performs a benchmark of perft and search performance.
+                      If 'save' is appended, it saves the results for use as a baseline.
+                      Future runs will then be compared to this result.
+                      The preffered way is to run with the 'bench' argument instead to reduce vaiables.
   
-    legal           Lists all legal moves on the current position.
+    legal             Lists all legal moves on the current position.
   
-    threefold       Prints true if in a threefold repetition stalemate, otherwise prints false.
+    threefold         Prints true if in a threefold repetition stalemate, otherwise prints false.
   
-    clear_hash      Clears the internal hash table manually.
+    cleartt           Clears the internal transposition table manually.
+
+    fillrate [fine?]  Displays the current fill rate of transposition table in percentage. Add 'fine' to also get fill rate for each bucket slot.
 
 
 <a id="options"></a>

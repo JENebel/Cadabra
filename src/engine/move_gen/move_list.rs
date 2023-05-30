@@ -44,9 +44,9 @@ impl MoveList {
         self.moves.len()
     }
 
-    pub fn sort(mut self, pos: &Position, context: &mut SearchContext,best_move: Option<Move>, ply: u8) -> Self {
+    pub fn sort(mut self, pos: &Position, context: &mut SearchContext, tt_move: Move, ply: u8) -> Self {
         for i in 0..self.len() {
-            self.moves[i].1 = self.moves[i].0.score_move(pos, context, best_move, ply)
+            self.moves[i].1 = self.moves[i].0.score_move(pos, context, tt_move, ply)
         }
         self
     }

@@ -39,3 +39,6 @@ pub const ASPIRATION_WINDOW_MULT: i16 = 3;
 
 /// Amount of killer moves pr. ply to remember. Must be at least 1
 pub const KILLER_MOVE_COUNT: usize = 3;
+
+/// TT entry age penalty to prioritize newer entries
+pub const AGE_REPLACEMENT_PENALTY: i16 = 400;

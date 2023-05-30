@@ -21,12 +21,12 @@ pub struct SearchContext {
 
 impl SearchContext {
     pub fn new(search: Search, search_meta: SearchArgs, pos: Position, start_time: Instant, is_printing: bool) -> Self {
-        let tt_age = *search.age.lock().unwrap();
+        let tt_generation = *search.generation.lock().unwrap();
         Self {
             search,
             search_meta,
             pos,
-            tt_age,
+            tt_age: tt_generation,
             pv_table: PVTable::new(),
             killer_moves: [[None; MAX_PLY as usize]; KILLER_MOVE_COUNT],
             history_moves: [[0; 64]; 12],

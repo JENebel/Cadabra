@@ -45,7 +45,7 @@ pub fn interface_loop() {
                 }
 
                 if command == "name Clear Hash" {
-                    current_search.clear_hash(settings);
+                    current_search.tt.clear();
                     continue;
                 }
 
@@ -61,8 +61,10 @@ pub fn interface_loop() {
                 println!("readyok")
             },
             "ucinewgame" => {
-                current_search.stop();
-                current_search = Search::new(settings);
+                if current_search.is_running() {
+                    println!("Cannot start a new game while a search is running");
+                }
+                current_search.tt.clear()
             },
             "position" => {
                 match parse_position(&mut command) {
@@ -158,10 +160,25 @@ pub fn interface_loop() {
             "threefold" => {
                 println!("{}", pos.rep_table.is_in_3_fold_rep(&pos))
             },
-            "clear_hash" => {
-                current_search.clear_hash(settings);
-            }
-
+            "cleartt" => {
+                current_search.tt.clear();
+            },
+            "fillrate" => {
+                println!("Fill rate: {:.2}%", current_search.tt.fill_rate() * 100.0);
+                match take_next(&mut command) {
+                    Some("fine") => {
+                        let result = current_search.tt.fill_rate_detailed();
+                        println!("{} slots pr. bucket:", result.len());
+                        for (i, slot_res) in result.iter().enumerate() {
+                            println!(" Slot {i}: {:.2}%", slot_res * 100.0);
+                        }
+                    },
+                    None => (),
+                    Some(arg) => println!("Illegal parameter for fillrate '{arg}'. Only 'fine' is supported"),
+                }
+                
+            },
+            
             _ => println!("Unknown command '{cmd_name}', use 'help' command for all commands")
         }
     }

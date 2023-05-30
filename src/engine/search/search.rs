@@ -6,8 +6,8 @@ pub struct Search {
     is_running: Arc<AtomicBool>,
     is_stopping: Arc<AtomicBool>,
     settings: Arc<Mutex<Settings>>,
-    tt: Arc<TranspositionTable>,
-    pub age: Arc<Mutex<u8>>,
+    pub tt: Arc<TranspositionTable>,
+    pub generation: Arc<Mutex<u8>>,
 }
 
 impl Search {
@@ -18,21 +18,17 @@ impl Search {
             is_stopping: Arc::new(AtomicBool::new(false)),
             settings: Arc::new(Mutex::new(settings)),
             tt: Arc::new(tt),
-            age: Arc::new(Mutex::new(0)),
+            generation: Arc::new(Mutex::new(0)),
         }
     }
 
     pub fn update_settings(&mut self, new_settings: Settings) {
         // New tt if size changed
         if new_settings.transposition_table_mb != self.settings.lock().unwrap().transposition_table_mb {
-            self.tt = Arc::new(TranspositionTable::new(new_settings.transposition_table_mb))
+            self.tt = Arc::new(TranspositionTable::new(new_settings.transposition_table_mb));
         }
 
         *self.settings.lock().unwrap() = new_settings;
-    }
-
-    pub fn clear_hash(&mut self, new_settings: Settings) {
-        self.tt = Arc::new(TranspositionTable::new(new_settings.transposition_table_mb))
     }
 
     /// Returns the running time
@@ -64,7 +60,9 @@ impl Search {
         self.is_stopping.store(false, Relaxed);
         self.is_running.store(false, Relaxed);
 
-        *self.age.lock().unwrap() += 1;
+        // Increment generation
+        let gen = self.generation.lock().unwrap().wrapping_add(1);
+        *self.generation.lock().unwrap() = gen;
 
         result
     }
@@ -161,7 +159,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
 }
 
 fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, mut depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
-    let mut best_move = None;
+    let mut tt_move = Move::NULL;
 
     // Detect 50 move rule and 3 fold repetition stalemate
     if pos.half_moves == 100 || pos.rep_table.is_in_3_fold_rep(pos) {
@@ -171,38 +169,31 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     let is_pv = (beta as i32 - alpha as i32) > 1;
 
     // Probe transposition table
-    if let Some(entry) = context.search.tt.probe(pos.zobrist_hash) {
+    if let Some(entry) = context.search.tt.probe(pos.zobrist_hash, ply) {
         context.tt_hits += 1;
-        // Ply > 0 or we risk not knowing the move. !is_pv, or we get weird stuff happening
+        // !is_pv, or we get weird stuff happening
         if !is_pv {
             // Adjust mating score
-            let score = entry.score();
-            let score = if score < -MATE_BOUND {
-                score + ply as i16
-            } else if score > MATE_BOUND {
-                score - ply as i16
-            } else {
-                score
-            };
-
-            if entry.depth() >= depth {
-                match entry.hash_flag() {
-                    HashFlag::Exact => return score,
-                    HashFlag::LowerBound => alpha = alpha.max(score),
-                    HashFlag::UpperBound => beta = beta.min(score),
+            if entry.depth >= depth {
+                match entry.flag {
+                    HashFlag::Exact => return entry.score,
+                    HashFlag::LowerBound => alpha = alpha.max(entry.score),
+                    HashFlag::UpperBound => beta = beta.min(entry.score),
+                    _ => unreachable!()
                 }
+
                 if alpha >= beta {
-                    return score
+                    return entry.score
                 }
             }
         }
 
-        best_move = Some(entry.best_move());
+        tt_move = entry.best_move;
     }
 
     context.pv_table.pv_lengths[ply as usize] = ply as usize;
 
-    if ply == MAX_PLY as u8 - 1 {
+    if ply == MAX_PLY as u8 {
         return pos.evaluate();
     }
 
@@ -213,7 +204,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     // Stop search if time is exceeded. Only rarely check to reduce performance impact
     if context.nodes & 0b11111111111 == 0 {
-        if IS_MASTER && context.exceeded_time_target() && !context.search.is_stopping() {
+        if IS_MASTER && context.exceeded_time_target() {
             context.search.stop();
             return 0
         } else if context.search.is_stopping() { // Cancel search
@@ -254,8 +245,8 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     }
 
     // Generate moves
-    let mut move_list = pos.generate_moves().sort(pos, context, best_move, ply);
-
+    let mut move_list = pos.generate_moves().sort(pos, context, tt_move, ply);
+    
     // detect mate or stalemate if there are no legal moves
     if move_list.len() == 0 {
         if is_in_check {
@@ -327,7 +318,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
         // Alpha cutoff
         if score > alpha {
-            best_move = Some(moove);
+            tt_move = moove;
 
             // Insert PV node
             context.pv_table.insert_pv_node(moove, ply);
@@ -340,7 +331,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
                 }
 
                 // Record lower bound score in TT
-                context.search.tt.record(pos.zobrist_hash, best_move, depth, beta, HashFlag::LowerBound, ply, context.tt_age);
+                context.search.tt.record(pos.zobrist_hash, tt_move, depth, beta, HashFlag::LowerBound, ply, context.tt_age);
                 
                 // Return early
                 return beta;
@@ -363,7 +354,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     }
     
     // Record upper bound/exact score in TT depending on if we have a PV node
-    context.search.tt.record(pos.zobrist_hash, best_move, depth, alpha, hash_flag, ply, context.tt_age);
+    context.search.tt.record(pos.zobrist_hash, tt_move, depth, alpha, hash_flag, ply, context.tt_age);
     
     alpha
 }
@@ -377,7 +368,7 @@ fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, 
     let eval = pos.evaluate();
 
     // Dont't go on if reached max ply
-    if ply == MAX_PLY as u8 - 1 || pos.half_moves == 100 {
+    if ply == MAX_PLY as u8 || pos.half_moves == 100 {
         return eval;
     }
 
@@ -391,7 +382,7 @@ fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, 
     }
 
     // Generate moves
-    let moves = pos.generate_moves().sort(pos, context, None, ply);
+    let moves = pos.generate_moves().sort(pos, context, Move::NULL, ply);
 
     // Loop through all captures
     for m in moves.filter(|m| m.is_capture()) {

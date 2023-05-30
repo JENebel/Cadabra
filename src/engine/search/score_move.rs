@@ -16,11 +16,9 @@ pub const MVV_LVA: [[u16; 6]; 6] = [
 
 impl Move {
     #[inline(always)]
-    pub fn score_move(&self, pos: &Position, context: &mut SearchContext, best_move: Option<Move>, ply: u8) -> u16 {
-        if let Some(moove) = best_move {
-            if *self == moove {
-                return PV_MOVE_SCORE
-            }
+    pub fn score_move(&self, pos: &Position, context: &mut SearchContext, tt_move: Move, ply: u8) -> u16 {
+        if *self == tt_move {
+            return PV_MOVE_SCORE
         }
 
         // Special case for enpassant
