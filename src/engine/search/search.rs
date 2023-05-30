@@ -171,6 +171,8 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     // Probe transposition table
     if let Some(entry) = context.search.tt.probe(pos.zobrist_hash, ply) {
         context.tt_hits += 1;
+        tt_move = entry.best_move;
+        
         // !is_pv, or we get weird stuff happening
         if !is_pv {
             // Adjust mating score
@@ -187,8 +189,6 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
                 }
             }
         }
-
-        tt_move = entry.best_move;
     }
 
     context.pv_table.pv_lengths[ply as usize] = ply as usize;
