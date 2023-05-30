@@ -61,7 +61,8 @@ impl Search {
         self.is_running.store(false, Relaxed);
 
         // Increment generation
-        let gen = self.generation.lock().unwrap().wrapping_add(1);
+        let mut gen = *self.generation.lock().unwrap() + 1;
+        if gen >= 64 { gen = 0 }; // Wrap around
         *self.generation.lock().unwrap() = gen;
 
         result

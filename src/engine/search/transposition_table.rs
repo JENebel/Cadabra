@@ -117,6 +117,14 @@ impl TranspositionTable {
         &self.table[hash as usize % self.table.len()]
     }
 
+    pub fn calc_age(&self, entry: &EntryData, gen: u8) -> u8 {
+        if entry.generation > gen {
+            63 - entry.generation + gen
+        } else {
+            gen - entry.generation
+        }
+    }
+
     /// Probe the transposition table for a hash. Returns None if no entry is found.
     pub fn probe(&self, hash: u64, ply: u8) -> Option<EntryData> {
         let bucket = self.get_bucket(hash);
@@ -155,7 +163,7 @@ impl TranspositionTable {
                 break;
             }
             
-            let age = generation as i16 - entry.generation as i16;
+            let age = self.calc_age(&entry, generation) as i16;
             let adjusted = entry.depth as i16 - age * AGE_REPLACEMENT_PENALTY;
             if adjusted < worst_depth {
                 worst_index = i;
@@ -215,8 +223,8 @@ impl TranspositionTable {
                 if entry.flag != HashFlag::Unused {
                     found[i] += 1;
                 }
-                checked += 1;
             }
+            checked += 1;
         }
 
         return found.iter().map(|&x| x as f32 / checked as f32).collect::<Vec<f32>>().try_into().unwrap();

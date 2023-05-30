@@ -277,7 +277,7 @@ fn consectutice_search_bench() -> (u128, u128, f64, u128) {
     for (moove, bias) in moves {
         let bias = bias - 2;
         let meta = SearchArgs::new_simple_depth((BASE_DEPTH as i8 + bias) as u8);
-        let res = search.start(pos, meta, true);
+        let res = search.start(pos, meta, false);
         search_time += res.time;
         nodes += res.nodes;
         tt_hits += res.tt_hits;
@@ -286,6 +286,10 @@ fn consectutice_search_bench() -> (u128, u128, f64, u128) {
     }
 
     println!("Fill rate: {}%", search.tt.fill_rate() * 100.);
+    let result = search.tt.fill_rate_detailed();
+    for (i, slot_res) in result.iter().enumerate() {
+        println!(" Slot {i}: {:.2}%", slot_res * 100.0);
+    }
 
     let search_mnps = mega_nodes_pr_sec(nodes, search_time);
 
