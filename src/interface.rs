@@ -164,19 +164,7 @@ pub fn interface_loop() {
                 current_search.tt.clear();
             },
             "fillrate" => {
-                println!("Fill rate: {:.2}%", current_search.tt.fill_rate() * 100.0);
-                match take_next(&mut command) {
-                    Some("fine") => {
-                        let result = current_search.tt.fill_rate_detailed();
-                        println!("{} slots pr. bucket:", result.len());
-                        for (i, slot_res) in result.iter().enumerate() {
-                            println!(" Slot {i}: {:.2}%", slot_res * 100.0);
-                        }
-                    },
-                    None => (),
-                    Some(arg) => println!("Illegal parameter for fillrate '{arg}'. Only 'fine' is supported"),
-                }
-                
+                println!("Fill rate: {:.2}%", current_search.tt.fill_rate() * 100.0)
             },
             
             _ => println!("Unknown command '{cmd_name}', use 'help' command for all commands")

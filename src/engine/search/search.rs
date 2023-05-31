@@ -182,7 +182,6 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
                     HashFlag::Exact => return entry.score,
                     HashFlag::LowerBound => alpha = alpha.max(entry.score),
                     HashFlag::UpperBound => beta = beta.min(entry.score),
-                    _ => unreachable!()
                 }
 
                 if alpha >= beta {

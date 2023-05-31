@@ -286,10 +286,6 @@ fn consectutice_search_bench() -> (u128, u128, f64, u128) {
     }
 
     println!("Fill rate: {}%", search.tt.fill_rate() * 100.);
-    let result = search.tt.fill_rate_detailed();
-    for (i, slot_res) in result.iter().enumerate() {
-        println!(" Slot {i}: {:.2}%", slot_res * 100.0);
-    }
 
     let search_mnps = mega_nodes_pr_sec(nodes, search_time);
 

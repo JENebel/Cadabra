@@ -54,7 +54,7 @@ The engine supports the [UCI protocol](https://backscattering.de/chess/uci/) as 
   
     cleartt           Clears the internal transposition table manually.
 
-    fillrate [fine?]  Displays the current fill rate of transposition table in percentage. Add 'fine' to also get fill rate for each bucket slot.
+    fillrate          Displays the current fill rate of transposition table in percentage.
 
 
 <a id="options"></a>

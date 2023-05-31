@@ -14,7 +14,6 @@ colored = "2.0.0"
 const_for = "0.1.2"
 heapless = "0.7.16"
 lazy_static = "1.4.0"
-cache_line_size = "1.0.0"
 
 [dev-dependencies]
 chess = "3.2.0"

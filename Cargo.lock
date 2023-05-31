@@ -77,17 +77,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
-name = "cache_line_size"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87ccbba4460cca3070e466e87ed2b1a50206d6a09dd2e2249da23c434a3e6535"
-
-[[package]]
 name = "cadabra"
 version = "1.2.0"
 dependencies = [
  "bitintr",
- "cache_line_size",
  "chess",
  "colored",
  "const_for",
