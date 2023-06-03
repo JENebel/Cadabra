@@ -108,16 +108,18 @@ To run this use the custom cargo command
 Move generation
   - Pregenrerated sliding piece attack tables using BMI2's PEXT instructions
   - Many other pregenerated tables to assist in pseudo legal move generation, pin masks etc. to avoid run time calculations
-  - This results in a very fast move generator rivaling the best engines generators, and often beating them in perft speed
+  - This results in a very fast move generator rivaling the best engines' generators, and often beating them in perft speed
 
 Search
   - Negamax alpha beta search followed by quiescence search
-  - Lazy SMP multithreading (Currently doesn't provide a benefit in practice)
-  - Hash table / transposition table (Currently a simple and rudimentary implementation)
-  - Iterative deepening
+  - Quiescence search with pruning
+  - Lazy SMP multithreading (Currently only provides limited benefit in practice)
+  - Hash table / transposition table
+    - A simple replace always scheme is currently used
+  - Iterative deepening with growing aspiration window
   - Check extensions
+  - 50 move rule, 3-fold repetition and insufficient material draw detection
   - Effective time management
-  - Aspiration window
   - Late move reductions
   - Null move pruning
   - Move sorting
@@ -127,4 +129,7 @@ Search
 
 Static evaluation
   - Material scores
-  - Simple piece square tables
+  - Piece square tables
+  - Mobility bonus
+  - Protected king bonus
+  - Several other piece dependent factors

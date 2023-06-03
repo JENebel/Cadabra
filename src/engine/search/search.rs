@@ -111,7 +111,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
         let mut score = negamax::<IS_MASTER>(&pos, alpha, beta, depth, 0, context);
 
         // Widening aspiration window
-        let mut alpha_mult = 1;
+        let mut alpha_mult: i32 = 1;
         let mut beta_mult = 1;
         loop {
             if context.search.is_stopping() {
@@ -121,17 +121,18 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
             if score <= alpha {
                 // Widen window alpha side
                 alpha_mult *= ASPIRATION_WINDOW_MULT;
-                alpha = (score as i32 - alpha_mult as i32 * ASPIRATION_WINDOW as i32).min(-INFINITY as i32) as i16;
+                alpha = (score as i32 - alpha_mult * ASPIRATION_WINDOW).max(-INFINITY as i32) as i16;
                 score = negamax::<IS_MASTER>(&pos, alpha, beta, depth, 0, context);
             } else if score >= beta {
                 // Widen window beta side
                 beta_mult *= ASPIRATION_WINDOW_MULT;
-                beta = (score as i32 + beta_mult as i32 * ASPIRATION_WINDOW as i32).max(INFINITY as i32) as i16;
+                beta = (score as i32 + beta_mult * ASPIRATION_WINDOW).min(INFINITY as i32) as i16;
                 score = negamax::<IS_MASTER>(&pos, alpha, beta, depth, 0, context);
+
             } else {
                 // Succcessful search
                 // Reset window for next iteration
-                (alpha, beta) = (score - ASPIRATION_WINDOW, score + ASPIRATION_WINDOW);
+                (alpha, beta) = (score - ASPIRATION_WINDOW as i16, score + ASPIRATION_WINDOW as i16);
                 break;
             }
         }
@@ -162,7 +163,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
 fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, mut depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
     let mut tt_move = Move::NULL;
 
-    // Detect 50 move rule and 3 fold repetition stalemate
+    // Detect 50 move rule, 3 fold repetition and insufficient material stalemates
     if pos.half_moves == 100 || pos.rep_table.is_in_3_fold_rep(pos) || pos.is_insufficient_material() {
         return 0
     }
@@ -193,6 +194,11 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     context.pv_table.pv_lengths[ply as usize] = ply as usize;
 
+    // Check if in check
+    let is_in_check = pos.is_in_check();
+
+    if is_in_check { depth += 1 };
+
     if ply == MAX_PLY as u8 {
         return pos.evaluate()
     }
@@ -214,11 +220,6 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     // Initialize TT entry hashflag
     let mut hash_flag = HashFlag::UpperBound;
 
-    // Check if in check
-    let is_in_check = pos.is_in_check();
-
-    if is_in_check { depth += 1 };
-
     let static_eval = pos.evaluate();
 
     // NULL MOVE PRUNING
@@ -226,7 +227,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     let only_pawns_left = pos.bb(pos.active_color, PieceType::Pawn).pop_count() + 1 == pos.color_bb(pos.active_color).pop_count();
     let can_nmp = !is_pv
         && !is_in_check 
-        && depth >= R + 1 
+        && depth >= R + 1
         && !only_pawns_left 
         && static_eval >= beta;
 
@@ -255,9 +256,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         if moves_searched == 0 {
             // Full search in left-most node
             score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
-        } else {
-            // LATE MOVE REDUCTIONS
-
+        } else { // LATE MOVE REDUCTIONS
             // Determine if LMR should be used
             let can_lmr = !is_pv 
                 && depth >= 3
@@ -269,17 +268,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
             if can_lmr {
                 // Reduced null window search
-
-
-                // Opt 1
-                // let reduction = if moves_searched < 6 { 1 } else { depth / 3 };
-
-                // Opt 2
                 let reduction = if moves_searched >= 6 { 2 } else { 1 };
-
-                // opt 3
-                // let reduction = 1;
-
 
                 score = -negamax::<IS_MASTER>(&new_pos, -alpha - 1, -alpha, depth - 1 - reduction, ply + 1, context);
 
@@ -365,26 +354,31 @@ fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, 
     let eval = pos.evaluate();
 
     // Dont't go on if reached max ply
-    if ply == MAX_PLY as u8 || pos.half_moves == 100 {
+    if ply == MAX_PLY as u8 {
         return eval;
     }
 
-    // Try cutoff
-    if eval > alpha {
-        alpha = eval;
+    let in_check = pos.is_in_check();
 
-        if eval >= beta {
-            return beta
-        }
+    if eval > alpha && !in_check {
+        alpha = eval;
+    }
+
+    if eval >= beta {
+        return beta
     }
 
     // Generate moves
-    let moves = pos.generate_moves().sort(pos, context, Move::NULL, ply);
+    let mut move_list = pos.generate_moves().sort(pos, context, Move::NULL, ply);
 
     // Loop through all captures
-    for m in moves.filter(|m| m.is_capture()) {
+    while let Some(moove) = move_list.pop_best() {
+        if !in_check && (!(moove.is_capture() || moove.is_enpassant())) {
+            continue
+        }
+
         let mut copy = pos.clone();
-        copy.make_move(m);
+        copy.make_move(moove);
         
         let score = -quiescence::<IS_MASTER>(&copy, -beta, -alpha, ply + 1, context);
 

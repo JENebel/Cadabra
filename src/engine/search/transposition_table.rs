@@ -76,10 +76,10 @@ impl EntryData {
         Self {
             hash,
             score: data as i16,
-            depth: (data >> 16) as u8,
-            best_move: Move::from((data >> 24) as u16),
-            flag: unsafe { mem::transmute::<u8, HashFlag>(((data >> 40) & 0b11) as u8) },
-            generation: (data >> 42) as u8,
+            depth: (data >> 32) as u8,
+            best_move: Move::from((data >> 40) as u16),
+            flag: unsafe { mem::transmute::<u8, HashFlag>(((data >> 56) & 0b11) as u8) },
+            generation: (data >> 58) as u8,
         }
     }
 
@@ -96,10 +96,10 @@ impl EntryData {
 
     pub fn compress(&self) -> u64 {
         ((self.score as u16) as u64)
-        | (self.depth as u64) << 16
-        | (self.best_move.data as u64) << 24
-        | (self.flag as u64) << 40
-        | (self.generation as u64) << 42
+        | (self.depth as u64) << 32
+        | (self.best_move.data as u64) << 40
+        | (self.flag as u64) << 56
+        | (self.generation as u64) << 58
     }
 }
 
