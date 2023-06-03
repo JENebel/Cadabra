@@ -42,3 +42,6 @@ pub const KILLER_MOVE_COUNT: usize = 3;
 
 /// TT entry age penalty to prioritize newer entries
 pub const AGE_REPLACEMENT_PENALTY: i16 = 8;
+
+pub const PRE_FRONTIER_FUTILITY_MARGIN: i16 = 550;
+pub const FRONTIER_FUTILITY_MARGIN: i16 = 125;

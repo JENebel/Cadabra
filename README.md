@@ -122,6 +122,8 @@ Search
   - Effective time management
   - Late move reductions
   - Null move pruning
+  - Reverse futility pruning
+  - Mate distance pruning
   - Move sorting
     - MVV-LVA
     - Killer moves

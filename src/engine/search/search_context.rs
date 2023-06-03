@@ -15,7 +15,6 @@ pub struct SearchContext {
     pub is_printing: bool,
 
     pub nodes: u128,
-    pub qui_nodes: u128,
     pub tt_hits : u128,
 }
 
@@ -33,7 +32,6 @@ impl SearchContext {
             start_time,
             is_printing,
             nodes: 0,
-            qui_nodes: 0,
             tt_hits: 0,
         }
     }

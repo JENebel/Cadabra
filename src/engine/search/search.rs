@@ -144,7 +144,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
         best_move = context.pv_table.best_move();
 
         let time = context.start_time.elapsed().as_millis();
-        info!(context, "info score {} depth {depth} nodes {} time {} pv {}", score_str(score), context.nodes + context.qui_nodes, time, context.pv_table);
+        info!(context, "info score {} depth {depth} nodes {} time {} pv {}", score_str(score), context.nodes, time, context.pv_table);
     }
 
     // Stop helper threads
@@ -154,23 +154,55 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
     };
 
     SearchStats {
-        nodes: context.nodes + context.qui_nodes,
+        nodes: context.nodes,
         tt_hits: context.tt_hits,
         time: context.start_time.elapsed().as_millis()
     }
 }
 
 fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, mut depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
-    let mut tt_move = Move::NULL;
+    // Stop search if signalled or time ran out
+    if IS_MASTER && context.exceeded_time_target() {
+        context.search.stop();
+        return 0
+    } else if context.search.is_stopping() { // Cancel search
+        return 0
+    }
+
+    context.nodes += 1;
+
+    // Mate distance pruning
+    beta = beta.min(MATE_VALUE - ply as i16);
+    alpha = alpha.max(-MATE_VALUE + ply as i16);
+    if alpha >= beta { 
+        return alpha;
+    }
 
     // Detect 50 move rule, 3 fold repetition and insufficient material stalemates
     if pos.half_moves == 100 || pos.rep_table.is_in_3_fold_rep(pos) || pos.is_insufficient_material() {
         return 0
     }
+
+    // Check extension
+    let in_check = pos.is_in_check();
+    if in_check { depth += 1 };
+
+    // Abort if hard maximum depth is reached
+    if ply == MAX_PLY as u8 {
+        return pos.evaluate()
+    }
+
+    // Run quiescence search if the desired depth is reached
+    if depth == 0 {
+        context.nodes -= 1; // Adjust node count to avoid double counting
+        return quiescence::<IS_MASTER>(pos, alpha, beta, ply, context);
+    };
     
+    // Check if we are in a PV node
     let is_pv = (beta as i32 - alpha as i32) > 1;
 
     // Probe transposition table
+    let mut tt_move = Move::NULL;
     if let Some(entry) = context.search.tt.probe(pos.zobrist_hash, ply) {
         context.tt_hits += 1;
         tt_move = entry.best_move;
@@ -192,41 +224,34 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         }
     }
 
+    // Initialize PV table entry
     context.pv_table.pv_lengths[ply as usize] = ply as usize;
-
-    // Check if in check
-    let is_in_check = pos.is_in_check();
-
-    if is_in_check { depth += 1 };
-
-    if ply == MAX_PLY as u8 {
-        return pos.evaluate()
-    }
-
-    // Run quiescence search if the desired depth is reached
-    if depth == 0 {
-        return quiescence::<IS_MASTER>(pos, alpha, beta, ply, context);
-    };
-
-    if IS_MASTER && context.exceeded_time_target() {
-        context.search.stop();
-        return 0
-    } else if context.search.is_stopping() { // Cancel search
-        return 0
-    }
-
-    context.nodes += 1;
 
     // Initialize TT entry hashflag
     let mut hash_flag = HashFlag::UpperBound;
 
+    // Do a static evaluation for later use
     let static_eval = pos.evaluate();
 
-    // NULL MOVE PRUNING
+    // Reverse futility pruning
+    let can_futility_prune = !in_check && !in_check;
+    if can_futility_prune {
+        if depth == 1 {
+            if static_eval - FRONTIER_FUTILITY_MARGIN >= beta {
+                return static_eval - FRONTIER_FUTILITY_MARGIN
+            }
+        } else if depth == 2 {
+            if static_eval - PRE_FRONTIER_FUTILITY_MARGIN >= beta {
+                return static_eval - PRE_FRONTIER_FUTILITY_MARGIN
+            }
+        }
+    }
+
+    // Null move pruning
     const R: u8 = 2;
     let only_pawns_left = pos.bb(pos.active_color, PieceType::Pawn).pop_count() + 1 == pos.color_bb(pos.active_color).pop_count();
     let can_nmp = !is_pv
-        && !is_in_check 
+        && !in_check 
         && depth >= R + 1
         && !only_pawns_left 
         && static_eval >= beta;
@@ -245,9 +270,11 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     // Generate moves
     let mut move_list = pos.generate_moves().sort(pos, context, tt_move, ply);
 
+    // Main move loop
     let mut moves_searched = 0;
-    // Loop through moves
     while let Some(moove) = move_list.pop_best() {
+        moves_searched += 1;
+
         let mut new_pos = *pos;
         new_pos.make_move(moove);
         let caused_check = new_pos.is_in_check();
@@ -256,13 +283,14 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         if moves_searched == 0 {
             // Full search in left-most node
             score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
-        } else { // LATE MOVE REDUCTIONS
+        } else {
+            // Late move reductions
             // Determine if LMR should be used
             let can_lmr = !is_pv 
                 && depth >= 3
                 && !moove.is_capture() 
                 && !moove.is_promotion() 
-                && !is_in_check 
+                && !in_check 
                 && !caused_check 
                 && moves_searched >= 4;
 
@@ -325,17 +353,15 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             // Update alpha
             alpha = score;
         }
-
-        moves_searched += 1;
     }
 
     // Detect mate or stalemate if there are no legal moves
     if moves_searched == 0 {
-        if is_in_check {
-            return -MATE_VALUE + ply as i16;
+        if in_check {
+            alpha = -MATE_VALUE + ply as i16;
         }
         else {
-            return 0;
+            alpha = 0;
         }
     }
     
@@ -348,7 +374,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 /// Quiescence search
 #[inline(always)]
 fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, ply: u8, context: &mut SearchContext) -> i16 {
-    context.qui_nodes += 1;
+    context.nodes += 1;
 
     // Evaluate position immediately
     let eval = pos.evaluate();
