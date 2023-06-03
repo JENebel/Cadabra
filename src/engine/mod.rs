@@ -12,7 +12,7 @@ mod move_gen;
 mod search;
 mod settings;
 
-use square::*;
+pub use square::*;
 use lookup_tables::*;
 use piece::*;
 use color::*;

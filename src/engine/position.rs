@@ -197,6 +197,13 @@ impl Position {
     pub fn king_position(&self, color: Color) -> u8 {
         self.bb(color, King).least_significant()
     }
+
+    pub fn is_insufficient_material(&self) -> bool {
+        let white_insufficient = self.color_bb(White).pop_count() == 1 || (self.color_bb(White).pop_count() == 2 && (!self.bb(White, Knight).is_empty() || !self.bb(White, Bishop).is_empty()));
+        let black_insufficient = self.color_bb(Black).pop_count() == 1 || (self.color_bb(Black).pop_count() == 2 && (!self.bb(Black, Knight).is_empty() || !self.bb(Black, Bishop).is_empty()));
+
+        white_insufficient && black_insufficient
+    }
 }
 
 impl Display for Position {

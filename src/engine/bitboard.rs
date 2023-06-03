@@ -137,7 +137,7 @@ impl Bitboard {
         self.0.trailing_zeros() as u8
     }
 
-    pub fn count_bits(&self) -> u64 {
+    pub fn pop_count(&self) -> u64 {
         self.0.popcnt()
     }
 
@@ -163,6 +163,6 @@ impl Iterator for Bitboard {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(self.count_bits() as usize))
+        (0, Some(self.pop_count() as usize))
     }
 }

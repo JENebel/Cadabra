@@ -139,6 +139,12 @@ pub fn interface_loop() {
             "eval" => {
                 println!("Heuristic value: {}", pos.evaluate())
             },
+            "threefold" => {
+                println!("{}", pos.rep_table.is_in_3_fold_rep(&pos))
+            },
+            "insufficient" => {
+                println!("{}", pos.is_insufficient_material())
+            },
             "zobrist" => {
                 println!("Zobrist hash:: {:x}", pos.zobrist_hash)
             }
@@ -156,9 +162,6 @@ pub fn interface_loop() {
                 for m in pos.generate_moves() {
                     println!(" {m}")
                 }
-            },
-            "threefold" => {
-                println!("{}", pos.rep_table.is_in_3_fold_rep(&pos))
             },
             "cleartt" => {
                 current_search.tt.clear();

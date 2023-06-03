@@ -163,7 +163,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     let mut tt_move = Move::NULL;
 
     // Detect 50 move rule and 3 fold repetition stalemate
-    if pos.half_moves == 100 || pos.rep_table.is_in_3_fold_rep(pos) {
+    if pos.half_moves == 100 || pos.rep_table.is_in_3_fold_rep(pos) || pos.is_insufficient_material() {
         return 0
     }
     
@@ -194,7 +194,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     context.pv_table.pv_lengths[ply as usize] = ply as usize;
 
     if ply == MAX_PLY as u8 {
-        return pos.evaluate();
+        return pos.evaluate()
     }
 
     // Run quiescence search if the desired depth is reached
@@ -202,14 +202,11 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         return quiescence::<IS_MASTER>(pos, alpha, beta, ply, context);
     };
 
-    // Stop search if time is exceeded. Only rarely check to reduce performance impact
-    if context.nodes & 0b11111111111 == 0 {
-        if IS_MASTER && context.exceeded_time_target() {
-            context.search.stop();
-            return 0
-        } else if context.search.is_stopping() { // Cancel search
-            return 0
-        }
+    if IS_MASTER && context.exceeded_time_target() {
+        context.search.stop();
+        return 0
+    } else if context.search.is_stopping() { // Cancel search
+        return 0
     }
 
     context.nodes += 1;
@@ -226,7 +223,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     // NULL MOVE PRUNING
     const R: u8 = 2;
-    let only_pawns_left = pos.bb(pos.active_color, PieceType::Pawn).count_bits() + 1 == pos.color_bb(pos.active_color).count_bits();
+    let only_pawns_left = pos.bb(pos.active_color, PieceType::Pawn).pop_count() + 1 == pos.color_bb(pos.active_color).pop_count();
     let can_nmp = !is_pv
         && !is_in_check 
         && depth >= R + 1 
@@ -246,16 +243,6 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     // Generate moves
     let mut move_list = pos.generate_moves().sort(pos, context, tt_move, ply);
-    
-    // detect mate or stalemate if there are no legal moves
-    if move_list.len() == 0 {
-        if is_in_check {
-            return -MATE_VALUE + ply as i16;
-        }
-        else {
-            return 0;
-        }
-    }
 
     let mut moves_searched = 0;
     // Loop through moves
@@ -351,6 +338,16 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         }
 
         moves_searched += 1;
+    }
+
+    // Detect mate or stalemate if there are no legal moves
+    if moves_searched == 0 {
+        if is_in_check {
+            return -MATE_VALUE + ply as i16;
+        }
+        else {
+            return 0;
+        }
     }
     
     // Record upper bound/exact score in TT depending on if we have a PV node

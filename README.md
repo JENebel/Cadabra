@@ -51,6 +51,8 @@ The engine supports the [UCI protocol](https://backscattering.de/chess/uci/) as 
     legal             Lists all legal moves on the current position.
   
     threefold         Prints true if in a threefold repetition stalemate, otherwise prints false.
+
+    insufficient      Prints true if in an insufficient material draw, otherwise prints false.
   
     cleartt           Clears the internal transposition table manually.
 

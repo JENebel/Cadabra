@@ -13,6 +13,10 @@ fn main() {
         return;
     }
 
+    /*println!("{}", Bitboard(ISOLATED_MASKS[Square::a2 as usize]));
+    println!("{}", Bitboard(ISOLATED_MASKS[Square::b6 as usize]));
+    return();*/
+
     // Normal engine run
     // Begin accepting commands
     interface_loop();
