@@ -55,7 +55,10 @@ impl Search {
         }
 
         // Wait for all threads to terminate and combine results
-        let result: SearchStats = workers.into_iter().map(|w| w.join().unwrap()).sum();
+        let result: SearchStats = workers.into_iter().map(|w| match w.join() {
+            Ok(stats) => stats,
+            Err(err) => panic!("Worker thread panicked with error: {:?}", err),
+        }).sum();
 
         self.is_stopping.store(false, Relaxed);
         self.is_running.store(false, Relaxed);
@@ -69,7 +72,9 @@ impl Search {
     }
 
     pub fn stop(&self) {
-        self.is_stopping.store(true, Relaxed);
+        if self.is_running() {
+            self.is_stopping.store(true, Release);
+        }
     }
 
     pub fn is_running(&self) -> bool {
@@ -171,6 +176,9 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     context.nodes += 1;
 
+    // Initialize PV table entry
+    context.pv_table.pv_lengths[ply as usize] = ply as usize;
+
     // Mate distance pruning
     beta = beta.min(MATE_VALUE - ply as i16);
     alpha = alpha.max(-MATE_VALUE + ply as i16);
@@ -224,9 +232,6 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         }
     }
 
-    // Initialize PV table entry
-    context.pv_table.pv_lengths[ply as usize] = ply as usize;
-
     // Initialize TT entry hashflag
     let mut hash_flag = HashFlag::UpperBound;
 
@@ -234,7 +239,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     let static_eval = pos.evaluate();
 
     // Reverse futility pruning
-    let can_futility_prune = !in_check && !in_check;
+    let can_futility_prune = !in_check && !is_pv;
     if can_futility_prune {
         if depth == 1 {
             if static_eval - FRONTIER_FUTILITY_MARGIN >= beta {
