@@ -26,9 +26,9 @@ impl SearchArgs {
             let moves_to_go = movestogo.unwrap_or(30) as u128;
 
             if time_left < inc {
-                inc - 500
+                time_left + inc - 250
             } else {
-                (time_left + inc) / moves_to_go
+                (time_left / moves_to_go) + inc
             }
         } else {
             INF
