@@ -336,7 +336,9 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
             if score >= beta {
                 // Record killer move
                 if !moove.is_capture() {
-                    context.insert_killer_move(moove, ply)
+                    context.insert_killer_move(moove, ply);
+                    let (color, piece) = pos.piece_at(moove.src());
+                    context.insert_history_move(moove, (color, piece), depth)
                 }
 
                 // Record lower bound score in TT
@@ -348,12 +350,6 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
             // We now have an exact score to store in TT, as it is a PV node
             hash_flag = HashFlag::Exact;
-
-            // Record history move
-            if !moove.is_capture() {
-                let (color, piece) = pos.piece_at(moove.src());
-                context.insert_history_move(moove, (color, piece), depth)
-            }
 
             // Update alpha
             alpha = score;
