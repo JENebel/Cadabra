@@ -22,7 +22,7 @@ pub use search_stats::*;
 
 use crate::engine::*;
 
-pub const MAX_PLY: u8 = 64;
+pub const MAX_DEPTH: u8 = 128;
 
 /// Considered infinite
 pub const INFINITY: i16 = 30000;

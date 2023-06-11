@@ -150,6 +150,11 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
 
         let time = context.start_time.elapsed().as_millis();
         info!(context, "info score {} depth {depth} nodes {} time {} pv {}", score_str(score), context.nodes, time, context.pv_table);
+
+        // Finish early if mate is found
+        if score <= -MATE_BOUND || score >= MATE_BOUND {
+            break;
+        }
     }
 
     // Stop helper threads
@@ -176,9 +181,6 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     context.nodes += 1;
 
-    // Initialize PV table entry
-    context.pv_table.pv_lengths[ply as usize] = ply as usize;
-
     // Mate distance pruning
     beta = beta.min(MATE_VALUE - ply as i16);
     alpha = alpha.max(-MATE_VALUE + ply as i16);
@@ -195,16 +197,14 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     let in_check = pos.is_in_check();
     if in_check { depth += 1 };
 
-    // Abort if hard maximum depth is reached
-    if ply == MAX_PLY as u8 {
-        return pos.evaluate()
-    }
-
     // Run quiescence search if the desired depth is reached
-    if depth == 0 {
+    if depth == 0 || ply == MAX_DEPTH as u8 - 1 {
         context.nodes -= 1; // Adjust node count to avoid double counting
         return quiescence::<IS_MASTER>(pos, alpha, beta, ply, context);
     };
+
+    // Initialize PV table entry
+    context.pv_table.pv_lengths[ply as usize] = ply as usize;
     
     // Check if we are in a PV node
     let is_pv = (beta as i32 - alpha as i32) > 1;
@@ -379,11 +379,6 @@ fn quiescence<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, beta: i16, 
 
     // Evaluate position immediately
     let eval = pos.evaluate();
-
-    // Dont't go on if reached max ply
-    if ply == MAX_PLY as u8 {
-        return eval;
-    }
 
     let in_check = pos.is_in_check();
 

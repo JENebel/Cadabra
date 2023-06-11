@@ -4,15 +4,15 @@ use super::*;
 
 #[derive(Clone)]
 pub struct PVTable {
-    pub pv_table: [[Option<Move>; MAX_PLY as usize]; MAX_PLY as usize],
-    pub pv_lengths: [usize; MAX_PLY as usize],
+    pub pv_table: [[Option<Move>; MAX_DEPTH as usize]; MAX_DEPTH as usize],
+    pub pv_lengths: [usize; MAX_DEPTH as usize],
 }
 
 impl PVTable {
     pub fn new() -> Self {
         Self {
-            pv_table: [[None; MAX_PLY as usize]; MAX_PLY as usize],
-            pv_lengths: [0; MAX_PLY as usize],
+            pv_table: [[None; MAX_DEPTH as usize]; MAX_DEPTH as usize],
+            pv_lengths: [0; MAX_DEPTH as usize],
         }
     }
 
