@@ -21,6 +21,10 @@ impl PVTable {
     }
 
     pub fn insert_pv_node(&mut self, moove: Move, ply: u8) {
+        if ply >= MAX_DEPTH - 2 {
+            return
+        }
+
         let ply = ply as usize;
 
         self.pv_table[ply][ply] = Some(moove);

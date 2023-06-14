@@ -150,17 +150,13 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
 
         let time = context.start_time.elapsed().as_millis();
         info!(context, "info score {} depth {depth} nodes {} time {} pv {}", score_str(score), context.nodes, time, context.pv_table);
-
-        // Finish early if mate is found
-        if score <= -MATE_BOUND || score >= MATE_BOUND {
-            break;
-        }
     }
 
     // Stop helper threads
     if IS_MASTER {
         context.search.stop();
-        info!(context, "bestmove {}", best_move.unwrap());
+        let best_move = best_move.unwrap_or(pos.generate_moves().next().unwrap()); // Just take first move if search didn't provide one
+        info!(context, "bestmove {}", best_move);
     };
 
     SearchStats {
@@ -181,6 +177,9 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
 
     context.nodes += 1;
 
+    // Initialize PV table entry
+    context.pv_table.pv_lengths[ply as usize] = ply as usize;
+
     // Mate distance pruning
     beta = beta.min(MATE_VALUE - ply as i16);
     alpha = alpha.max(-MATE_VALUE + ply as i16);
@@ -189,7 +188,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     }
 
     // Detect 50 move rule, 3 fold repetition and insufficient material stalemates
-    if pos.half_moves == 100 || pos.rep_table.is_in_3_fold_rep(pos) || pos.is_insufficient_material() {
+    if ply > 0 && (pos.half_moves == 100 || pos.rep_table.is_in_3_fold_rep(pos) || pos.is_insufficient_material()) {
         return 0
     }
 
@@ -198,13 +197,10 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     if in_check { depth += 1 };
 
     // Run quiescence search if the desired depth is reached
-    if depth == 0 || ply == MAX_DEPTH as u8 - 1 {
+    if depth == 0 || ply >= MAX_DEPTH as u8 {
         context.nodes -= 1; // Adjust node count to avoid double counting
         return quiescence::<IS_MASTER>(pos, alpha, beta, ply, context);
     };
-
-    // Initialize PV table entry
-    context.pv_table.pv_lengths[ply as usize] = ply as usize;
     
     // Check if we are in a PV node
     let is_pv = (beta as i32 - alpha as i32) > 1;
@@ -253,11 +249,10 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
     }
 
     // Null move pruning
-    const R: u8 = 2;
     let only_pawns_left = pos.bb(pos.active_color, PieceType::Pawn).pop_count() + 1 == pos.color_bb(pos.active_color).pop_count();
     let can_nmp = !is_pv
         && !in_check 
-        && depth >= R + 1
+        && depth >= NULL_MOVE_R + 1
         && !only_pawns_left 
         && static_eval >= beta;
 
@@ -265,7 +260,7 @@ fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16,
         let mut new_pos = *pos;
         new_pos.make_null_move();
 
-        let score = -negamax::<IS_MASTER>(&new_pos, -beta, -beta + 1, depth - 1 - R, ply + 1, context);
+        let score = -negamax::<IS_MASTER>(&new_pos, -beta, -beta + 1, depth - 1 - NULL_MOVE_R, ply + 1, context);
 
         if score >= beta {
             return beta
