@@ -1,0 +1,8 @@
+[package]
+name = "validator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cadabra = { path = "../engine" }
+chess = "3.2.0"

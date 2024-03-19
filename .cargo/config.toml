@@ -1,0 +1,15 @@
+[build]
+rustflags = ["-Ctarget-cpu=native"]
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+[alias]
+validate = "run -r -p validator"
+benchmark = "run -r bench"
+dev_benchmark = "run -r cadabra bench"
+tune = "run -p tuner -r tuner/training_games.fen"

@@ -1,0 +1,19 @@
+[package]
+name = "tuner"
+version = "0.1.0"
+authors = ["Joachim Enggaard Nebel"]
+edition = "2021"
+license = "BSD-2-Clause"
+description = "UCI compatible chess engine"
+repository = "https://github.com/JENebel/Cadabra/"
+
+[dependencies]
+cadabra = { path = "../engine" }
+chrono = "0.4.27"
+pretty-duration = "0.1.1"
+pgn-reader = "0.25.0"
+shakmaty = "0.26.0"
+rayon = "1.7.0"
+rand = "0.8.5"
+term_size = "0.3.2"
+num-format = "0.4.4"

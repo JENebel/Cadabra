@@ -1,0 +1,16 @@
+[package]
+name = "cadabra"
+version = "2.1.0"
+authors = ["Joachim Enggaard Nebel"]
+edition = "2021"
+license = "BSD-2-Clause"
+description = "UCI compatible chess engine"
+repository = "https://github.com/JENebel/Cadabra/"
+build = "src/generate_sliding_attacks.rs"
+
+[dependencies]
+bitintr = "0.3.0"
+colored = "2.0.0"
+const_for = "0.1.3"
+heapless = "0.8.0"
+lazy_static = "1.4.0"

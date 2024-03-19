@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+default-members = ["engine"]
+
+members = [
+    "engine",
+    "tuner",
+    "validator",
+]
+
+[patch.crates-io]
+bitintr = { git = "https://github.com/finnbear/bitintr", branch = "remove_nightly" }
