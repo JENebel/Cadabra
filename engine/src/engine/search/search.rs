@@ -32,7 +32,7 @@ impl Search {
     }
 
     /// Returns the running time
-    pub fn start(&self, pos: Position, meta: SearchArgs, print: bool) -> SearchStats {
+    pub fn start<E: Evaluator + Send + Clone + 'static>(&self, pos: Position, meta: SearchArgs, print: bool, evaluator: E) -> SearchStats {
         self.is_running.store(true, Relaxed);
 
         // Spawn worker threads
@@ -41,13 +41,14 @@ impl Search {
             let search = self.clone();
             let meta = meta.clone();
             let pos = pos.clone();
+            let e = evaluator.clone();
 
             let h: JoinHandle<SearchStats> = thread::spawn(move || {
                 let mut context = SearchContext::new(search, meta, pos, Instant::now(), print);
                 if t == 0 {
-                    run_search::<true>(&mut context, t)
+                    run_search::<true, E>(&mut context, t, e)
                 } else {       
-                    run_search::<false>(&mut context, t)
+                    run_search::<false, E>(&mut context, t, e)
                 }
             });
 
@@ -110,7 +111,7 @@ fn score_str(score: i16) -> String {
     }
 }
 
-pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id: u8) -> SearchStats {
+pub fn run_search<const IS_MASTER: bool, E: Evaluator>(context: &mut SearchContext, thread_id: u8, evaluator: E) -> SearchStats {
     let pos = context.pos;
 
     let mut best_move = Option::None;
@@ -119,7 +120,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
     // Iterative deepening loop
     for depth in (thread_id % 4 + 1)..=(context.search_meta.max_depth) {
         // Run initial search with narrow search (Except first time)
-        let mut score = negamax::<IS_MASTER>(&pos, alpha, beta, depth, 0, context);
+        let mut score = negamax::<IS_MASTER, E>(&pos, alpha, beta, depth, 0, context, &evaluator);
 
         // Widening aspiration window
         let mut alpha_mult: i32 = 1;
@@ -133,12 +134,12 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
                 // Widen window alpha side
                 alpha_mult *= ASPIRATION_WINDOW_MULT;
                 alpha = (score as i32 - alpha_mult * ASPIRATION_WINDOW).max(-INFINITY as i32) as i16;
-                score = negamax::<IS_MASTER>(&pos, alpha, beta, depth, 0, context);
+                score = negamax::<IS_MASTER, E>(&pos, alpha, beta, depth, 0, context, &evaluator);
             } else if score >= beta {
                 // Widen window beta side
                 beta_mult *= ASPIRATION_WINDOW_MULT;
                 beta = (score as i32 + beta_mult * ASPIRATION_WINDOW).min(INFINITY as i32) as i16;
-                score = negamax::<IS_MASTER>(&pos, alpha, beta, depth, 0, context);
+                score = negamax::<IS_MASTER, E>(&pos, alpha, beta, depth, 0, context, &evaluator);
 
             } else {
                 // Succcessful search
@@ -171,7 +172,7 @@ pub fn run_search<const IS_MASTER: bool>(context: &mut SearchContext, thread_id:
     }
 }
 
-pub fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: i16, mut depth: u8, ply: u8, context: &mut SearchContext) -> i16 {
+pub fn negamax<const IS_MASTER: bool, E: Evaluator>(pos: &Position, mut alpha: i16, mut beta: i16, mut depth: u8, ply: u8, context: &mut SearchContext, evaluator: &E) -> i16 {
     // Stop search if signalled or time ran out
     if IS_MASTER && context.exceeded_time_target() {
         context.search.stop();
@@ -265,7 +266,7 @@ pub fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: 
         let mut new_pos = *pos;
         new_pos.make_null_move();
 
-        let score = -negamax::<IS_MASTER>(&new_pos, -beta, -beta + 1, depth - 1 - NULL_MOVE_R, ply + 1, context);
+        let score = -negamax::<IS_MASTER, E>(&new_pos, -beta, -beta + 1, depth - 1 - NULL_MOVE_R, ply + 1, context, evaluator);
 
         if score >= beta {
             return beta
@@ -287,7 +288,7 @@ pub fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: 
         let mut score;
         if moves_searched == 0 {
             // Full search in left-most node
-            score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
+            score = -negamax::<IS_MASTER, E>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context, evaluator);
         } else {
             // Late move reductions
             // Determine if LMR should be used
@@ -303,24 +304,24 @@ pub fn negamax<const IS_MASTER: bool>(pos: &Position, mut alpha: i16, mut beta: 
                 // Reduced null window search
                 let reduction = if moves_searched >= 6 { 2 } else { 1 };
 
-                score = -negamax::<IS_MASTER>(&new_pos, -alpha - 1, -alpha, depth - 1 - reduction, ply + 1, context);
+                score = -negamax::<IS_MASTER, E>(&new_pos, -alpha - 1, -alpha, depth - 1 - reduction, ply + 1, context, evaluator);
 
                 if score > alpha {
                     // Full null window search on failure
-                    score = -negamax::<IS_MASTER>(&new_pos, -alpha - 1, -alpha, depth - 1, ply + 1, context);
+                    score = -negamax::<IS_MASTER, E>(&new_pos, -alpha - 1, -alpha, depth - 1, ply + 1, context, evaluator);
 
                     if score > alpha {
                         // Full search on failure
-                        score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
+                        score = -negamax::<IS_MASTER, E>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context, evaluator);
                     }
                 }
             } else {
                 // Full null window search
-                score = -negamax::<IS_MASTER>(&new_pos, -alpha - 1, -alpha, depth - 1, ply + 1, context);
+                score = -negamax::<IS_MASTER, E>(&new_pos, -alpha - 1, -alpha, depth - 1, ply + 1, context, evaluator);
 
                 if score > alpha {
                     // Full search on failure
-                    score = -negamax::<IS_MASTER>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context);
+                    score = -negamax::<IS_MASTER, E>(&new_pos, -beta, -alpha, depth - 1, ply + 1, context, evaluator);
                 }
             }
         }

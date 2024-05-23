@@ -230,7 +230,7 @@ fn search_bench() -> (u128, u128, f64, u128) {
         let search = Search::new(Settings::default());
 
         let meta = SearchArgs::new_simple_depth(black_box((BASE_DEPTH as i8 + bias) as u8));
-        let res = black_box(search).start(*pos, meta, true);
+        let res = black_box(search).start(*pos, meta, true, CONST_EVALUATOR);
         search_time += res.time;
         nodes += res.nodes;
         tt_hits += res.tt_hits;
@@ -277,7 +277,7 @@ fn consectutice_search_bench() -> (u128, u128, f64, u128) {
     for (moove, bias) in moves {
         let bias = bias - 2;
         let meta = SearchArgs::new_simple_depth((BASE_DEPTH as i8 + bias) as u8);
-        let res = search.start(pos, meta, false);
+        let res = search.start(pos, meta, false, CONST_EVALUATOR);
         search_time += res.time;
         nodes += res.nodes;
         tt_hits += res.tt_hits;

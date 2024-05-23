@@ -88,7 +88,7 @@ pub fn interface_loop() {
 
                 let search = current_search.clone();
                 thread::spawn(move || {
-                    search.start(pos, meta, true);
+                    search.start(pos, meta, true, CONST_EVALUATOR);
                 });
             },
             "stop" => {

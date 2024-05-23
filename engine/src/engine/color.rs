@@ -42,13 +42,10 @@ impl Color {
     }
 
     pub fn piece_offset(&self) -> usize {
-        match self {
-            White => 0,
-            Black => 6,
-        }
+        (*self as usize) * 6
     }
 
     pub fn opposite(&self) -> Color {
-        if self.is_white() { Color::Black } else { Color::White }
+        self.is_white().into()
     }
 }

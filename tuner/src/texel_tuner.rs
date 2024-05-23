@@ -6,9 +6,24 @@ use num_format::*;
 
 use cadabra::Position;
 
-use crate::tuner_evaluator::TunerEvaluator;
+use crate::{generate_fen_from_pgn, tuner_evaluator::TunerEvaluator};
 
-pub fn tune(fen_file: PathBuf) {
+pub fn tune() {
+    let input = std::env::args().nth(1).unwrap_or_else(|| {
+        println!("No file provided!");
+        std::process::exit(1);
+    });
+
+    let fen_file: PathBuf = if input.ends_with("pgn") {
+        // Generate fen file
+        let pgn_path = std::path::PathBuf::from(input.trim());
+        generate_fen_from_pgn(pgn_path)
+    } else if input.ends_with("fen") {
+        std::path::PathBuf::from(input.trim())
+    } else {
+        panic!("Invalid file type");
+    };
+    
     println!("Tuning engine with '{}'", fen_file.display());
     // Time how long the calculation takes
     println!("Loading positions...");
